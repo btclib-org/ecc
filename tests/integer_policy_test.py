@@ -34,7 +34,7 @@ from ecc.curves import (
     scalar_from_prv_key,
     secp256k1,
 )
-from ecc.ecc import frost
+from ecc.ecc import dahlias, frost
 from ecc.ecc.borromean import BorromeanSig
 from ecc.ecc.dsa import recover_pub_key_, recover_sec_
 from ecc.ecc.dsa import sign as dsa_sign
@@ -64,6 +64,9 @@ _FROST_SESSION = frost.SessionContext(
     [],
     b"msg",
 )
+
+# a DahLIAS session of one signer, for `partial_sig_verify`'s index
+_DAHLIAS_PUB_NONCE = bytes_from_point(secp256k1.G) * 2
 
 
 # every field whose contract is an integer quantity, with the shortest
@@ -113,6 +116,12 @@ _CASES: list[tuple[str, Callable[[Any], object]]] = [
         "FROST prepared signer id",
         lambda v: frost.partial_sig_verify_(
             bytes(32), v, _FROST_PUB_NONCE, _FROST_PUB_SHARE, _FROST_SESSION
+        ),
+    ),
+    (
+        "DahLIAS signer index",
+        lambda v: dahlias.partial_sig_verify(
+            bytes(32), [bytes(32)], [bytes(32)], [_DAHLIAS_PUB_NONCE], v
         ),
     ),
     # `CurveGroup.is_on_curve` is the one funnel behind a `Point` tuple,

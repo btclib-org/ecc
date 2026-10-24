@@ -12,9 +12,10 @@ check there. What is built on first use, and the test of each:
   may build it more than once when threads miss together; every one in the
   package is raced, `test_every_lru_cache_is_raced` holding the list
 - the dictionary `ellswift._CONSTANTS`
-- the `_values` memo of `musig2.SessionContext` and `frost.SessionContext`,
-  and the `_bindings_ctx` memo of the former, each built into a local and
-  published by one `object.__setattr__`
+- the `_values` memo of `musig2.SessionContext`, `frost.SessionContext`
+  and `dahlias.SessionContext`, and the `_bindings_ctx` memo of the
+  first, each built into a local and published by one
+  `object.__setattr__`
 - the `_checked` flag of `_libsecp256k1`, set after the check has passed
 
 What is held is the answer: the threads agree with the same calls made one
@@ -36,7 +37,7 @@ from ecc import _libsecp256k1
 from ecc.curves import curve_group, mult, secp256k1
 from ecc.curves.curve import PreparedPoint, is_libsecp256k1_serving
 from ecc.curves.sec_point import bytes_from_point
-from ecc.ecc import dsa, ellswift, frost, musig2, pedersen, ssa
+from ecc.ecc import dahlias, dsa, ellswift, frost, musig2, pedersen, ssa
 from tests import module_names, needs_bindings
 from tests.curves.curve_test import no_bindings_anywhere
 
@@ -183,6 +184,22 @@ def test_frost_session_values() -> None:
     ctx = fresh()
     assert ctx._values is None
     assert _race(lambda _: frost.session_values(ctx)) == [expected] * THREADS
+
+
+def test_dahlias_session_values() -> None:
+    """Derive the values of one shared DahLIAS session."""
+    pk = _PUB[0].to_bytes(32, "big")
+    pub_nonce = bytes_from_point(secp256k1.G, secp256k1) + bytes_from_point(
+        mult(2, secp256k1.G, secp256k1), secp256k1
+    )
+
+    def fresh() -> dahlias.SessionContext:
+        return dahlias.SessionContext(pub_nonce, [pk], [_MSG32], [pub_nonce])
+
+    expected = dahlias.session_values(fresh())
+    ctx = fresh()
+    assert ctx._values is None
+    assert _race(lambda _: dahlias.session_values(ctx)) == [expected] * THREADS
 
 
 @needs_bindings

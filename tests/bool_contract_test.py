@@ -44,10 +44,11 @@ There is no list of exceptions: a finding this file makes is a red test
 above, to be fixed or to be given a reason of its own.
 
 What no case here drives, and why: `musig2`'s and `frost`'s
-`partial_sig_verify` and `partial_sig_verify_` want a session and a
-signing round, `dsa`'s and `ssa`'s `anti_exfil_host_verify` a
-host-device exchange, and `borromean.verify` and `rangeproof.verify` a
-ring signature or a proof built for them. Those are driven by the tests
+`partial_sig_verify` and `partial_sig_verify_`, and `dahlias`'s
+`partial_sig_verify`, want a session and a signing round, `dsa`'s and
+`ssa`'s `anti_exfil_host_verify` a host-device exchange, and
+`borromean.verify` and `rangeproof.verify` a ring signature or a proof
+built for them. Those are driven by the tests
 of their own modules, against fixtures those modules build.
 """
 
@@ -60,7 +61,7 @@ import pytest
 
 from ecc.alias import INF
 from ecc.curves import bytes_from_point, mult, secp256k1
-from ecc.ecc import dleq, dsa, pedersen, ssa, ssa_halfagg
+from ecc.ecc import dahlias, dleq, dsa, pedersen, ssa, ssa_halfagg
 from ecc.hashes import reduce_to_hlen
 
 _Q = 12
@@ -82,6 +83,18 @@ _HALFAGG_SIG = ssa_halfagg.aggregate(
 # rG + vH for the very (r, v) its case opens it with
 _GEN = pedersen.second_generator()
 _COMMITMENT = pedersen.commit(1, 2, _GEN)
+# a DahLIAS session of one signer, the key _Q, over a 32-byte message
+_DAHLIAS_SEC_NONCE, _DAHLIAS_PUB_NONCE = dahlias.nonce_gen_(bytes(32), _Q)
+_DAHLIAS_SESSION = dahlias.SessionContext(
+    dahlias.nonce_agg_var([_DAHLIAS_PUB_NONCE]),
+    [_X_ONLY],
+    [_MSG_HASH],
+    [_DAHLIAS_PUB_NONCE],
+)
+_DAHLIAS_SIG = dahlias.sig_agg(
+    [dahlias.sign(_DAHLIAS_SEC_NONCE, _Q, _MSG_HASH, _DAHLIAS_SESSION)],
+    _DAHLIAS_SESSION,
+)
 
 # a value of a declared type that no valid input carries. The same split
 # `input_validation_test.py` makes, spelled per position because a
@@ -217,6 +230,24 @@ _CASES = (
         # an aggregate that is no octets, and a key that is no 32 octets:
         # both positions declare a size
         {0: _WRONG_OCTETS_VALUE, 1: [(_WRONG_KEY_VALUE, _MSG_HASH)]},
+    ),
+    _Case(
+        "dahlias.verify",
+        dahlias.verify,
+        ([_X_ONLY], [_MSG_HASH], _DAHLIAS_SIG),
+        # another key and another message of the declared size, and a
+        # signature with another s: each verifies nothing
+        {
+            0: [_DLEQ_B[1:]],
+            1: [bytes(32)],
+            2: _DAHLIAS_SIG[:32] + bytes(32),
+        },
+        # every position declares a size
+        {
+            0: [_WRONG_OCTETS_VALUE],
+            1: [_WRONG_OCTETS_VALUE],
+            2: _WRONG_OCTETS_VALUE,
+        },
     ),
 )
 
