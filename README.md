@@ -78,6 +78,9 @@ It is fully annotated and ships `py.typed`.
   multi-signatures and
   [FROST](https://github.com/bitcoin/bips/pull/2070) (draft BIP445)
   threshold signatures, one primitive per round of each protocol
+- [DahLIAS](https://github.com/bitcoin/bips/pull/2210) (draft BIP459)
+  aggregate signatures: many signers, each over its own message, one
+  64-byte signature
 - Diffie-Hellman, and the
   [BIP324](https://github.com/bitcoin/bips/blob/master/bip-0324.mediawiki)
   ElligatorSwift encoding of a public key

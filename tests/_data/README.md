@@ -145,10 +145,11 @@ The two hashes match for every file whose verdict is **identical**. Where
 upstream is CRLF they cannot, this repository being LF throughout, and the
 entry says so with our own blob alongside. Every csv file vendored from
 bitcoin/bips is that case, and so far only those: `bip340_test_vectors.csv`,
-the BIP324 files and the BIP374 files. A csv there is written on
-Windows line endings often enough that it is worth expecting rather than
-discovering -- `mixed-line-ending` rewrites the file with `--fix=lf` as it
-is staged, so the blob to compare is never the one just fetched.
+the BIP324 files, the BIP374 files and the BIP459 files. A csv there is
+written on Windows line endings often enough that it is worth expecting
+rather than discovering -- `mixed-line-ending` rewrites the file with
+`--fix=lf` as it is staged, so the blob to compare is never the one just
+fetched.
 
 ## bitcoin/bips
 
@@ -462,6 +463,111 @@ name. `tests/schemes/ssa_tweak_test.py` reads the internal key, the tweak, the
 output key and the control blocks of every `scriptPubKey` vector, and the
 internal and tweaked private keys of every `keyPathSpending` input. The
 script trees, addresses and signature hashes are read by nothing here.
+
+### BIP459 (DahLIAS): files under `tests/schemes/_data/bip459/`
+
+The csv files of `bip-0459/vectors/`, vendored whole and under upstream's
+own names, in a subdirectory: the names say nothing of BIP459, and
+`test_vectors_verify.csv` is a name another BIP's vectors could carry.
+
+The BIP is a draft, on `bitcoin/bips#2210` and on no branch of
+`bitcoin/bips` yet. Each pin is the pull request's head ref, which `ref`
+names: GitHub keeps that ref in `bitcoin/bips` itself, so it survives the
+fork's branch being renamed, rebased or deleted. `commit` is the last
+commit on it touching the path, and the pull request's head when this
+was pulled, `8678edb4ad56abd98acb56705b1a2861dcc97d8a`, holds the same
+blob. The weekly check reports a new revision of the pull request that
+touches a file. Once the BIP is merged the ref stops moving, and the
+pins move to `master`.
+
+`tests/schemes/dahlias_test.py` runs every case of every file. A
+signature of the wrong size, which the verify file reads as False,
+raises there instead, as the test module's docstring says.
+
+### `tests/schemes/_data/bip459/test_vectors_partial_sig_verify.csv`
+
+```text
+repo    bitcoin/bips
+path    bip-0459/vectors/test_vectors_partial_sig_verify.csv
+ref     refs/pull/2210/head
+commit  b3343f3b848d49f407e2d6e5912bd5c9ce9cdf5f  2026-10-21
+blob    995149bc604b861dd17e2da4d524965cb06213d4
+ours    a9793e1f321f52351ae4844ff10ba61eb5844d9d
+pulled  2026-10-25
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the exception
+`bip340_test_vectors.csv` above documents, our blob `a9793e1f` rather
+than the one above.
+
+### `tests/schemes/_data/bip459/test_vectors_sign.csv`
+
+```text
+repo    bitcoin/bips
+path    bip-0459/vectors/test_vectors_sign.csv
+ref     refs/pull/2210/head
+commit  b3343f3b848d49f407e2d6e5912bd5c9ce9cdf5f  2026-10-21
+blob    6f9c78f77950518d8e46b8f5a031745efa772680
+ours    58fa716aac5aba285f0c1402581fbf7e94b5d821
+pulled  2026-10-25
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the exception
+`bip340_test_vectors.csv` above documents, our blob `58fa716a` rather
+than the one above.
+
+### `tests/schemes/_data/bip459/test_vectors_sign_error.csv`
+
+```text
+repo    bitcoin/bips
+path    bip-0459/vectors/test_vectors_sign_error.csv
+ref     refs/pull/2210/head
+commit  b3343f3b848d49f407e2d6e5912bd5c9ce9cdf5f  2026-10-21
+blob    859c88e6d3467b452075e5a898f96c7d592590ee
+ours    6384a647ad1947010f14669c706a7dcd5270aaca
+pulled  2026-10-25
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the exception
+`bip340_test_vectors.csv` above documents, our blob `6384a647` rather
+than the one above.
+
+### `tests/schemes/_data/bip459/test_vectors_tweak.csv`
+
+```text
+repo    bitcoin/bips
+path    bip-0459/vectors/test_vectors_tweak.csv
+ref     refs/pull/2210/head
+commit  b3343f3b848d49f407e2d6e5912bd5c9ce9cdf5f  2026-10-21
+blob    406e8650f610177db40f5562a8bf66ef041eeb72
+ours    7380491d292dfb994527f623ebfec70a9928e7ca
+pulled  2026-10-25
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the exception
+`bip340_test_vectors.csv` above documents, our blob `7380491d` rather
+than the one above.
+
+### `tests/schemes/_data/bip459/test_vectors_verify.csv`
+
+```text
+repo    bitcoin/bips
+path    bip-0459/vectors/test_vectors_verify.csv
+ref     refs/pull/2210/head
+commit  b3343f3b848d49f407e2d6e5912bd5c9ce9cdf5f  2026-10-21
+blob    68b5564ae6a8544137d0c93904d603a34c9ca8c3
+ours    97cfb8151fb789bc97b0b88396456d4ec6992434
+pulled  2026-10-25
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the exception
+`bip340_test_vectors.csv` above documents, our blob `97cfb815` rather
+than the one above.
 
 ## siv2r/bip-frost-signing
 
@@ -1634,7 +1740,8 @@ Against a pinned upstream blob:
 - identical but for a trailing newline: `WYCHEPROOF_COPYING`,
   `dlc_schnorr_test.json` and the BIP445 vector files.
 - identical but for CRLF against LF: `bip340_test_vectors.csv`, the
-  BIP324 vector files and the BIP374 vector files -- every csv
+  BIP324 vector files, the BIP374 vector files and the BIP459 vector
+  files -- every csv
   vendored from bitcoin/bips, so far.
 - JSON-equal, reformatted: `pubkey.json`, `ecdsa_sig.json`,
   `ecdsa_custom_nonce_sig.json`.

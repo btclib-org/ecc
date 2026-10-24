@@ -14,6 +14,11 @@ tests/schemes/_data/bip445/sig_agg_vectors.json -text
 tests/schemes/_data/bip445/sign_verify_vectors.json -text
 tests/schemes/_data/bip445/threshold_info_vectors.json -text
 tests/schemes/_data/bip445/tweak_vectors.json -text
+tests/schemes/_data/bip459/test_vectors_partial_sig_verify.csv -text
+tests/schemes/_data/bip459/test_vectors_sign.csv -text
+tests/schemes/_data/bip459/test_vectors_sign_error.csv -text
+tests/schemes/_data/bip459/test_vectors_tweak.csv -text
+tests/schemes/_data/bip459/test_vectors_verify.csv -text
 tests/schemes/_data/bitcoin_core_compact_vectors.json -text
 tests/schemes/_data/det_sign_vectors.json -text
 tests/schemes/_data/dlc_schnorr_test.json -text
