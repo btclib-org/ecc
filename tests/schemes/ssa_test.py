@@ -797,7 +797,7 @@ def test_batch_validation_on_the_python_path(monkeypatch: pytest.MonkeyPatch) ->
 
     Batch verification is this package's own: libsecp256k1 exposes no batch
     verify, so what serves it is the multi_mult_var of curves.curve -- and on
-    secp256k1 that is the bindings, which makes this the one caller
+    secp256k1 that is the bindings, which makes this one of the callers
     handing them many scalars at once. Patching the dispatch off is the
     only way the Python arithmetic sees a batch, and what this catches is
     the two implementations disagreeing about the verdict, on a batch that

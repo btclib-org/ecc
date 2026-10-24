@@ -14,7 +14,8 @@ Diffie-Hellman key agreement, the BIE1 ECIES built on top of it, the
 ElligatorSwift encoding of a public key, the ECDSA adaptor signatures of
 the DLC specification, the
 BIP340 signatures of a DLC oracle with a nonce committed in advance, the
-single-signer BIP340 adaptor signatures, the
+single-signer BIP340 adaptor signatures, the BIP458 half-aggregation of
+BIP340 signatures, the
 BIP374 proof that two points share one discrete logarithm, and the
 RFC6979, BIP340 and sign-to-contract nonces. The curve arithmetic underneath is
 ecc.curves, and the rule between the two is that direction: ecc.ecc
@@ -81,6 +82,7 @@ from ecc.ecc import (
     rfc6979_nonce,
     ssa,
     ssa_adaptor,
+    ssa_halfagg,
 )
 from ecc.ecc.dh import diffie_hellman
 from ecc.ecc.pedersen import second_generator
@@ -105,4 +107,5 @@ __all__ = [
     "second_generator",
     "ssa",
     "ssa_adaptor",
+    "ssa_halfagg",
 ]

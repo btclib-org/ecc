@@ -123,6 +123,13 @@ ecc.ecc.ssa\_adaptor module
    :members:
    :show-inheritance:
 
+ecc.ecc.ssa\_halfagg module
+---------------------------
+
+.. automodule:: ecc.ecc.ssa_halfagg
+   :members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
