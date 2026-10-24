@@ -187,11 +187,11 @@ Saltzer and Schroeder's principles.
   signature that does not verify and raises for an input it cannot read,
   so a caller can tell a forgery from a mistake (CONTRIBUTING.md's *The
   public surface*, and `tests/bool_contract_test.py`).
-- **Layering.** `ecc.curves` does not import `ecc.ecc`, and the package imports
-  nothing of this organization's other packages but the optional
-  `btclib_secp256k1`:
-  `tests/imports_test.py` imports each module alone and refuses one that
-  loads anything above it.
+- **Layering.** ARCHITECTURE.md states the layers and
+  `tests/imports_test.py` holds them. The package imports nothing of this
+  organization's other packages but the optional `btclib_secp256k1`:
+  `test_no_module_imports_outside_the_stdlib_and_the_extras`, in the same
+  file, holds that.
 
 **Constant time where it is claimed.** It is claimed only of
 libsecp256k1: CONTRIBUTING.md's `_var` section sets out the tiers of

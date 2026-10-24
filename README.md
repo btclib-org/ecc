@@ -97,6 +97,9 @@ It is fully annotated and ships `py.typed`.
 - the ANSI X9.63 key derivation function and HKDF (`kdf`), and the BIP340
   tagged hash (`hashes`)
 
+[ARCHITECTURE.md](./ARCHITECTURE.md) says how these modules layer and
+which may import which.
+
 For secp256k1 the arithmetic is delegated to
 [btclib-secp256k1](https://github.com/btclib-org/btclib-secp256k1),
 bindings to Bitcoin Core's
