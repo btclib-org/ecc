@@ -24,7 +24,8 @@
 # action bump, and a week where no action moved produces no pull request.
 #
 # The seven day cooldown is what the interval trades against: a
-# compromised release is usually yanked within days, so nothing is offered
+# compromised release is usually yanked within days, so nothing but
+# btclib-org/.github's tags, excluded in the github-actions block, is offered
 # before it has been public a week, wherever the release can be dated: the
 # docker block says where it cannot
 version: 2
@@ -45,6 +46,9 @@ updates:
         patterns: ["*"]
     cooldown:
       default-days: 7
+      # the exclude section 11 of btclib-org/.github's README.md gives for
+      # that repository's own tags, which the calls in .github/workflows pin
+      exclude: ["btclib-org/.github/*"]
 
   # uv.lock is committed and the workflows install from it with --locked, bar
   # the exceptions CONTRIBUTING.md lists, while the dependency groups declare a

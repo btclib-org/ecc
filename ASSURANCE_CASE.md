@@ -289,7 +289,7 @@ to, and what counters each.
   states that every job installing from it passes `--locked`, and lists
   the exceptions, none of which installs the project's dependencies
   unpinned in the job that builds the published files. Every third-party
-  action is pinned to a commit sha, the organization's own reusable
-  workflows being called at `@main` as `.github/zizmor.yml` permits and
-  gives the reason for; `actionlint`, `zizmor` and `detect-secrets` run as
-  hooks in `.pre-commit-config.yaml`.
+  action is pinned to a commit sha, and so is every call of the
+  organization's own reusable workflows but `claude-review.yml`'s, which
+  `.github/zizmor.yml` permits at `@main`; `actionlint`, `zizmor` and
+  `detect-secrets` run as hooks in `.pre-commit-config.yaml`.
