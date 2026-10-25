@@ -474,7 +474,8 @@ of `bip-0458/vectors/`. The BIP is a draft, bitcoin/bips#2205, and its
 files live only on the `halfagg` branch of the fork the pull request
 comes from, hence the `ref` line of each entry. Each file is pinned to
 the commit on that branch that last touched it;
-`2f436b02f60b2ffb4eed8db65aed21e95d1fc4eb`, the revision ISS 365 names,
+`2f436b02f60b2ffb4eed8db65aed21e95d1fc4eb`, the revision
+[ISS 365](https://github.com/btclib-org/ecc/issues/365) names,
 is a later commit that only adds the BIP to the repository's README
 index, and holds the same blobs.
 

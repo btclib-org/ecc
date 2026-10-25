@@ -887,8 +887,8 @@ def _multi_mult_x_only_var(
     """Return sum(scalars[i]*P_i), each P_i the even-y point of an x.
 
     The terms of BIP340's batch verification and of BIP458's aggregate
-    verification, `ssa.assert_batch_as_valid_` and `ssa_halfagg`'s, the two
-    callers: libsecp256k1 exposes neither verification of its own.
+    verification: its callers are `ssa.assert_batch_as_valid_` and
+    `ssa_halfagg`, libsecp256k1 exposing neither verification of its own.
 
     The two arms differ in what they need of a term. `0x02 || x` is the
     even-y point an x-only key names, and the bindings lift it inside the
@@ -1655,11 +1655,11 @@ def multi_mult_var(
     The callers handing it many scalars at once are musig2's key
     aggregation, frost's interpolation over its public shares, and the
     Python arm of `_multi_mult_x_only_var`, which serves ssa's batch
-    verification and ssa_halfagg's aggregate verification. Those last two
-    reach `_libsecp256k1_multi_mult_var_` with their terms as octets on the
-    delegated arm, this signature taking points and a point being what
-    their terms would have to be lifted into for the multiplication to
-    write them straight back out.
+    verification and ssa_halfagg's aggregate verification. On the
+    delegated arm those verifications reach `_libsecp256k1_multi_mult_var_`
+    with their terms as octets, this signature taking points and a point
+    being what their terms would have to be lifted into for the
+    multiplication to write them straight back out.
     """
     _assert_valid_ec(ec)
     if len(scalars) != len(points):
