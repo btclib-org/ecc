@@ -290,6 +290,5 @@ to, and what counters each.
   the exceptions, none of which installs the project's dependencies
   unpinned in the job that builds the published files. Every third-party
   action is pinned to a commit sha, and so is every call of the
-  organization's own reusable workflows but `claude-review.yml`'s, which
-  `.github/zizmor.yml` permits at `@main`; `actionlint`, `zizmor` and
+  organization's own reusable workflows; `actionlint`, `zizmor` and
   `detect-secrets` run as hooks in `.pre-commit-config.yaml`.
