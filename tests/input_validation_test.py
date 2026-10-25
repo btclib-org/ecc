@@ -150,12 +150,10 @@ _WRONG_TYPE: dict[str, tuple[Any, ...]] = {
 }
 
 # a value of a declared type that no valid input carries: a fact about
-# the input, and the half a bool function answers False about.
-# Every one of these type checks but a tuple of the wrong arity, which
+# the input, and the half a bool function answers False about. Every one
+# of these type checks but a tuple of the wrong arity, which
 # CONTRIBUTING.md's "The public surface" counts as a value: that is what
-# puts it in this dict rather than in the one above -- so a
-# `# type: ignore` is never needed to build the call, which is the same
-# line drawn twice
+# puts it in this dict rather than in the one above
 _WRONG_VALUE: dict[str, tuple[Any, ...]] = {
     "BinaryData": ("not hex at all",),
     "Integer": ("not hex at all",),
