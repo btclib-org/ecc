@@ -822,7 +822,12 @@ def session_values(session_ctx: SessionContext) -> SessionValues:
     `sign`, `partial_sig_verify_` and `partial_sig_agg` each call this
     once per signer a session touches, and the tweaked threshold public
     key does not change between them.
+
+    A `session_ctx` that is not a `SessionContext` is refused here as
+    `EccTypeError`, rather than leaking an `AttributeError` from the
+    first field read (issue btclib-org/ecc#367).
     """
+    assert_type(session_ctx, SessionContext, "session_ctx")
     if session_ctx._values is not None:
         return session_ctx._values
     _validate_session_params(
@@ -885,6 +890,7 @@ def sign(
     btclib-org/ecc#11).
     """
     assert_type(sec_nonce, bytearray, "sec_nonce")
+    assert_type(session_ctx, SessionContext, "session_ctx")
     if len(sec_nonce) != 2 * _SCALAR_SIZE:
         raise EccValueError("The secnonce must be a 64-byte array.")
     d_bytes = bytes_from_octets(sec_share, _SCALAR_SIZE)
@@ -1076,6 +1082,7 @@ def partial_sig_verify_(
     no C implementation this library wraps, so every case here is the
     Python arithmetic and stays that way.
     """
+    assert_type(session_ctx, SessionContext, "session_ctx")
     _integer(signer_id, "signer_id")
     values = session_values(session_ctx)
     if signer_id not in session_ctx.ids:
@@ -1155,6 +1162,7 @@ def partial_sig_agg(psigs: Sequence[Octets], session_ctx: SessionContext) -> ssa
     other BIP340 verifier, and handing back raw bytes would only make
     the caller parse them again to find out.
     """
+    assert_type(session_ctx, SessionContext, "session_ctx")
     _assert_octets_sequence(psigs, "psigs")
     values = session_values(session_ctx)
     if len(psigs) != len(session_ctx.ids):
