@@ -380,6 +380,12 @@ happens to derive from: those two coincide only by accident
 spelling that says *why* a value was refused, and the two are how a
 caller chooses between an answer and a reason.
 
+**A tuple of the wrong arity is a wrong value**, though mypy refuses it: run
+time cannot tell `tuple[int]` from `tuple[int, int]`, so the length is
+checked as a value. A `Point` of one coordinate, and a pair where
+`ssa_halfagg` declares a triple or the converse, raise `EccValueError`
+(btclib-org/ecc#368).
+
 **Both halves are gated.** `tests/input_validation_test.py` drives the two
 rules over every public function whose required parameters are all
 package input types. `tests/bool_contract_test.py` drives them from

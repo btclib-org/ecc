@@ -129,8 +129,9 @@ def inc_aggregate(
 
     Raises EccValueError for an aggsig whose length is not 32 times the
     number of pairs plus one, for an s at or above the group order, in
-    aggsig or in a signature, and for a key, a message or a signature of
-    the wrong size. Neither aggsig nor the added signatures are verified,
+    aggsig or in a signature, for a key, a message or a signature of the
+    wrong size, and for a tuple in pm_aggd or pms_to_agg of the wrong
+    arity. Neither aggsig nor the added signatures are verified,
     and no r or key is checked to be an x-coordinate.
     """
     pms_aggd = _pub_keys_msgs(pm_aggd)
@@ -235,9 +236,9 @@ def verify(aggsig: Octets, pm_aggd: Sequence[tuple[Octets, Octets]]) -> bool:
     pairs in the order they were aggregated.
 
     Raises where the input cannot be an aggregate signature and its pairs:
-    a key or a message that is not 32 bytes, an aggsig whose length is not
-    32 times the number of pairs plus one, and an empty pm_aggd, which
-    BIP458 accepts with an s of zero. Answers False for well-formed input
+    a key or a message that is not 32 bytes, a tuple of the wrong arity,
+    an aggsig whose length is not 32 times the number of pairs plus one,
+    and an empty pm_aggd, which BIP458 accepts with an s of zero. Answers False for well-formed input
     that does not verify: an s at or above the group order, an r or a key
     that is no x-coordinate, an equation that does not hold.
     """
