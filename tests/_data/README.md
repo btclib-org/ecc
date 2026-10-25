@@ -478,10 +478,11 @@ pull request to `bitcoin/bips`, `bitcoin/bips#2070`, also reads 0.12.1 at
 its head `363f69340b6731368db4a514147c7dec8eb5fd99`, but lacks
 `siv2r/bip-frost-signing`'s commits from
 `75318bc740428c435ec137842442879980fff1d5` (2026-10-12) to
-`123f274a9197ca6c98e52b04a88b8c95f4c51dfe` (2026-10-13): the rule that an
+`ba299badfbe647e670686de75578dd501a627028` (2026-10-15): the rule that an
 input of the wrong length fails, the tweak vector file without its
-wrong-length tweak, and the vectors at the largest number of participants
-the BIP allows and for a zero tweak. The pins below follow
+wrong-length tweak, the vectors at the largest number of participants
+the BIP allows and for a zero tweak, and `nonce_gen`'s bound on
+`signer_id`. The pins below follow
 `siv2r/bip-frost-signing` for that reason, and move back to
 `bitcoin/bips#2070` once it carries those commits. Each file is pinned to
 the commit on that repository's default branch, `master`, that last
@@ -494,7 +495,8 @@ text of a plain value error -- and is checked against it, the same
 discipline the BIP327 entry above states.
 
 `src/ecc/ecc/frost.py` follows `python/frost_ref/signing.py`
-function for function, checked against it rather than assumed from the
+function for function, checked against it at
+`ba299badfbe647e670686de75578dd501a627028` rather than assumed from the
 BIP327 ancestry the reference's own header claims: several shapes that
 read alike are not the same function, the tweak-range error message
 among them. That file is not vendored -- it is an implementation, not
