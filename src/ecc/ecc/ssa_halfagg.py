@@ -238,9 +238,10 @@ def verify(aggsig: Octets, pm_aggd: Sequence[tuple[Octets, Octets]]) -> bool:
     Raises where the input cannot be an aggregate signature and its pairs:
     a key or a message that is not 32 bytes, a tuple of the wrong arity,
     an aggsig whose length is not 32 times the number of pairs plus one,
-    and an empty pm_aggd, which BIP458 accepts with an s of zero. Answers False for well-formed input
-    that does not verify: an s at or above the group order, an r or a key
-    that is no x-coordinate, an equation that does not hold.
+    and an empty pm_aggd, which BIP458 accepts with an s of zero. Answers
+    False for well-formed input that does not verify: an s at or above the
+    group order, an r or a key that is no x-coordinate, an equation that
+    does not hold.
     """
     parsed = _parse(aggsig, pm_aggd)
     try:
