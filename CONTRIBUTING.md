@@ -380,12 +380,12 @@ happens to derive from: those two coincide only by accident
 spelling that says *why* a value was refused, and the two are how a
 caller chooses between an answer and a reason.
 
-**A tuple of the wrong arity is a wrong value** where the check is on its
-length, though mypy refuses it: run time cannot tell `tuple[int]` from
-`tuple[int, int]`. `is_on_curve` and the generator check raise
-`EccValueError` for a point of one coordinate, and so do the pair and
-triple arguments of `ssa_halfagg` (btclib-org/ecc#368). `negate` and
-`negate_jac` keep their `EccTypeError` for a tuple of the wrong length.
+**A tuple of the wrong arity is a wrong value**, though mypy refuses it: run
+time cannot tell `tuple[int]` from `tuple[int, int]`. `is_on_curve` and the
+generator check raise `EccValueError` for a point of another length, and so
+do the pair and triple arguments of `ssa_halfagg` (btclib-org/ecc#368).
+`negate` and `negate_jac` are the exception: they raise `EccTypeError` for a
+tuple of the wrong length.
 
 **Both halves are gated.** `tests/input_validation_test.py` drives the two
 rules over every public function whose required parameters are all
