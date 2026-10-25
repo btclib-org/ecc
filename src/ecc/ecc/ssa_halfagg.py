@@ -73,14 +73,17 @@ def _assert_sequence(value: Any, what: str) -> None:
 def _tuples(
     items: Sequence[tuple[Octets, ...]], arity: int, what: str
 ) -> list[tuple[Octets, ...]]:
-    """Return the tuples of a sequence, each of the given arity."""
+    """Return the tuples of a sequence, each of the given arity.
+
+    A tuple of another arity is a wrong value, as for a Point, not a wrong type.
+    """
     _assert_sequence(items, what)
     out: list[tuple[Octets, ...]] = []
     for item in items:
         assert_type(item, tuple, f"{what} item")
         if len(item) != arity:
             err_msg = f"{what} item of {len(item)} elements instead of {arity}"
-            raise EccTypeError(err_msg)
+            raise EccValueError(err_msg)
         out.append(item)
     return out
 

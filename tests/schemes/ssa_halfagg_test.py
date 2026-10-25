@@ -340,12 +340,12 @@ def test_wrong_types_raise() -> None:
 
 
 def test_a_tuple_of_the_wrong_arity_raises() -> None:
-    """A pair where a triple belongs, and the converse, is an EccTypeError."""
+    """A pair where a triple belongs, and the converse, is an EccValueError."""
     triples = _triples(1)
     aggsig = ssa_halfagg.aggregate(triples)
-    with pytest.raises(EccTypeError, match="2 elements instead of 3"):
+    with pytest.raises(EccValueError, match="2 elements instead of 3"):
         ssa_halfagg.aggregate(_pairs(triples))  # type: ignore[arg-type]
-    with pytest.raises(EccTypeError, match="3 elements instead of 2"):
+    with pytest.raises(EccValueError, match="3 elements instead of 2"):
         ssa_halfagg.verify(aggsig, triples)  # type: ignore[arg-type]
 
 
