@@ -12,6 +12,7 @@ what this package's Python encoded, and this package's Python decodes what
 libsecp256k1 created.
 """
 
+import random
 import secrets
 from collections.abc import Callable
 from typing import Any
@@ -297,25 +298,32 @@ def _spec_xswiftec_inv(x: int, u: int, case: int, ec: Any) -> int | None:
 def test_the_inverse_is_the_reference_inverse(curve_name: str) -> None:
     """Every case answers what the roots-first form answers, None included.
 
-    The answers are counted: a test of squareness that refused every case
-    would still agree on the cases the reference refuses.
+    Each x is tried with a random u and with u = 1, u = 2 and u = -x,
+    which a random u does not reach. A t that answers is not zero, and no
+    two cases of one (x, u) answer the same t.
 
-    A draw of (x, u) has no answering case about 56% of the time, so 100
-    draws all miss with probability under 0.6**100, below 1e-22: the count
-    cannot fail by chance.
+    The answers are counted for each kind of u: a test of squareness that
+    refused every case would still agree on the cases the reference
+    refuses.
     """
     ec = CURVES[curve_name]
-    answers = 0
+    rnd = random.Random(0x324)
+    answers = dict.fromkeys(("random", "1", "2", "-x"), 0)
     for _ in range(100):
-        x = mult(secrets.randbelow(ec.n - 1) + 1, ec.G, ec)[0]
-        u = secrets.randbelow(ec.p - 1) + 1
-        for case in range(8):
-            t = _xswiftec_inv_var(x, u, case, ec)
-            assert t == _spec_xswiftec_inv(x, u, case, ec)
-            if t is not None:
-                assert _spec_xswiftec(u, t, ec) == x
-                answers += 1
-    assert answers > 0
+        x = mult(rnd.randrange(1, ec.n), ec.G, ec)[0]
+        us = {"random": rnd.randrange(1, ec.p), "1": 1, "2": 2, "-x": -x % ec.p}
+        for kind, u in us.items():
+            ts = []
+            for case in range(8):
+                t = _xswiftec_inv_var(x, u, case, ec)
+                assert t == _spec_xswiftec_inv(x, u, case, ec)
+                if t is not None:
+                    assert t != 0
+                    assert _spec_xswiftec(u, t, ec) == x
+                    ts.append(t)
+            assert len(set(ts)) == len(ts), f"u = {kind}: two cases answer one t"
+            answers[kind] += len(ts)
+    assert all(answers.values()), answers
 
 
 # --------------------------------------------------------------------
