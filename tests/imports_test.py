@@ -282,7 +282,8 @@ _MAY_IMPORT: dict[str, frozenset[str]] = {
 }
 
 
-# what a bare `import ecc` reaches; no table entry allows it
+# what `import ecc` or `import ecc.<module>`, with no `as`, reaches; no
+# table entry allows it
 _ANY = "ecc.*"
 
 
@@ -298,16 +299,21 @@ def _package_imports(
 
     `from ecc import kdf` reaches `ecc.kdf` when that is a module, and the
     root when it is a name the root holds, as `from ecc import name` is.
-    A bare `import ecc` reaches `_ANY`: the root loads any public module
-    on attribute access, so the statement can reach every unit. A relative
-    import is resolved against the module that makes it.
+    `import ecc`, or `import ecc.kdf` with no `as`, reaches `_ANY`: the
+    statement binds the root, which loads any public module on attribute
+    access, so it can reach every unit. With `as` it binds only the module
+    it names. A relative import is resolved against the module that makes
+    it.
     """
     parts = module_name.split(".")
     package = parts if is_package else parts[:-1]
     targets: list[str] = []
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):
-            targets.extend(_ANY if a.name == "ecc" else a.name for a in node.names)
+            targets.extend(
+                _ANY if a.asname is None and _is_ours(a.name) else a.name
+                for a in node.names
+            )
         elif isinstance(node, ast.ImportFrom):
             base = node.module or ""
             if node.level:
@@ -361,16 +367,14 @@ def test_the_layers_import_only_downwards() -> None:
 def test_the_layer_scan_finds_a_planted_import() -> None:
     """The scan resolves each import form to a unit, and the rule refuses it."""
     known = {"ecc", "ecc.kdf", "ecc.hashes", "ecc.ecc", "ecc.ecc.dsa"}
-    source = "from ecc import kdf, name\nimport ecc.ecc.dsa\nimport json\n"
+    source = "from ecc import kdf, name\nimport ecc.ecc.dsa as dsa\nimport json\n"
     assert _package_imports("ecc.curves", True, source, known) == {
         "ecc.kdf",
         "ecc",
         "ecc.ecc",
     }
     assert _package_imports("ecc._utils", False, "import ecc\n", known) == {_ANY}
-    assert _package_imports("ecc._utils", False, "import ecc.kdf\n", known) == {
-        "ecc.kdf"
-    }
+    assert _package_imports("ecc._utils", False, "import ecc.kdf\n", known) == {_ANY}
     relative = "from .. import hashes\nfrom ..kdf import x\n"
     assert _package_imports("ecc.curves.curve", False, relative, known) == {
         "ecc.hashes",

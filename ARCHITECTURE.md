@@ -30,6 +30,8 @@ builds on `borromean`, `pedersen` and `rfc6979_nonce`, and `dh` on `kdf`.
 holds the rule. It reads every import statement of every file, a
 function-local one included, and fails on a module that imports above its
 layer, on `curves` importing `hashes` or `kdf`, and on a lower layer
-importing `ecc`. The root loads the public modules lazily, by name, so a
-bare `import ecc` counts as importing any of them. A string passed to
-`import_module` is not read.
+importing `ecc`. It reads `curves` and `ecc` each as one layer, so it
+does not hold the order inside them. The root loads the public modules
+lazily, by name, so `import ecc`, or `import ecc.<module>` with no `as`,
+counts as importing any of them. A string passed to `import_module` is not
+read.
