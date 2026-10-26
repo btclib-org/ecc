@@ -126,10 +126,8 @@ def derive_keys(prv_key: Integer, pub_key: PubKey) -> tuple[bytes, bytes, bytes]
     with its own private key and the ephemeral public key from the
     envelope.
 
-    The multiplication is delegated and the derivation is not, which is
-    :mod:`ecc.ecc.dh`'s verdict for every ECDH-shaped computation
-    here: `ecdh.shared_secret` of the bindings hashes with SHA256 and BIE1 wants
-    sha512 cut three ways.
+    The multiplication is delegated and the derivation is not;
+    :mod:`ecc.ecc.dh` says why.
 
     No infinity check on the shared point, unlike
     :func:`ecc.ecc.dh.diffie_hellman`, which takes a bare int: the

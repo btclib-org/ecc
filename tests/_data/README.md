@@ -328,6 +328,9 @@ per pin, rather than to one placeholder path standing in for both: a
 placeholder is not a path GitHub's own "commits touching a path" API can
 be asked about, which is what kept the pair out of the weekly check.
 
+`packet_encoding_test_vectors.csv` is tipped by a later commit, and is
+pinned on its own too.
+
 ### `tests/schemes/_data/ellswift_decode_test_vectors.csv`
 
 ```text
@@ -375,9 +378,26 @@ preimages at random, so there is no vector to hold them to, and what the
 suite asserts instead is the round trip against the bindings — the
 authority named in the entry that has no file to cite.
 
-`bip-0324/packet_encoding_test_vectors.csv` is the third file of that
-directory and is **not** vendored: it is the v2 transport's, which this
-package does not implement.
+### `tests/schemes/_data/packet_encoding_test_vectors.csv`
+
+```text
+repo    bitcoin/bips
+path    bip-0324/packet_encoding_test_vectors.csv
+commit  713f000a20421a54b29cd8ab89e711eef1fbccb9  2025-10-23
+blob    1588b066b4792d0b03f30d4f7f18e57ccde1f525
+ours    c556c47c2a807114411ff478e0bd782a270793da
+pulled  2026-10-26
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the same exception, our
+blob `c556c47c` rather than the one above.
+
+`tests/schemes/ellswift_test.py` reads its key agreement columns:
+`in_priv_ours`, `in_ellswift_ours`, `in_ellswift_theirs` and
+`in_initiating` in, `mid_shared_secret` out, against `xdh` on both arms.
+The rest of each row is the v2 transport's, which this package does not
+implement.
 
 ### BIP374 (DLEQ): files under `tests/schemes/_data/`
 

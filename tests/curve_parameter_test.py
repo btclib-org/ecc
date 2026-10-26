@@ -350,6 +350,11 @@ _CASES = (
         {"pub_key": _PUB_KEY},
     ),
     _Case("ecc.ecc.ellswift.decode_var", ellswift.decode_var, {"ell": _ELL}),
+    _Case(
+        "ecc.ecc.ellswift.xdh",
+        ellswift.xdh,
+        {"ell_a": _ELL, "ell_b": _ELL, "prv_key": _PRV_KEY, "initiating": True},
+    ),
     _Case("ecc.ecc.pedersen.second_generator", pedersen.second_generator),
     _Case(
         "ecc.ecc.pedersen.commit",

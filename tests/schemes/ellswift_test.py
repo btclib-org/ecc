@@ -4,8 +4,9 @@
 
 """Tests for the `ecc.ecc.ellswift` module.
 
-The two BIP324 vector files pin the map itself, which is deterministic.
-`create` and `encode` are not -- one of up to eight preimages is picked
+Two BIP324 vector files pin the map itself, which is deterministic, and
+the key agreement columns of a third pin `xdh`. `create` and `encode` are
+not -- one of up to eight preimages is picked
 at random -- so what holds them is a round trip, and the bindings are the
 other implementation it is held against: `decode` of libsecp256k1 accepts
 what this package's Python encoded, and this package's Python decodes what
@@ -13,6 +14,7 @@ libsecp256k1 created.
 """
 
 import secrets
+import sys
 from collections.abc import Callable
 from typing import Any
 
@@ -20,7 +22,7 @@ import pytest
 
 from ecc._libsecp256k1 import ellswift as libsecp256k1_ellswift
 from ecc.curves import mult, secp256k1
-from ecc.curves.curve import CURVES
+from ecc.curves.curve import CURVES, Curve
 from ecc.curves.sec_point import bytes_from_point
 from ecc.ecc import ellswift
 from ecc.ecc.ellswift import _xswiftec_inv_var, _xswiftec_var
@@ -118,6 +120,97 @@ def test_xswiftec_inv_vectors(row: list[str]) -> None:
             assert _xswiftec_var(u, t, secp256k1) == x
 
 
+def xdh_vectors() -> list[Any]:
+    """Load BIP324's packet_encoding_test_vectors.csv as pytest params."""
+    return [
+        pytest.param(row, id=vector_id(index))
+        for index, row in enumerate(
+            load_csv("schemes", "_data", "packet_encoding_test_vectors.csv")
+        )
+    ]
+
+
+@pytest.mark.parametrize("row", xdh_vectors())
+@both_arms
+def test_xdh_vectors(row: list[str]) -> None:
+    """BIP324's shared secrets, from the key agreement columns of its vectors.
+
+    - https://github.com/bitcoin/bips/blob/master/bip-0324/packet_encoding_test_vectors.csv
+
+    Each row is one party: its private key and encoding, the other
+    party's encoding, and whether it initiates. The rest of the row is
+    the v2 transport's.
+    """
+    prv_key = int(row[1], 16)
+    ours, theirs = bytes.fromhex(row[2]), bytes.fromhex(row[3])
+    initiating = row[4] == "1"
+    shared_secret = bytes.fromhex(row[12])
+
+    ell_a, ell_b = (ours, theirs) if initiating else (theirs, ours)
+    assert ellswift.xdh(ell_a, ell_b, prv_key, initiating) == shared_secret
+
+
+@needs_bindings
+def test_xdh_on_the_bindings_is_one_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Where the bindings serve, `xdh` makes one libsecp256k1 call.
+
+    A profile hook records every C call whose name starts with
+    `secp256k1_`, through whatever Python handle it is made, and the
+    record has to be `secp256k1_ellswift_xdh` alone. The Python decoding
+    and `mult` are replaced by a recorder that computes nothing, so a
+    point computed in Python fails the test too. The hook is the one the
+    test found, put back whatever happens.
+    """
+    q_a, _ = _key_pair()
+    q_b, _ = _key_pair()
+    ell_a, ell_b = ellswift.create(q_a), ellswift.create(q_b)
+
+    calls: list[str] = []
+    points: list[object] = []
+
+    previous = sys.getprofile()
+    with monkeypatch.context() as spied:
+        spied.setattr(ellswift, "mult", lambda *args: points.append(args))
+        spied.setattr(
+            ellswift, "_point_from_ell_var", lambda *args: points.append(args)
+        )
+        sys.setprofile(
+            lambda _frame, event, arg: (
+                calls.append(arg.__name__)
+                if event == "c_call"
+                and getattr(arg, "__name__", "").startswith("secp256k1_")
+                else None
+            )
+        )
+        try:
+            secret = ellswift.xdh(ell_a, ell_b, q_b, False)
+        finally:
+            sys.setprofile(previous)
+
+    assert calls == ["secp256k1_ellswift_xdh"]
+    assert not points
+    assert len(secret) == 32
+
+
+@pytest.mark.parametrize("curve_name", ["secp256k1", *OTHER_CURVES])
+@both_arms
+def test_both_parties_derive_one_secret(curve_name: str) -> None:
+    """The initiator and the responder compute the same secret.
+
+    `initiating` names which encoding is the caller's, so the wrong value
+    hands the caller's key to its own point, and the secret differs.
+    """
+    ec = CURVES[curve_name]
+    q_a = secrets.randbelow(ec.n - 1) + 1
+    q_b = secrets.randbelow(ec.n - 1) + 1
+    ell_a, ell_b = ellswift.create(q_a, ec), ellswift.create(q_b, ec)
+
+    secret = ellswift.xdh(ell_a, ell_b, q_a, True, ec)
+    assert len(secret) == 32
+    assert ellswift.xdh(ell_a, ell_b, q_b, False, ec) == secret
+    assert ellswift.xdh(ell_a, ell_b, q_a, False, ec) != secret
+
+
 @needs_bindings
 def test_create_and_encode_round_trip() -> None:
     """What create and encode produce, decode takes back to the key.
@@ -194,6 +287,19 @@ def test_a_curve_the_map_is_not_defined_on() -> None:
         ellswift.encode_var(mult(q, ec.G, ec), ec)
     with pytest.raises(EccValueError, match=err_msg):
         ellswift.decode_var(ell, ec)
+    with pytest.raises(EccValueError, match=err_msg):
+        ellswift.xdh(ell, ell, q, True, ec)
+
+
+def test_xdh_refuses_a_cofactor() -> None:
+    """On a curve with cofactor 3, most encodings decode outside <G>.
+
+    The curve is y^2 = x^3 + 3 over 100129, whose order is 3 * 33199.
+    """
+    ec = Curve(100129, 0, 3, (7, 89817), 33199, 3, weakness_check=False)
+    ell = bytes(2 * ec.p_size)
+    with pytest.raises(EccValueError, match="xdh wants a curve with cofactor 1"):
+        ellswift.xdh(ell, ell, 12345, True, ec)
 
 
 def test_wrong_size_encoding() -> None:
@@ -203,13 +309,20 @@ def test_wrong_size_encoding() -> None:
     for bad in (ell[:-1], ell + b"\x00", b""):
         with pytest.raises(EccValueError, match="invalid ElligatorSwift size"):
             ellswift.decode_var(bad)
+        with pytest.raises(EccValueError, match="invalid ElligatorSwift size"):
+            ellswift.xdh(bad, ell, 1, True)
+        with pytest.raises(EccValueError, match="invalid ElligatorSwift size"):
+            ellswift.xdh(ell, bad, 1, True)
 
 
 def test_invalid_private_key() -> None:
     """A key outside 1..n-1 is refused, and by `scalar_from_prv_key`."""
+    ell = bytes(2 * secp256k1.p_size)
     for prv_key in (0, secp256k1.n):
         with pytest.raises(EccValueError):
             ellswift.create(prv_key)
+        with pytest.raises(EccValueError):
+            ellswift.xdh(ell, ell, prv_key, True)
 
 
 def _key_pair() -> tuple[int, tuple[int, int]]:
@@ -327,6 +440,7 @@ def test_the_inverse_is_the_reference_inverse(curve_name: str) -> None:
 
 _SECRET_CALLS: dict[str, tuple[Callable[[Any], object], list[str]]] = {
     "create": (ellswift.create, REFUSED_SCALARS),
+    "xdh": (lambda key: ellswift.xdh(bytes(64), bytes(64), key, True), REFUSED_SCALARS),
 }
 
 

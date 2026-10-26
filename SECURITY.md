@@ -200,7 +200,7 @@ package is used to teach and to prototype as much as to build:
     by `mult`, whose answer is then infinity; `dsa.sign` for secp256k1
     with sha256, the lower-s form, no caller-imposed nonce and no
     commitment; `ssa.sign` for secp256k1 with sha256, a message of any
-    size and no commitment; `dh.diffie_hellman`,
+    size and no commitment; `dh.diffie_hellman`, `ellswift.xdh`,
     `commit_nonce.commit_nonce_`, `curves.prv_key_tweak_add` and
     `ssa.prv_key_tweak_add` for secp256k1, the shared point of a key
     agreement, the tweaking of a sign-to-contract nonce and the tweaking of
@@ -308,7 +308,7 @@ package is used to teach and to prototype as much as to build:
     `libsecp256k1_shared_point(_sec_from_point(Q), m, False)`
     (`src/ecc/curves/curve.py:969`). `dh.diffie_hellman` at
     `sec = libsecp256k1_shared_point(`
-    (`src/ecc/ecc/dh.py:119`) and `sec_point._mult_sec` at
+    (`src/ecc/ecc/dh.py:123`) and `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m, False)`
     (`src/ecc/curves/sec_point.py:434`), under
     `sec_point.mult_pub_key` and `ecies.derive_keys`, make the same call
@@ -346,6 +346,8 @@ package is used to teach and to prototype as much as to build:
     `secp256k1_keypair_xonly_tweak_add`, which negates the key where its
     point has an odd y before adding. It does not treat the tweak as a
     secret, and `src/ctime_tests.c` marks it defined before that call.
+    `ellswift.xdh` is `secp256k1_ellswift_xdh`, whose multiplication,
+    `secp256k1_ecmult_const_xonly`, is constant time in its scalar.
     These calls and `secp256k1_ecdh` are
     among the entry points libsecp256k1's own `src/ctime_tests.c`
     declassifies a secret for, and

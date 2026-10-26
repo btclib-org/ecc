@@ -38,6 +38,7 @@ tests/schemes/_data/key_agg_vectors.json -text
 tests/schemes/_data/key_sort_vectors.json -text
 tests/schemes/_data/nonce_agg_vectors.json -text
 tests/schemes/_data/nonce_gen_vectors.json -text
+tests/schemes/_data/packet_encoding_test_vectors.csv -text
 tests/schemes/_data/secp256k1_recovery_vectors.json -text
 tests/schemes/_data/sig_agg_vectors.json -text
 tests/schemes/_data/sign_verify_vectors.json -text
