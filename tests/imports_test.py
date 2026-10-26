@@ -282,8 +282,7 @@ _MAY_IMPORT: dict[str, frozenset[str]] = {
 }
 
 
-# what `import ecc` or `import ecc.<module>`, with no `as`, reaches; no
-# table entry allows it
+# what a statement that binds the root reaches; no table entry allows it
 _ANY = "ecc.*"
 
 
@@ -299,10 +298,11 @@ def _package_imports(
 
     `from ecc import kdf` reaches `ecc.kdf` when that is a module, and the
     root when it is a name the root holds, as `from ecc import name` is.
-    `import ecc`, or `import ecc.kdf` with no `as`, reaches `_ANY`: the
-    statement binds the root, which loads any public module on attribute
-    access, so it can reach every unit. With `as` it binds only the module
-    it names. A relative import is resolved against the module that makes
+    `import ecc`, with or without `as`, `import ecc.kdf` with no `as`, and
+    `from ecc import *` reach `_ANY`: the root loads any public module on
+    attribute access, and the star asks for every name in its `__all__`,
+    so each can reach every unit. `import ecc.kdf as k` binds only
+    `ecc.kdf`. A relative import is resolved against the module that makes
     it.
     """
     parts = module_name.split(".")
@@ -311,7 +311,9 @@ def _package_imports(
     for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):
             targets.extend(
-                _ANY if a.asname is None and _is_ours(a.name) else a.name
+                _ANY
+                if _is_ours(a.name) and (a.asname is None or a.name == "ecc")
+                else a.name
                 for a in node.names
             )
         elif isinstance(node, ast.ImportFrom):
@@ -320,7 +322,11 @@ def _package_imports(
                 kept = package[: len(package) - (node.level - 1)]
                 base = ".".join([*kept, *([node.module] if node.module else [])])
             targets.extend(
-                f"{base}.{alias.name}" if f"{base}.{alias.name}" in known else base
+                _ANY
+                if base == "ecc" and alias.name == "*"
+                else f"{base}.{alias.name}"
+                if f"{base}.{alias.name}" in known
+                else base
                 for alias in node.names
             )
     return {_unit(t) for t in targets if _is_ours(t)}
@@ -374,6 +380,9 @@ def test_the_layer_scan_finds_a_planted_import() -> None:
         "ecc.ecc",
     }
     assert _package_imports("ecc._utils", False, "import ecc\n", known) == {_ANY}
+    assert _package_imports("ecc._utils", False, "import ecc as e\n", known) == {_ANY}
+    star = "from ecc import *\n"
+    assert _package_imports("ecc._utils", False, star, known) == {_ANY}
     assert _package_imports("ecc._utils", False, "import ecc.kdf\n", known) == {_ANY}
     relative = "from .. import hashes\nfrom ..kdf import x\n"
     assert _package_imports("ecc.curves.curve", False, relative, known) == {

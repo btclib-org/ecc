@@ -5,7 +5,8 @@ other modules and import nothing of the package: `exceptions` holds the
 error types, `alias` the type aliases. Private `_utils` validates and
 converts inputs, and imports only those two.
 
-Three modules stand on those and do not import one another.
+`number_theory`, `hashes` and `_libsecp256k1` stand on those and do not
+import one another.
 `number_theory` (modular arithmetic) imports `_utils` and `exceptions`.
 `hashes` (hash function checks and the BIP340 tagged hash) imports
 `_utils`, `alias` and `exceptions`. The private `_libsecp256k1` loads the
@@ -32,6 +33,6 @@ function-local one included, and fails on a module that imports above its
 layer, on `curves` importing `hashes` or `kdf`, and on a lower layer
 importing `ecc`. It reads `curves` and `ecc` each as one layer, so it
 does not hold the order inside them. The root loads the public modules
-lazily, by name, so `import ecc`, or `import ecc.<module>` with no `as`,
-counts as importing any of them. A string passed to `import_module` is not
-read.
+lazily, by name, so `import ecc`, with or without `as`,
+`import ecc.<module>` with no `as`, and `from ecc import *` count as
+importing any of them. A string passed to `import_module` is not read.
