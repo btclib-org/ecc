@@ -617,15 +617,21 @@ commit    773bc4dfb9c979b699ea7920f1a550f395ee734a  2026-10-12
 blob      21c0ac32d009e143a7dfe50a7de53deea8c17f80
 ours      29042b15f45de75883e1054ff52cd3f901db1184
 program   ChillDKG's reference, python/chilldkg_ref/ at that commit
-calls     for each session and each participant i, with
-          rand(x) = sha256(seed + "|" + f"{t}|{n}|{x}|{i}"):
-            hostseckey = rand("hostseckey")
-            hostpubkey_gen(hostseckey)
-            participant_step1(hostseckey, params, rand("step1"))
+calls     for each session (t, n), with
+          rand(x, i) = sha256(seed + "|" + f"{t}|{n}|{x}|{i}"):
+            for each participant i:
+              hostseckey[i] = rand("hostseckey", i)
+              hostpubkeys[i] = hostpubkey_gen(hostseckey[i])
+            params = SessionParams(hostpubkeys, t)
+            for each participant i:
+              participant_step1(hostseckey[i], params, rand("step1", i))
             coordinator_step1(pmsgs1, params)
-            participant_step2(hostseckey, state1, cmsg1, rand("step2"))
+            for each participant i:
+              participant_step2(hostseckey[i], state1[i], cmsg1,
+                                rand("step2", i))
             coordinator_finalize(cstate, pmsgs2)
-            participant_finalize(state2, cmsg2)
+            for each participant i:
+              participant_finalize(state2[i], cmsg2)
 recorded  2026-10-26
 behind    0 revisions; that commit is the tip of the path
 ```
@@ -639,8 +645,9 @@ the file's own field.
 The reference is pinned to the head of
 BlockstreamResearch/bip-frost-dkg#165, which is still open. That head is
 on the fork's branch `ref` names, and `commit` is the last commit there
-touching `chilldkg.py`. So the weekly check reports a new revision of
-that pull request.
+touching `chilldkg.py`. So the weekly check reports a revision of that
+pull request that changes `chilldkg.py`; one that changes only the rest
+of the program goes unreported.
 
 Before writing the file, the program asserted that every participant
 finalized with the coordinator's threshold info and recovery data; that

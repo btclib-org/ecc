@@ -937,8 +937,8 @@ def _negated(point: bytes) -> bytes:
 def test_chilldkg_threshold_info_is_valid(session: dict[str, Any]) -> None:
     """`validate_threshold_info` accepts what ChillDKG output.
 
-    Each secshare is also checked against its pubshare, which is what the
-    refusals below change.
+    Each secshare is also checked against its pubshare: the control of the
+    refusal of a negated secshare below.
     """
     n, t, thresh_pk, pub_shares, sec_shares = _chilldkg(session)
     assert t == session["t"]
