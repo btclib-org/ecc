@@ -687,10 +687,9 @@ result.
    `reusable-build.yml`, which `release.yml`'s `build` job calls, so
    that is the workflow the certificate names. `--owner` names the
    organization, and the check of `sourceRepositoryIdentifier` names this
-   repository by its id, which a rename keeps: `--repo` compares the
-   current name, and refuses every release signed before a rename. The
-   exit code is `0` only where a verified attestation names this
-   repository. `--source-ref` names the tag, which is what stops a
+   repository by its id: [SECURITY.md](./SECURITY.md) says what the exit
+   code means and why the id is compared rather than the name.
+   `--source-ref` names the tag, which is what stops a
    rehearsal dispatched from a branch from verifying as this release. A
    release made before this repository called `reusable-build.yml` was
    signed by `reusable-attest.yml`, and verifies with that workflow as
