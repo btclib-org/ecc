@@ -55,7 +55,7 @@ from ecc.curves import (
     mult,
     secp256k1,
 )
-from ecc.ecc import musig2, ssa
+from ecc.ecc import frost, musig2, ssa
 from ecc.exceptions import (
     EccException,
     EccTypeError,
@@ -333,6 +333,52 @@ def test_sign_refuses_a_secnonce_that_is_no_bytearray(sec_nonce: Any) -> None:
     session_ctx = musig2.SessionContext(agg_nonce, pub_keys, [], [], msg)
     with pytest.raises(EccTypeError, match="invalid sec_nonce type"):
         musig2.sign(sec_nonce, _SV_SK, session_ctx)
+
+
+@pytest.mark.parametrize("not_a_session_ctx", [None, "session", 0, b"x"])
+def test_session_ctx_that_is_no_session_context_is_refused(
+    not_a_session_ctx: Any,
+) -> None:
+    """A `None` session context used to leak an `AttributeError`.
+
+    Every public function that takes a `session_ctx` read its first
+    field unasked -- `session_values` its `_values` cache,
+    `partial_sig_agg` its `adaptor` -- so a caller that had not built
+    one got a complaint about the builtin that read it, not about the
+    argument it had not built (issue btclib-org/ecc#367).
+    """
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        musig2.session_values(not_a_session_ctx)
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        musig2.sign(bytearray(97), _SV_SK, not_a_session_ctx)
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        musig2.partial_sig_verify_(
+            bytes(32), bytes(66), _SV_PUB_KEYS[0], not_a_session_ctx
+        )
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        musig2.partial_sig_agg([], not_a_session_ctx)
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        musig2.partial_sig_agg_adaptor([], not_a_session_ctx)
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        musig2.adapt(None, 1, not_a_session_ctx)  # type: ignore[arg-type]
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        musig2.extract_adaptor(None, None, not_a_session_ctx)  # type: ignore[arg-type]
+
+
+def test_session_ctx_of_the_other_module_is_refused() -> None:
+    """A FROST context spells a session too, but is not this module's.
+
+    `frost.SessionContext` carries its own `_values` cache, so without
+    the type check `musig2.session_values` would read past it to
+    `pub_keys`, which that class does not have, and leak the same
+    `AttributeError` under a more confusing shape (issue
+    btclib-org/ecc#367).
+    """
+    other = frost.SessionContext(
+        3, 2, [1, 2], None, bytes(33), bytes(66), [], [], bytes(32)
+    )
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        musig2.session_values(other)  # type: ignore[arg-type]
 
 
 def sign_error_vectors() -> list[Any]:

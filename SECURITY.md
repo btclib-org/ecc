@@ -107,7 +107,7 @@ package is used to teach and to prototype as much as to build:
     measured rather than assumed: the point-multiplication side is
     regular (btclib-org/btclib#254), and `sign`'s own line,
     `s = (k_1_ + values.b * k_2_ + values.e * a * d) % secp256k1.n`
-    (`src/ecc/ecc/musig2.py:858`), spreads 1.016x over
+    (`src/ecc/ecc/musig2.py:864`), spreads 1.016x over
     uniform scalars in `[1, n-1]` -- the magnitude leak that remains
     shows only for scalars with zero high bits, keys already lost for
     other reasons. The gain left is narrower than that figure suggests:

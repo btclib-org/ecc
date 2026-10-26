@@ -24,7 +24,7 @@ from typing import Any
 import pytest
 
 from ecc.curves import bytes_from_point, mult, secp256k1
-from ecc.ecc import frost, ssa
+from ecc.ecc import frost, musig2, ssa
 from ecc.exceptions import (
     EccException,
     EccTypeError,
@@ -312,6 +312,42 @@ def test_sign_refuses_a_secnonce_that_is_no_bytearray(sec_nonce: Any) -> None:
     )
     with pytest.raises(EccTypeError, match="invalid sec_nonce type"):
         frost.sign(sec_nonce, bytes(32), 1, session_ctx)
+
+
+@pytest.mark.parametrize("not_a_session_ctx", [None, "session", 0, b"x"])
+def test_session_ctx_that_is_no_session_context_is_refused(
+    not_a_session_ctx: Any,
+) -> None:
+    """A `None` session context used to leak an `AttributeError`.
+
+    The same shape `musig2`'s own test refuses: every public function
+    that takes a `session_ctx` read its first field unasked, so a
+    caller that had not built one got a complaint about the builtin
+    that read it, not about the argument it had not built (issue
+    btclib-org/ecc#367).
+    """
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        frost.session_values(not_a_session_ctx)
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        frost.sign(bytearray(64), bytes(32), 1, not_a_session_ctx)
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        frost.partial_sig_verify_(bytes(32), 1, bytes(66), bytes(33), not_a_session_ctx)
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        frost.partial_sig_agg([], not_a_session_ctx)
+
+
+def test_session_ctx_of_the_other_module_is_refused() -> None:
+    """A MuSig2 context spells a session too, but is not this module's.
+
+    `musig2.SessionContext` carries its own `_values` cache, so without
+    the type check `frost.session_values` would read past it to the
+    threshold parameters, which that class does not have, and leak the
+    same `AttributeError` under a more confusing shape (issue
+    btclib-org/ecc#367).
+    """
+    other = musig2.SessionContext(bytes(66), [bytes(33)], [], [], bytes(32))
+    with pytest.raises(EccTypeError, match="invalid session_ctx type"):
+        frost.session_values(other)  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize(

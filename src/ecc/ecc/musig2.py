@@ -733,7 +733,12 @@ def session_values(session_ctx: SessionContext) -> SessionValues:
     every caller of `_session_key_agg_coeff` -- `sign` and `partial_sig_verify_`
     -- already calls this function first, so a `SessionValues` field costs
     nothing beyond what assembling the session already paid for.
+
+    A `session_ctx` that is not a `SessionContext` is refused here as
+    `EccTypeError`, rather than leaking an `AttributeError` from the
+    first field read (issue btclib-org/ecc#367).
     """
+    assert_type(session_ctx, SessionContext, "session_ctx")
     if session_ctx._values is not None:
         return session_ctx._values
     key_agg_ctx = key_agg_and_tweak_var(
@@ -832,6 +837,7 @@ def sign(sec_nonce: bytearray, prv_key: Integer, session_ctx: SessionContext) ->
     btclib-org/ecc#11).
     """
     assert_type(sec_nonce, bytearray, "sec_nonce")
+    assert_type(session_ctx, SessionContext, "session_ctx")
     values = session_values(session_ctx)
     k_1_ = int.from_bytes(sec_nonce[:_SCALAR_SIZE], "big")
     k_2_ = int.from_bytes(sec_nonce[_SCALAR_SIZE : 2 * _SCALAR_SIZE], "big")
@@ -998,6 +1004,7 @@ def partial_sig_verify_(
     the same other way, `_SIGNER_PK_ERR`, so which `EccValueError` a
     caller sees does not depend on which arm answered it.
     """
+    assert_type(session_ctx, SessionContext, "session_ctx")
     values = session_values(session_ctx)
     psig_bytes = bytes_from_octets(psig, _SCALAR_SIZE)
     s = int.from_bytes(psig_bytes, "big")
@@ -1142,6 +1149,7 @@ def partial_sig_agg(psigs: Sequence[Octets], session_ctx: SessionContext) -> ssa
     `ssa.Sig` for it would claim otherwise -- `partial_sig_agg_adaptor`
     is the spelling for that session, answering a `PreSignature` instead.
     """
+    assert_type(session_ctx, SessionContext, "session_ctx")
     if session_ctx.adaptor is not None:
         err_msg = "session carries an adaptor: call partial_sig_agg_adaptor instead"
         raise EccValueError(err_msg)
@@ -1162,6 +1170,7 @@ def partial_sig_agg_adaptor(
     Refuses a session with no adaptor -- `partial_sig_agg` is the
     spelling for that one, answering an `ssa.Sig` the sum already is.
     """
+    assert_type(session_ctx, SessionContext, "session_ctx")
     if session_ctx.adaptor is None:
         err_msg = "session carries no adaptor: call partial_sig_agg instead"
         raise EccValueError(err_msg)
@@ -1188,6 +1197,7 @@ def adapt(pre_sig: PreSignature, t: Integer, session_ctx: SessionContext) -> ssa
     that fails `ssa.assert_as_valid_`, which is the caller's to run
     against the aggregate key it already has.
     """
+    assert_type(session_ctx, SessionContext, "session_ctx")
     values = session_values(session_ctx)
     t_ = scalar_from_prv_key(t, secp256k1)
     if values.R[1] % 2:
@@ -1213,6 +1223,7 @@ def extract_adaptor(
     `zkp.musig`'s `extract_adaptor` answers the same `t` as 32
     big-endian bytes.
     """
+    assert_type(session_ctx, SessionContext, "session_ctx")
     values = session_values(session_ctx)
     t = (sig.s - pre_sig.s) % secp256k1.n
     if values.R[1] % 2:
