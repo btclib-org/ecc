@@ -905,14 +905,14 @@ def _chilldkg(
 
 
 def _chilldkg_signers(n: int, t: int) -> list[int]:
-    """The last t participants: `validate_threshold_info` reads the first t."""
+    """Return the last t ids; `validate_threshold_info` reads the first t."""
     return list(range(n - t, n))
 
 
 def _chilldkg_nonces(
     ids: list[int], pub_shares: list[bytes], sec_shares: list[bytes], thresh_pk: bytes
 ) -> tuple[list[bytearray], list[bytes]]:
-    """Return the secnonces and pubnonces of `ids`, from a fixed `rand_` each."""
+    """Return the nonce pairs of `ids`, each from a fixed `rand_`."""
     pairs = [
         frost.nonce_gen_(
             bytes([i]) * 32,
@@ -951,7 +951,7 @@ def test_chilldkg_threshold_info_is_valid(session: dict[str, Any]) -> None:
 @pytest.mark.parametrize("session", chilldkg_sessions())
 @both_arms
 def test_chilldkg_session_signs_and_verifies(session: dict[str, Any]) -> None:
-    """t signers sign, each partial signature verifies, and so does the sum."""
+    """The last t participants sign, and every signature verifies."""
     n, t, thresh_pk, pub_shares, sec_shares = _chilldkg(session)
     ids = _chilldkg_signers(n, t)
     signer_pub_shares = [pub_shares[i] for i in ids]
@@ -997,9 +997,7 @@ def test_chilldkg_flipped_pubshare_is_refused(session: dict[str, Any]) -> None:
     the threshold public key is what disagrees.
     """
     n, t, thresh_pk, pub_shares, _ = _chilldkg(session)
-    message = (
-        frost._KEY_MATERIAL_POLY_ERR if t < n else frost._KEY_MATERIAL_MATCH_ERR
-    )
+    message = frost._KEY_MATERIAL_POLY_ERR if t < n else frost._KEY_MATERIAL_MATCH_ERR
     for i in range(n):
         flipped = [*pub_shares[:i], _negated(pub_shares[i]), *pub_shares[i + 1 :]]
         with pytest.raises(EccValueError) as excinfo:
