@@ -17,8 +17,8 @@ BIP340 signatures of a DLC oracle with a nonce committed in advance, the
 single-signer BIP340 adaptor signatures, the
 BIP374 proof that two points share one discrete logarithm, and the
 RFC6979, BIP340 and sign-to-contract nonces. The curve arithmetic underneath is
-ecc.curves, and the rule between the two is that direction: ecc.ecc
-imports ecc.curves, never the other way round. The key derivation functions
+ecc.curves, and ARCHITECTURE.md says which of the two imports the other.
+The key derivation functions
 the agreement uses are ecc.kdf: a KDF is a hash construction with no
 curve in it, and its own module says why it is not here.
 

@@ -28,11 +28,13 @@ it, `dsa` builds on `commit_nonce` and `rfc6979_nonce`, `ssa` on
 builds on `borromean`, `pedersen` and `rfc6979_nonce`, and `dh` on `kdf`.
 
 `test_the_layers_import_only_downwards`, in `tests/imports_test.py`,
-holds the rule. It reads every import statement of every file, a
-function-local one included, and fails on a module that imports above its
-layer, on `curves` importing `hashes` or `kdf`, and on a lower layer
-importing `ecc`. It reads `curves` and `ecc` each as one layer, so it
-does not hold the order inside them. The root loads the public modules
-lazily, by name, so `import ecc`, with or without `as`,
-`import ecc.<module>` with no `as`, and `from ecc import *` count as
-importing any of them. A string passed to `import_module` is not read.
+holds each module to the imports that file's `_MAY_IMPORT` table names
+for its unit: the root, or the module or subpackage right below it. So
+it fails on an import the table does not name, a lower layer's included,
+which is then added to the table. It reads every import statement of
+every file, a function-local one included. It reads `curves` and
+`ecc.ecc` each as one unit, so it does not hold the order inside them.
+The root loads the public modules lazily, by name, so `import ecc`, with
+or without `as`, `import ecc.<module>` with no `as`, and
+`from ecc import *` count as importing any of them, and the test refuses
+them in every unit. A string passed to `import_module` is not read.
