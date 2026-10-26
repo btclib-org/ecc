@@ -327,14 +327,14 @@ class Sig:
       returns a single 0, and the bindings' `parse_der` says "invalid
       DER signature" for all of them;
     - and the two do not answer the same question. `secp256k1_der_parse_integer`
-      treats an integer whose high bit is set as an *overflow* rather than as a
-      malformed encoding: it zeroes the scalar and reports success, so a
-      negative r parses to r = 0 instead of being refused. BIP66 refuses it, and
-      so does the parser above. `tests/schemes/der_test.py` puts the whole
-      malformed corpus to `dsa.signature_verify` and pins that one difference,
-      the rest agreeing rule for rule -- which is the pairing that bites
-      others, issues btclib-org/btclib#680 and btclib-org/btclib#667 being two
-      libraries that got it wrong in the other direction.
+      reads an integer that is negative, wider than 32 octets or not below n as
+      an *overflow*, zeroes it and reports success
+      (bitcoin-core/secp256k1#1981). BIP66 and the parser above refuse a
+      negative integer and a DER signature over 72 octets. Each disagreement
+      with libsecp256k1 that `tests/schemes/der_test.py` and
+      `der_differential_test.py` beside it find is that overflow. Pairing a
+      parser with libsecp256k1 as a validator is what bit btclib-org/btclib#680
+      and btclib-org/btclib#667, two libraries wrong the other way.
     """
 
     # 32 bytes scalar, 0 < r < ec.n (ec.n is the curve order)
