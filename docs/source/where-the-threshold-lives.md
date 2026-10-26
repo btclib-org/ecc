@@ -49,7 +49,7 @@ different algorithm.
 | signer interaction | none | two rounds | two rounds |
 | secret keys | *n* independent | *n* independent | one, in *n* shares |
 | who signed | in the input | not derivable | not derivable |
-| membership change | new address | new aggregate key | same public key |
+| membership change | new address | new address | same address |
 | bound on *n* | consensus | serialization | security |
 
 ### Cost and privacy
@@ -84,9 +84,8 @@ a nonce round before the partial signatures — so, signers available at
 the same time — and above all a secret nonce that is never reused.
 Reusing one does not degrade security, it hands out the key.
 {py:func}`musig2.sign <ecc.ecc.musig2.sign>` and
-{py:func}`frost.sign <ecc.ecc.frost.sign>` zero the two secret scalars
-of the nonce they are handed as they read them, so a second call on the
-same buffer raises rather than signing; their docstrings say how.
+{py:func}`frost.sign <ecc.ecc.frost.sign>` refuse a secret nonce they
+have already consumed; their docstrings say how.
 
 ### Attribution
 
@@ -97,11 +96,11 @@ uses, a gap for others, custody and internal delegation among them.
 ### Membership change
 
 In script multisig, adding or removing a signer means a new script, a
-new address, and moving the funds. MuSig2 sits in between: changing the
-set changes the aggregate key. In FROST the group public key is a
-property of the secret and not of how it is shared, so the same secret
-can be shared again over a different set and the funds stay where they
-are.
+new address, and moving the funds. MuSig2 costs the same: changing the
+set changes the aggregate key, so the output key and the address change
+too. In FROST the group public key is a property of the secret and not
+of how it is shared, so the same secret can be shared again over a
+different set and the funds stay where they are.
 
 ### Who has seen the secret
 
@@ -122,20 +121,13 @@ what a departing member costs.
 
 ## MuSig2 with *t* < *n*
 
-Not natively, for the reason above. The two real routes are composition
-rather than configuration.
-
-**A taproot tree with one leaf per admitted subset.** Each leaf carries
-a MuSig2 key over that subset alone, or a `multi_a()`. The cost is
-combinatorial, C(*n*, *t*) leaves: three for a 2-of-3, 126 for a 5-of-9.
-Only the leaf used is revealed, and the key path can stay the *n*-of-*n*
-"everybody agrees", which is the cheap case. Workable for a small *n*,
-senseless past it.
-
-**Nesting with FROST.** A MuSig2 aggregate key can be one participant of
-a FROST group, and a FROST group key can be one key inside a MuSig2
-aggregation. That is how "either the board's 2-of-3 or the chief
-executive" is expressed with one on-chain key.
+Not natively, for the reason above. What works is composition rather
+than configuration: a taproot tree with one leaf per admitted subset.
+Each leaf carries a MuSig2 key over that subset alone, or a `multi_a()`.
+The cost is combinatorial, C(*n*, *t*) leaves: three for a 2-of-3, 126
+for a 5-of-9. Only the leaf used is revealed, and the key path can stay
+the *n*-of-*n* "everybody agrees", which is the cheap case. Workable for
+a small *n*, senseless past it.
 
 ## A FROST spend's psbt transport is btclib-wallet's own
 
