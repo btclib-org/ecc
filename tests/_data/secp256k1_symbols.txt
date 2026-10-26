@@ -1,6 +1,5 @@
 secp256k1_asm
 secp256k1_asm_arm
-secp256k1_assumption_checker
 secp256k1_byteorder_tests
 secp256k1_callback
 secp256k1_callback_call
@@ -595,6 +594,7 @@ secp256k1_silentpayments_sender_create_outputs
 secp256k1_silentpayments_sha256_init_inputs
 secp256k1_silentpayments_sha256_init_label
 secp256k1_silentpayments_sha256_init_sharedsecret
+secp256k1_static_assert_dummy
 secp256k1_strauss_max_points
 secp256k1_strauss_point_state
 secp256k1_strauss_scratch_size

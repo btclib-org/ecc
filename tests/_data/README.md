@@ -612,9 +612,9 @@ Verdict: **identical but for a trailing newline**, which the
 ```text
 repo    bitcoin-core/secp256k1
 path    src
-commit  04b91ce295dad7b827ae18eeeed062135a918dae  2026-10-12
-ours    633cb36fc1c9f08d0069a510277dccac1835492c
-pulled  2026-09-10, refreshed 2026-09-14 and 2026-10-07
+commit  32099110d63a1dec1a7d27067450fd97d20ea30f  2026-10-20
+ours    667436df2dfee355a339b833302a7770aab2c696
+pulled  2026-09-10, refreshed 2026-09-14, 2026-10-07 and 2026-10-26
 behind  0 revisions; that commit is the tip of the path
 ```
 
