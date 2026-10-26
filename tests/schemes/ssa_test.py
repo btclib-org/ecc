@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import itertools
+import secrets
 from collections.abc import Callable
 from hashlib import sha256 as hf
 from typing import Any, cast
@@ -1711,6 +1712,46 @@ def test_a_signer_answers_what_the_free_function_answers(
         assert signer.sign(msg, aux, verify=False) == expected
         assert signer.sign_(reduce_to_hlen(msg, hf), aux) == expected
         assert signer.sign_(reduce_to_hlen(msg, hf), aux, verify=False) == expected
+
+
+# the pairs of TestSchnorrSignArbitraryLengthNoNonceCollision in
+# btcsuite/btcd#2501, at 4d7fb277263ed73eabc50c71df654330db09ffd6
+_PAIRS_A_32_BYTE_NONCE_INPUT_CONFUSES = [
+    pytest.param(b"\xab" * 40, b"\xab" * 32, id="40-bytes-and-their-first-32"),
+    pytest.param(b"\xcd" * 32 + b"\x01", b"\xcd" * 32 + b"\x02", id="33-bytes"),
+    pytest.param(b"\x11", bytes(31) + b"\x11", id="a-byte-and-its-padding"),
+    pytest.param(b"", hf(b"").digest(), id="empty-and-its-digest"),
+    pytest.param(b"\x11", hf(b"\x11").digest(), id="a-byte-and-its-digest"),
+    pytest.param(b"\xab" * 40, hf(b"\xab" * 40).digest(), id="40-bytes-and-digest"),
+]
+
+
+@pytest.mark.parametrize("bindings", _ARMS)
+@pytest.mark.parametrize("aux", [bytes(32), None], ids=["zero-aux", "random-aux"])
+@pytest.mark.parametrize("msg1, msg2", _PAIRS_A_32_BYTE_NONCE_INPUT_CONFUSES)
+def test_messages_sharing_a_prefix_a_padding_or_a_digest_get_distinct_nonces(
+    msg1: bytes,
+    msg2: bytes,
+    aux: bytes | None,
+    bindings: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`sign_` derives the nonce from the whole message, of any size.
+
+    In each pair, the two messages share their first 32 bytes, or the
+    second is the first left-padded with zeros to 32 bytes, or its SHA256
+    digest. A nonce that reads only those 32 bytes is the same for both
+    messages. Two signatures with one nonce and two challenges give
+    away the private key. Both messages of a pair take the same aux, so
+    that only the message can tell the two nonces apart.
+    """
+    if not bindings:
+        no_bindings(monkeypatch)
+
+    prv_key = 0x1234567890ABCDEF
+    aux = secrets.token_bytes(32) if aux is None else aux
+    assert msg1 != msg2
+    assert ssa.sign_(msg1, prv_key, aux).r != ssa.sign_(msg2, prv_key, aux).r
 
 
 def test_the_py_arm_refuses_a_signature_that_does_not_verify() -> None:
