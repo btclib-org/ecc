@@ -605,6 +605,55 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical but for a trailing newline**, which the
 `end-of-file-fixer` hook added.
 
+## BlockstreamResearch/bip-frost-dkg
+
+### `tests/schemes/_data/chilldkg_vectors.json`
+
+```text
+repo      mllwchrry/bip-frost-dkg
+path      python/chilldkg_ref/chilldkg.py
+ref       remove-dkgoutput
+commit    773bc4dfb9c979b699ea7920f1a550f395ee734a  2026-10-12
+blob      21c0ac32d009e143a7dfe50a7de53deea8c17f80
+ours      29042b15f45de75883e1054ff52cd3f901db1184
+program   ChillDKG's reference, python/chilldkg_ref/ at that commit
+calls     for each session and each participant i, with
+          rand(x) = sha256(seed + "|" + f"{t}|{n}|{x}|{i}"):
+            hostseckey = rand("hostseckey")
+            hostpubkey_gen(hostseckey)
+            participant_step1(hostseckey, params, rand("step1"))
+            coordinator_step1(pmsgs1, params)
+            participant_step2(hostseckey, state1, cmsg1, rand("step2"))
+            coordinator_finalize(cstate, pmsgs2)
+            participant_finalize(state2, cmsg2)
+recorded  2026-10-26
+behind    0 revisions; that commit is the tip of the path
+```
+
+Verdict: **recorded**. There is no upstream vector file. Each session is
+one run of ChillDKG's reference, the key generation BIP-FROST-DKG
+specifies, with every participant honest, for the (t, n) pairs
+[ISS 342](https://github.com/btclib-org/ecc/issues/342) lists. `seed` is
+the file's own field.
+
+The reference is pinned to the head of
+BlockstreamResearch/bip-frost-dkg#165, which is still open. That head is
+on the fork's branch `ref` names, and `commit` is the last commit there
+touching `chilldkg.py`. So the weekly check reports a new revision of
+that pull request.
+
+Before writing the file, the program asserted that every participant
+finalized with the coordinator's threshold info and recovery data; that
+BIP445's own `validate_threshold_info`, in `bip445_threshold_info.py` at
+the same commit, accepts that threshold info; that `recover_public` and
+`recover_secshare` give back the same threshold info, session parameters
+and secret shares from the recovery data; and that each secret share is
+below the group order and is the discrete log of its public share.
+
+`tests/schemes/frost_test.py` reads `t`, `n`, `secshares` and
+`threshold_info`. The host keys and the recovery data are kept, so that
+the file is the program's output unchanged.
+
 ## bitcoin-core/secp256k1
 
 ### `tests/_data/secp256k1_symbols.txt`
@@ -1647,5 +1696,6 @@ Not checked byte for byte against one:
   `zkp_schnorr_adaptor_vectors.json`,
   `dsa_anti_exfil_test.py`, `secp256k1_symbols.txt`,
   `bitcoin_core_compact_vectors.json` and `secp256k1_recovery_vectors.json`.
+- recorded from a program pinned upstream: `chilldkg_vectors.json`.
 - not vendored: `zkp_rangeproof_vectors.json` and
   `der_length_vectors.json` (this suite's own).

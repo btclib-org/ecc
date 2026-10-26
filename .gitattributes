@@ -15,6 +15,7 @@ tests/schemes/_data/bip445/sign_verify_vectors.json -text
 tests/schemes/_data/bip445/threshold_info_vectors.json -text
 tests/schemes/_data/bip445/tweak_vectors.json -text
 tests/schemes/_data/bitcoin_core_compact_vectors.json -text
+tests/schemes/_data/chilldkg_vectors.json -text
 tests/schemes/_data/det_sign_vectors.json -text
 tests/schemes/_data/dlc_schnorr_test.json -text
 tests/schemes/_data/ecdh_secp256k1_test.json -text
