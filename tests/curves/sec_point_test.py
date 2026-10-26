@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 
+from ecc._libsecp256k1 import keys as libsecp256k1_keys
 from ecc.alias import INF, Point
 from ecc.curves import (
     Curve,
@@ -162,6 +163,167 @@ def test_hybrid_prefixes_are_admitted_only_when_asked() -> None:
     # and 0x04 does not acquire a parity rule it never had
     assert point_from_octets_var(b"\x04" + body, ec, hybrid=True) == Q
     assert point_from_octets_var(b"\x04" + body, ec) == Q
+
+
+# secp256k1 encodings with x or y at the edges of the field (issue
+# btclib-org/ecc#360). Neither 0 nor p - 1 is an x-coordinate of the curve.
+# p + 1 is congruent to the x-coordinate 1, and _X_Y1 is an x-coordinate
+# whose point has y = 1, so p + 1 is also congruent to a y-coordinate.
+_P = secp256k1.p
+_TOP = 2**256 - 1
+_X_Y1 = 0x146D3B65ADD9F54CCCA28533C88E2CBC63F7443E1658783AB41F8EF97C2A10B5
+_Y_X1 = secp256k1.y_even_var(1)
+
+_INVALID_X = "invalid x-coordinate$"
+_X_RANGE = "x-coordinate not in 0..p-1$"
+_Y_RANGE = "y-coordinate not in 1..p-1$"
+_OFF_CURVE = "point not on curve$"
+_INFINITY = "no bytes representation for infinity point$"
+_ODD = "y is odd, against the hybrid prefix"
+_EVEN = "y is even, against the hybrid prefix"
+
+# (id, prefix, x, y, the answer with hybrid=True): a point, or the message
+# of the EccValueError. A 33-byte encoding has no y.
+_FIELD_EDGES: list[tuple[str, int, int, int | None, Point | str]] = [
+    ("02-x0", 0x02, 0, None, _INVALID_X),
+    ("03-x0", 0x03, 0, None, _INVALID_X),
+    ("02-xp-1", 0x02, _P - 1, None, _INVALID_X),
+    ("03-xp-1", 0x03, _P - 1, None, _INVALID_X),
+    ("02-xp", 0x02, _P, None, _X_RANGE),
+    ("03-xp", 0x03, _P, None, _X_RANGE),
+    ("02-xp+1", 0x02, _P + 1, None, _X_RANGE),
+    ("03-xp+1", 0x03, _P + 1, None, _X_RANGE),
+    ("02-xtop", 0x02, _TOP, None, _X_RANGE),
+    ("03-xtop", 0x03, _TOP, None, _X_RANGE),
+    ("04-x0-y1", 0x04, 0, 1, _OFF_CURVE),
+    ("06-x0-y1", 0x06, 0, 1, _ODD),
+    ("07-x0-y1", 0x07, 0, 1, _OFF_CURVE),
+    ("04-x0-y2", 0x04, 0, 2, _OFF_CURVE),
+    ("06-x0-y2", 0x06, 0, 2, _OFF_CURVE),
+    ("07-x0-y2", 0x07, 0, 2, _EVEN),
+    ("04-xp-1-y1", 0x04, _P - 1, 1, _OFF_CURVE),
+    ("06-xp-1-y1", 0x06, _P - 1, 1, _ODD),
+    ("07-xp-1-y1", 0x07, _P - 1, 1, _OFF_CURVE),
+    ("04-xp-1-y2", 0x04, _P - 1, 2, _OFF_CURVE),
+    ("06-xp-1-y2", 0x06, _P - 1, 2, _OFF_CURVE),
+    ("07-xp-1-y2", 0x07, _P - 1, 2, _EVEN),
+    ("04-xp-y1", 0x04, _P, 1, _X_RANGE),
+    ("06-xp-y1", 0x06, _P, 1, _ODD),
+    ("07-xp-y1", 0x07, _P, 1, _X_RANGE),
+    ("04-xp-y2", 0x04, _P, 2, _X_RANGE),
+    ("06-xp-y2", 0x06, _P, 2, _X_RANGE),
+    ("07-xp-y2", 0x07, _P, 2, _EVEN),
+    ("04-xtop-y1", 0x04, _TOP, 1, _X_RANGE),
+    ("06-xtop-y1", 0x06, _TOP, 1, _ODD),
+    ("07-xtop-y1", 0x07, _TOP, 1, _X_RANGE),
+    ("04-xtop-y2", 0x04, _TOP, 2, _X_RANGE),
+    ("06-xtop-y2", 0x06, _TOP, 2, _X_RANGE),
+    ("07-xtop-y2", 0x07, _TOP, 2, _EVEN),
+    # x + p for a point's x, with that point's even y, then its odd y
+    ("04-xp+1-yeven", 0x04, _P + 1, _Y_X1, _X_RANGE),
+    ("06-xp+1-yeven", 0x06, _P + 1, _Y_X1, _X_RANGE),
+    ("07-xp+1-yeven", 0x07, _P + 1, _Y_X1, _EVEN),
+    ("04-xp+1-yodd", 0x04, _P + 1, _P - _Y_X1, _X_RANGE),
+    ("06-xp+1-yodd", 0x06, _P + 1, _P - _Y_X1, _ODD),
+    ("07-xp+1-yodd", 0x07, _P + 1, _P - _Y_X1, _X_RANGE),
+    # y = 0 is refused before the hybrid prefix's parity is read
+    ("04-y0", 0x04, _X_Y1, 0, _INFINITY),
+    ("06-y0", 0x06, _X_Y1, 0, _INFINITY),
+    ("07-y0", 0x07, _X_Y1, 0, _INFINITY),
+    # 1 and p - 1 are the two y of one x: both are points
+    ("04-y1", 0x04, _X_Y1, 1, (_X_Y1, 1)),
+    ("06-y1", 0x06, _X_Y1, 1, _ODD),
+    ("07-y1", 0x07, _X_Y1, 1, (_X_Y1, 1)),
+    ("04-yp-1", 0x04, _X_Y1, _P - 1, (_X_Y1, _P - 1)),
+    ("06-yp-1", 0x06, _X_Y1, _P - 1, (_X_Y1, _P - 1)),
+    ("07-yp-1", 0x07, _X_Y1, _P - 1, _EVEN),
+    ("04-yp", 0x04, _X_Y1, _P, _Y_RANGE),
+    ("06-yp", 0x06, _X_Y1, _P, _ODD),
+    ("07-yp", 0x07, _X_Y1, _P, _Y_RANGE),
+    # y + p for the y = 1 point: even, where 1 is odd
+    ("04-yp+1", 0x04, _X_Y1, _P + 1, _Y_RANGE),
+    ("06-yp+1", 0x06, _X_Y1, _P + 1, _Y_RANGE),
+    ("07-yp+1", 0x07, _X_Y1, _P + 1, _EVEN),
+    ("04-ytop", 0x04, _X_Y1, _TOP, _Y_RANGE),
+    ("06-ytop", 0x06, _X_Y1, _TOP, _ODD),
+    ("07-ytop", 0x07, _X_Y1, _TOP, _Y_RANGE),
+]
+
+
+def _field_edge_octets(prefix: int, x: int, y: int | None) -> bytes:
+    octets = bytes([prefix]) + x.to_bytes(32, "big")
+    return octets if y is None else octets + y.to_bytes(32, "big")
+
+
+def _parses(octets: bytes, *, hybrid: bool) -> bool:
+    try:
+        point_from_octets_var(octets, secp256k1, hybrid=hybrid)
+    except EccValueError:
+        return False
+    return True
+
+
+def test_the_field_edge_table_is_what_it_says() -> None:
+    """The points the table builds its edges from are what it names."""
+    assert secp256k1.is_on_curve((_X_Y1, 1))
+    assert secp256k1.is_on_curve((1, _Y_X1))
+    assert _Y_X1 % 2 == 0
+    for x in (0, _P - 1):
+        with pytest.raises(EccValueError, match=_INVALID_X):
+            secp256k1.y_var(x)
+
+
+@pytest.mark.parametrize(
+    "prefix, x, y, expected",
+    [pytest.param(*row[1:], id=row[0]) for row in _FIELD_EDGES],
+)
+@both_arms
+def test_point_from_octets_var_at_the_field_edges(
+    prefix: int, x: int, y: int | None, expected: Point | str
+) -> None:
+    """Pin each encoding with x or y at the field's edges, through each prefix.
+
+    `hybrid` changes nothing for 0x02, 0x03 and 0x04. Without it, 0x06 and
+    0x07 are refused for their prefix alone.
+    """
+    octets = _field_edge_octets(prefix, x, y)
+    for hybrid in (False, True):
+        if not hybrid and prefix in {0x06, 0x07}:
+            with pytest.raises(EccValueError, match="not a point: prefix "):
+                point_from_octets_var(octets, secp256k1, hybrid=hybrid)
+        elif isinstance(expected, tuple):
+            assert point_from_octets_var(octets, secp256k1, hybrid=hybrid) == expected
+        else:
+            with pytest.raises(EccValueError, match=expected):
+                point_from_octets_var(octets, secp256k1, hybrid=hybrid)
+
+
+@pytest.mark.parametrize(
+    "prefix, x, y",
+    [pytest.param(*row[1:4], id=row[0]) for row in _FIELD_EDGES],
+)
+@pytest.mark.parametrize("serving", [True, False], ids=["bindings", "python"])
+@needs_bindings
+def test_point_from_octets_var_at_the_field_edges_agrees_with_libsecp256k1(
+    prefix: int,
+    x: int,
+    y: int | None,
+    serving: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`keys.pubkey_verify` accepts what `hybrid=True` accepts.
+
+    With `hybrid` off, 0x06 and 0x07 are refused even where libsecp256k1
+    accepts them. The Python arm clears the dispatch flag alone, as
+    `test_mult_sec` does, and so leaves `pubkey_verify` callable.
+    """
+    if not serving:
+        monkeypatch.setattr(curve, "_libsecp256k1_available", False)
+    octets = _field_edge_octets(prefix, x, y)
+    verdict = libsecp256k1_keys.pubkey_verify(octets)
+    assert _parses(octets, hybrid=True) is verdict
+    is_hybrid = prefix in {0x06, 0x07}
+    assert _parses(octets, hybrid=False) is (verdict and not is_hybrid)
 
 
 def test_bytes_from_prv_key_int() -> None:
