@@ -689,8 +689,8 @@ the file is the program's output unchanged.
 repo    bitcoin-core/secp256k1
 path    src
 commit  32099110d63a1dec1a7d27067450fd97d20ea30f  2026-10-20
-ours    667436df2dfee355a339b833302a7770aab2c696
-pulled  2026-09-10, refreshed 2026-09-14, 2026-10-07 and 2026-10-26
+ours    a8f306732166cf782473ecbd2b90030616953689
+pulled  2026-09-10, refreshed 2026-09-14, 2026-10-07, 2026-10-26 and 2026-10-28
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -707,7 +707,7 @@ commit=<the pin this entry gives>
 
 ```shell
 git grep -ohP '(?<![A-Za-z0-9_])secp256k1_[a-z0-9_]+' "${commit:?}" -- src \
-    | sort -u
+    | LC_ALL=C sort -u
 ```
 
 The names and not the headers holding them, because what reads the file
@@ -745,12 +745,12 @@ A name upstream has added since that revision is in this set and not in
 the library the suite runs against, and a name upstream has renamed away
 is in that library and not in this set. The names are what the entry's own
 re-derivation prints when it is run again at the submodule's revision
-and compared with the vendored set. `comm` compares byte for byte on
-input it takes as already sorted, so the vendored side is sorted again
-under the collation the left side is being built in rather than trusted
-to be in it: with the file's own order, a `sort` of another collation
-answers a longer difference, and the `comm` macOS ships prints nothing
-to say so.
+and compared with the vendored set. `comm` walks both sides in its own
+collation and takes them as already sorted, so each `sort` and `comm`
+itself run under `LC_ALL=C`, and the vendored side is sorted again rather
+than trusted to be in that order: a side sorted in another collation
+answers a longer difference, and the `comm` macOS ships prints nothing to
+say so.
 
 ```shell
 submodule=<the sha the call above prints>
@@ -759,7 +759,8 @@ symbols=<the path to `tests/_data/secp256k1_symbols.txt`>
 
 ```shell
 git grep -ohP '(?<![A-Za-z0-9_])secp256k1_[a-z0-9_]+' "${submodule:?}" \
-    -- src | sort -u | comm -3 - <(sort "${symbols:?}")
+    -- src | LC_ALL=C sort -u \
+    | LC_ALL=C comm -3 - <(LC_ALL=C sort "${symbols:?}")
 ```
 
 Upstream is what the set is of, because that is the read a credit asks
