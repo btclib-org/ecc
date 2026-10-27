@@ -65,23 +65,30 @@ them:
 
 ```shell
 signer=btclib-org/.github/.github/workflows/reusable-build.yml
+id=$(gh api repos/btclib-org/ecc --jq .id)
+cert='.[].verificationResult.signature.certificate'
 ```
 
 ```shell
-gh attestation verify --repo btclib-org/ecc \
+gh attestation verify <file> --owner btclib-org \
   --signer-workflow "${signer:?}" \
-  --source-ref refs/tags/v<version> \
-  <a distribution file from the release>
+  --source-ref refs/tags/v<version> --format json \
+  --jq "${cert:?}.sourceRepositoryIdentifier" | grep -qx "${id:?}"
 ```
+
+The exit code is `0` only where a verified attestation names this
+repository. The repository is compared by its id, which a rename keeps:
+`--repo` compares the current name and refuses every release signed
+before a rename.
+
+`<file>` is a distribution file from the release.
 
 `--signer-workflow` is what makes that say which workflow signed, rather
 than accepting any attestation this repository has: the signing runs in
 `btclib-org/.github`'s `reusable-build.yml`, which `release.yml` calls,
 and `--source-ref` is what keeps a build of a branch from passing as the
 release. A release made before that was signed by `reusable-attest.yml`,
-named the same way, with the same `--source-ref`. v2026.9.26, built
-before the repository took its current name, takes
-`--repo btclib-org/ellipticcurves`.
+named the same way, with the same `--source-ref`.
 
 A CycloneDX bill of materials is attached beside them, generated from the
 built wheel and covered by the same attestation. Either distribution file
