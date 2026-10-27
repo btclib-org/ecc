@@ -11,6 +11,11 @@ Every case of every file is exercised, the error cases included, and an
 error case is checked against the exception the file names -- which
 party misbehaved and how, or the message of a plain value error.
 
+A trusted dealer generated those vectors. `chilldkg_vectors.json` is key
+material from ChillDKG's reference instead, and `tests/_data/README.md`
+pins it too. Each of its sessions is validated, signs and verifies, and
+is refused once mutated.
+
 There is no oracle to cross-validate against, unlike `musig2_test.py`'s
 own `btclib_secp256k1.musig`: BIP445 has no C implementation this
 library wraps, so every function here is the Python arithmetic and the
@@ -863,6 +868,215 @@ def test_threshold_info_error_vectors(
     with pytest.raises(_ERRORS) as excinfo:
         frost.validate_threshold_info(_threshold_info(group, case))
     assert_error(case["error"], excinfo.value)
+
+
+# --------------------------------------------------------------------
+# chilldkg_vectors.json: key material from ChillDKG's reference, where the
+# BIP445 vectors above come from a trusted dealer
+# --------------------------------------------------------------------
+
+_CHILLDKG = load("schemes", "_data", "chilldkg_vectors.json")
+
+_CHILLDKG_MSG = b"ChillDKG session"
+
+
+def chilldkg_sessions() -> list[Any]:
+    """One param per session of chilldkg_vectors.json, named by its (t, n)."""
+    return [
+        pytest.param(
+            session, id=vector_id(index, f"t{session['t']}", f"n{session['n']}")
+        )
+        for index, session in enumerate(_CHILLDKG["sessions"])
+    ]
+
+
+def _chilldkg(
+    session: dict[str, Any],
+) -> tuple[int, int, bytes, list[bytes], list[bytes]]:
+    """Return a session's n, t, thresh_pk, pubshares and secshares."""
+    info = session["threshold_info"]
+    return (
+        session["n"],
+        info["t"],
+        bytes.fromhex(info["thresh_pk"]),
+        _hex_all(info["pubshares"]),
+        _hex_all(session["secshares"]),
+    )
+
+
+def _chilldkg_signers(n: int, t: int) -> list[int]:
+    """Return the last t ids; `validate_threshold_info` reads the first t."""
+    return list(range(n - t, n))
+
+
+def _chilldkg_nonces(
+    ids: list[int], pub_shares: list[bytes], sec_shares: list[bytes], thresh_pk: bytes
+) -> tuple[list[bytearray], list[bytes]]:
+    """Return the nonce pairs of `ids`, each from a fixed `rand_`."""
+    pairs = [
+        frost.nonce_gen_(
+            bytes([i]) * 32,
+            sec_shares[i],
+            i,
+            pub_shares[i],
+            thresh_pk[1:],
+            _CHILLDKG_MSG,
+        )
+        for i in ids
+    ]
+    return [sec_nonce for sec_nonce, _ in pairs], [pub for _, pub in pairs]
+
+
+def _negated(point: bytes) -> bytes:
+    """Flip a compressed point's parity byte: a valid point, the negation."""
+    return bytes([point[0] ^ 1]) + point[1:]
+
+
+@pytest.mark.parametrize("session", chilldkg_sessions())
+@both_arms
+def test_chilldkg_threshold_info_is_valid(session: dict[str, Any]) -> None:
+    """`validate_threshold_info` accepts what ChillDKG output.
+
+    Each secshare is also checked against its pubshare: the control of the
+    refusal of a negated secshare below.
+    """
+    n, t, thresh_pk, pub_shares, sec_shares = _chilldkg(session)
+    assert t == session["t"]
+    assert len(pub_shares) == len(sec_shares) == n
+    frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, pub_shares))
+    for pub_share, sec_share in zip(pub_shares, sec_shares, strict=True):
+        assert pub_share == bytes_from_point(mult(int.from_bytes(sec_share, "big")))
+
+
+@pytest.mark.parametrize("session", chilldkg_sessions())
+@both_arms
+def test_chilldkg_session_signs_and_verifies(session: dict[str, Any]) -> None:
+    """The last t participants sign, and every signature verifies."""
+    n, t, thresh_pk, pub_shares, sec_shares = _chilldkg(session)
+    ids = _chilldkg_signers(n, t)
+    signer_pub_shares = [pub_shares[i] for i in ids]
+    sec_nonces, pub_nonces = _chilldkg_nonces(ids, pub_shares, sec_shares, thresh_pk)
+    session_ctx = frost.SessionContext(
+        n,
+        t,
+        ids,
+        signer_pub_shares,
+        thresh_pk,
+        frost.nonce_agg_var(pub_nonces),
+        [],
+        [],
+        _CHILLDKG_MSG,
+    )
+    psigs = []
+    for index, (signer_id, sec_nonce) in enumerate(zip(ids, sec_nonces, strict=True)):
+        psig = frost.sign(sec_nonce, sec_shares[signer_id], signer_id, session_ctx)
+        assert frost.partial_sig_verify(
+            psig,
+            pub_nonces,
+            n,
+            t,
+            ids,
+            signer_pub_shares,
+            thresh_pk,
+            [],
+            [],
+            _CHILLDKG_MSG,
+            index,
+        )
+        psigs.append(psig)
+    sig = frost.partial_sig_agg(psigs, session_ctx)
+    assert ssa.verify_(_CHILLDKG_MSG, thresh_pk[1:], sig)
+
+
+@pytest.mark.parametrize("session", chilldkg_sessions())
+@both_arms
+def test_chilldkg_flipped_pubshare_is_refused(session: dict[str, Any]) -> None:
+    """Each pubshare negated in turn is refused.
+
+    With t = n no share is left over to check the polynomial against, so
+    the threshold public key is what disagrees.
+    """
+    n, t, thresh_pk, pub_shares, _ = _chilldkg(session)
+    message = frost._KEY_MATERIAL_POLY_ERR if t < n else frost._KEY_MATERIAL_MATCH_ERR
+    for i in range(n):
+        flipped = [*pub_shares[:i], _negated(pub_shares[i]), *pub_shares[i + 1 :]]
+        with pytest.raises(EccValueError) as excinfo:
+            frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, flipped))
+        assert str(excinfo.value) == message
+
+
+@pytest.mark.parametrize("session", chilldkg_sessions())
+@both_arms
+def test_chilldkg_wrong_thresh_pk_is_refused(session: dict[str, Any]) -> None:
+    """The negated threshold public key is refused, at setup and in a session.
+
+    It has the same x-only key as the right one, so only the parity byte
+    tells them apart.
+    """
+    n, t, thresh_pk, pub_shares, _ = _chilldkg(session)
+    wrong = _negated(thresh_pk)
+    with pytest.raises(EccValueError) as excinfo:
+        frost.validate_threshold_info(frost.ThresholdInfo(t, wrong, pub_shares))
+    assert str(excinfo.value) == frost._KEY_MATERIAL_MATCH_ERR
+    ids = _chilldkg_signers(n, t)
+    session_ctx = frost.SessionContext(
+        n, t, ids, [pub_shares[i] for i in ids], wrong, bytes(66), [], [], b""
+    )
+    with pytest.raises(EccValueError) as excinfo:
+        frost.session_values(session_ctx)
+    assert str(excinfo.value) == frost._KEY_MATERIAL_MATCH_ERR
+
+
+@pytest.mark.parametrize("session", chilldkg_sessions())
+@both_arms
+def test_chilldkg_secshare_not_matching_its_pubshare_is_refused(
+    session: dict[str, Any],
+) -> None:
+    """A signer holding its secshare negated is refused.
+
+    `sign` refuses it where the session carries the pubshares. Where it
+    does not, the partial signature does not verify, and the right
+    secshare's does.
+    """
+    n, t, thresh_pk, pub_shares, sec_shares = _chilldkg(session)
+    ids = _chilldkg_signers(n, t)
+    signer_id = ids[0]
+    d = int.from_bytes(sec_shares[signer_id], "big")
+    wrong = (secp256k1.n - d).to_bytes(32, "big")
+    sec_nonces, pub_nonces = _chilldkg_nonces(ids, pub_shares, sec_shares, thresh_pk)
+    agg_nonce = frost.nonce_agg_var(pub_nonces)
+    signer_pub_shares = [pub_shares[i] for i in ids]
+
+    def session_ctx(with_pub_shares: list[bytes] | None) -> frost.SessionContext:
+        return frost.SessionContext(
+            n, t, ids, with_pub_shares, thresh_pk, agg_nonce, [], [], _CHILLDKG_MSG
+        )
+
+    with pytest.raises(EccValueError, match="does not match its entry"):
+        frost.sign(
+            bytearray(sec_nonces[0]), wrong, signer_id, session_ctx(signer_pub_shares)
+        )
+
+    def verifies(sec_share: bytes) -> bool:
+        psig = frost.sign(
+            bytearray(sec_nonces[0]), sec_share, signer_id, session_ctx(None)
+        )
+        return frost.partial_sig_verify(
+            psig,
+            pub_nonces,
+            n,
+            t,
+            ids,
+            signer_pub_shares,
+            thresh_pk,
+            [],
+            [],
+            _CHILLDKG_MSG,
+            0,
+        )
+
+    assert verifies(sec_shares[signer_id])
+    assert not verifies(wrong)
 
 
 # --------------------------------------------------------------------

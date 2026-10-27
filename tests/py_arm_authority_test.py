@@ -105,6 +105,7 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
         "xswiftec_inv_test_vectors.csv",
     ),
     "schemes/frost_test.py": (
+        "chilldkg_vectors.json",
         "det_sign_vectors.json",
         "nonce_agg_vectors.json",
         "nonce_gen_vectors.json",
