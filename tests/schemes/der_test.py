@@ -4,6 +4,8 @@
 
 """Tests for the `ecc.ecc.dsa` module."""
 
+from contextlib import suppress
+
 import pytest
 
 from ecc._libsecp256k1 import dsa as libsecp256k1_dsa
@@ -332,14 +334,17 @@ def test_der_agrees_with_libsecp256k1_except_where_it_is_stricter() -> None:
     above is put to `dsa.signature_verify` as well, which is
     secp256k1_ecdsa_signature_parse_der and a verdict.
 
-    The two agree on every rule but one, and the exception is not a
-    disagreement about DER: `secp256k1_der_parse_integer` treats an
-    integer whose high bit is set as an *overflow* rather than as a
-    malformed encoding, zeroes the scalar and reports success, so the
-    signature it hands back is r = 0 -- which no verification accepts.
-    This package refuses the encoding instead, in BIP66's words, and this is
-    what says so out loud rather than leaving the difference to be found
-    by a caller who used `to_compact` as a validator.
+    On the corpus above the two agree on every rule but one: a negative
+    scalar, which this package refuses in BIP66's words and libsecp256k1
+    reads as the overflow the `Sig` docstring names, handing back r = 0 --
+    which no verification accepts. The bindings pass that zero on, and
+    btclib-org/btclib-secp256k1#1272 asks them to refuse the signature
+    instead, so either answer is accepted below, and nothing else. This is
+    what says so out loud rather than leaving the difference to be found by
+    a caller who used `to_compact` as a validator.
+
+    `der_differential_test.py` beside this file finds the other difference
+    the same overflow causes, the size bound.
     """
     sig = Sig(2**255 - 4, 2**247 - 1)
     good = sig.serialize()
@@ -355,10 +360,8 @@ def test_der_agrees_with_libsecp256k1_except_where_it_is_stricter() -> None:
             Sig.parse(bad, check_validity=False)
         assert not libsecp256k1_dsa.signature_verify(bad), name
 
-    # and the one rule libsecp256k1 answers otherwise, on each scalar:
-    # a high bit set with no 0x00 in front of it is a negative integer,
-    # which BIP66 refuses and `secp256k1_der_parse_integer` reports as an
-    # overflow -- zeroing the scalar and answering success
+    # and the rule libsecp256k1 answers otherwise, on each scalar: a high
+    # bit set with no 0x00 in front of it, a negative integer
     r_value = good[4 : 4 + good[3]]
     s_value = good[4 + good[3] + 2 :]
     r, s = _element(r_value), _element(s_value)
@@ -368,9 +371,13 @@ def test_der_agrees_with_libsecp256k1_except_where_it_is_stricter() -> None:
     ):
         with pytest.raises(EccValueError, match="invalid negative scalar"):
             Sig.parse(bad, check_validity=False)
-        assert libsecp256k1_dsa.signature_verify(bad), name
-        # what it read is the zero scalar, not the value those octets spell
-        assert libsecp256k1_dsa.to_compact(bad)[zeroed] == bytes(32), name
+        # where it is read, what it read is the zero scalar, not the value
+        # those octets spell
+        scalar = None
+        with suppress(ValueError):
+            scalar = libsecp256k1_dsa.to_compact(bad)[zeroed]
+        verdict = libsecp256k1_dsa.signature_verify(bad), scalar
+        assert verdict in ((True, bytes(32)), (False, None)), name
 
 
 @needs_bindings
