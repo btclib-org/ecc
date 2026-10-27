@@ -689,7 +689,7 @@ the file is the program's output unchanged.
 repo    bitcoin-core/secp256k1
 path    src
 commit  32099110d63a1dec1a7d27067450fd97d20ea30f  2026-10-20
-ours    667436df2dfee355a339b833302a7770aab2c696
+ours    a8f306732166cf782473ecbd2b90030616953689
 pulled  2026-09-10, refreshed 2026-09-14, 2026-10-07 and 2026-10-26
 behind  0 revisions; that commit is the tip of the path
 ```
@@ -707,7 +707,7 @@ commit=<the pin this entry gives>
 
 ```shell
 git grep -ohP '(?<![A-Za-z0-9_])secp256k1_[a-z0-9_]+' "${commit:?}" -- src \
-    | sort -u
+    | LC_ALL=C sort -u
 ```
 
 The names and not the headers holding them, because what reads the file
@@ -759,7 +759,7 @@ symbols=<the path to `tests/_data/secp256k1_symbols.txt`>
 
 ```shell
 git grep -ohP '(?<![A-Za-z0-9_])secp256k1_[a-z0-9_]+' "${submodule:?}" \
-    -- src | sort -u | comm -3 - <(sort "${symbols:?}")
+    -- src | LC_ALL=C sort -u | comm -3 - <(LC_ALL=C sort "${symbols:?}")
 ```
 
 Upstream is what the set is of, because that is the read a credit asks
