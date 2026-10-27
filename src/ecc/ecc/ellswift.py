@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""ElligatorSwift encoding of a public key: the SwiftEC map and its inverse.
+"""ElligatorSwift: the SwiftEC map, its inverse and BIP324's x-only ECDH.
 
 An ElligatorSwift encoding is 64 bytes that are indistinguishable from
 random: a pair of field elements (u, t) that the SwiftEC map takes to an
@@ -12,9 +12,9 @@ and what BIP324's v2 handshake needs of the keys it carries.
 
 https://github.com/bitcoin/bips/blob/master/bip-0324.mediawiki
 
-This module stops at the map. What BIP324 builds on it -- the x-only
-ECDH over two encodings, the key schedule, the cipher and the packet
-framing -- is a protocol's, and not a fact about a curve.
+This module stops at `xdh`, BIP324's x-only ECDH over two encodings.
+What BIP324 builds on its secret -- the key schedule, the cipher and the
+packet framing -- is a protocol's, and not a fact about a curve.
 
 `decode_var` is the map, and it is deterministic. `encode_var` and
 `create` are its inverse, and are not: up to eight (u, t) pairs decode to one
@@ -37,7 +37,7 @@ from __future__ import annotations
 import secrets
 
 from ecc._libsecp256k1 import ellswift as libsecp256k1_ellswift
-from ecc._utils import bytes_from_octets
+from ecc._utils import assert_type, bytes_from_octets
 from ecc.alias import Integer, Octets, Point
 from ecc.curves import (
     Curve,
@@ -58,12 +58,14 @@ from ecc.curves.curve import (
 from ecc.exceptions import (
     EccValueError,
 )
+from ecc.hashes import tagged_hash
 from ecc.number_theory import legendre_symbol_var, mod_inv_var, mod_sqrt_var
 
 __all__ = [
     "create",
     "decode_var",
     "encode_var",
+    "xdh",
 ]
 
 # sqrt(-3) and the inverse of two, per curve: the map's two constants,
@@ -253,8 +255,8 @@ def _ell_from_point_var(Q: Point, ec: Curve) -> bytes:
 
 def _ell_from_octets(ell: Octets, ec: Curve) -> bytes:
     """Return the encoding as the octets the map reads, size checked."""
-    # the size is the curve's, so this is where `decode_var` first reads
-    # it; `create` and `encode_var` take no encoding in
+    # the size is the curve's, so this is where `decode_var` and `xdh`
+    # first read it; `create` and `encode_var` take no encoding in
     # and reach the curve through the key converters instead
     _assert_valid_ec(ec)
     ell = bytes_from_octets(ell)
@@ -327,3 +329,56 @@ def decode_var(ell: Octets, ec: Curve = secp256k1) -> Point:
         return _point_from_sec(libsecp256k1_ellswift.decode(ell, compressed=False))
 
     return _point_from_ell_var(ell, ec)
+
+
+def xdh(
+    ell_a: Octets,
+    ell_b: Octets,
+    prv_key: Integer,
+    initiating: bool,
+    ec: Curve = secp256k1,
+) -> bytes:
+    """Return BIP324's shared secret of two ElligatorSwift encodings.
+
+    `ell_a` is the initiator's encoding and `ell_b` the responder's, in
+    that order whichever party calls. `prv_key` is the caller's own, and
+    `initiating` says which of the two encodings is the caller's: True
+    for `ell_a`. That correspondence is not checked, as libsecp256k1
+    does not check it.
+
+    The secret is the tagged hash `bip324_ellswift_xonly_ecdh` of
+    `ell_a`, `ell_b` and the x-coordinate of the private key times the
+    other party's point. Where the bindings serve, this is one call,
+    `secp256k1_ellswift_xdh` with BIP324's hash function: the shared
+    point stays in C, and only the secret comes back. The Python path
+    multiplies with `mult`.
+
+    A curve whose cofactor is not 1 is refused.
+
+    The name is plain because the private key reaches only `mult` or
+    libsecp256k1. The variable-time decoding works on the other party's
+    public encoding.
+    """
+    ell_a = _ell_from_octets(ell_a, ec)
+    ell_b = _ell_from_octets(ell_b, ec)
+    q = scalar_from_prv_key(prv_key, ec)
+    # a kind, not a truth: it decides which encoding is decoded, and a
+    # wrong one gives a wrong secret rather than a refusal
+    assert_type(initiating, bool, "initiating")
+    # an encoding decodes to any point of the curve, and on a cofactor
+    # above 1 most are outside the subgroup of G: the secret would then
+    # tell the other party the private key modulo the cofactor. Clearing
+    # the cofactor would compute a secret BIP324 does not define, and
+    # refusing such a point would refuse most encodings
+    if ec.cofactor != 1:
+        err_msg = f"xdh wants a curve with cofactor 1: {ec.cofactor}"
+        raise EccValueError(err_msg)
+
+    # party 0 is A, the initiator, as in `secp256k1_ellswift_xdh`
+    if _libsecp256k1_serves(ec, None):
+        return libsecp256k1_ellswift.xdh(ell_a, ell_b, q, 0 if initiating else 1)
+
+    theirs = ell_b if initiating else ell_a
+    x = mult(q, _point_from_ell_var(theirs, ec), ec)[0]
+    tag = b"bip324_ellswift_xonly_ecdh"
+    return tagged_hash(tag, ell_a + ell_b + x.to_bytes(ec.p_size, "big"))

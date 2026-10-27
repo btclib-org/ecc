@@ -16,8 +16,8 @@ built on it.
 place that says so** (issue btclib-org/btclib#909). That function multiplies and
 hashes in one call, and the hash is SHA256 of the compressed shared point with
 no way to change it: libsecp256k1 takes it as a C callback, so exposing it would
-mean calling back into python from the middle of the computation. Every
-ECDH-shaped computation here derives differently, so what is delegated is the
+mean calling back into python from the middle of the computation. Each
+computation listed below derives differently, so what is delegated is the
 multiplication -- `ecdh.shared_point`, the same `secp256k1_ecdh` call answering
 the point instead of its hash, and so the same `secp256k1_ecmult_const`,
 constant time in the scalar. The derivation stays in python:
@@ -31,6 +31,10 @@ So the verdict is not that the function is wrong: it is that a shared
 secret is a protocol's own derivation, and only a protocol agreeing with
 libsecp256k1's default can hand the whole of it over. Neither of the two
 here does.
+
+`ecc.ecc.ellswift.xdh` hands its whole derivation over, through another
+function: libsecp256k1 ships BIP324's hash with `secp256k1_ellswift_xdh`,
+and `ellswift.xdh` of the bindings is that one call.
 """
 
 from __future__ import annotations
@@ -81,7 +85,7 @@ def diffie_hellman(
     `ecdh.shared_secret` of the bindings is a different function and not
     a substitute: it hashes the compressed shared point with SHA256,
     where this derives through ANSI-X9.63-KDF. The module docstring above
-    has that verdict for both of this package's ECDH-shaped computations.
+    has that verdict for both computations it lists.
 
     Cofactor Diffie-Hellman (SEC 1 v.2, section 3.3.2) on a curve whose
     cofactor is above 1: QV is multiplied by the cofactor before dU

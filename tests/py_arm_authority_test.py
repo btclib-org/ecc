@@ -101,6 +101,7 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
     "schemes/ecdsa_adaptor_test.py": ("ecdsa_adaptor.json",),
     "schemes/ellswift_test.py": (
         "ellswift_decode_test_vectors.csv",
+        "packet_encoding_test_vectors.csv",
         "xswiftec_inv_test_vectors.csv",
     ),
     "schemes/frost_test.py": (
@@ -223,6 +224,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "ecc.ellswift.create": ("schemes/ellswift_test.py",),
     "ecc.ellswift.decode_var": ("schemes/ellswift_test.py",),
     "ecc.ellswift.encode_var": ("schemes/ellswift_test.py",),
+    "ecc.ellswift.xdh": ("schemes/ellswift_test.py",),
     "ecc.musig2.partial_sig_verify_": ("schemes/musig2_test.py",),
     "ecc.ssa.Signer.__init__": ("schemes/ssa_test.py",),
     "ecc.ssa.Signer.sign_": ("schemes/ssa_test.py",),

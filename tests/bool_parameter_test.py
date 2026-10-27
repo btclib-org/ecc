@@ -66,7 +66,7 @@ from ecc.curves.sec_point import (
     bytes_from_prv_key_int,
     point_from_octets_var,
 )
-from ecc.ecc import dsa, frost, musig2, ssa
+from ecc.ecc import dsa, ellswift, frost, musig2, ssa
 from ecc.exceptions import EccTypeError
 
 _PACKAGE = Path(__file__).parents[1] / "src" / "ecc"
@@ -89,6 +89,7 @@ _MSG = b"Satoshi Nakamoto"
 _MSG_HASH = sha256(_MSG).digest()
 _RECOVERABLE, _KEY_ID = dsa.sign_recoverable_(_MSG_HASH, _PRV_KEY)
 _DER_SIG = dsa.sign(_MSG, _PRV_KEY).serialize()
+_ELL = ellswift.create(_PRV_KEY)
 
 # the cheapest catalogued curve, and the point of it is that both
 # construction-time checks pass on it: a low-cardinality one is MOV-weak,
@@ -220,6 +221,14 @@ _KINDS = (
         "is_xonly",
         frost.apply_tweak_var,
         {"tweak_ctx": _FROST_TWEAK_CTX, "tweak": b"\x01" * 32},
+    ),
+    # `initiating` chooses which encoding is the other party's, and so
+    # which secret is computed
+    _Case(
+        "ecc.ecc.ellswift.xdh",
+        "initiating",
+        ellswift.xdh,
+        {"ell_a": _ELL, "ell_b": _ELL, "prv_key": _PRV_KEY},
     ),
     # `serving` chooses which implementation every later call reaches, so
     # it is as much a kind as `compressed` is: a value read for its truth
