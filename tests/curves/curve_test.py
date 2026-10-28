@@ -1172,10 +1172,10 @@ def test_negate() -> None:
         minus_INFJ = ec.negate_jac(INFJ)
         assert ec.is_jac_equal(minus_INFJ, INFJ)
 
-        with pytest.raises(EccTypeError, match="not a point"):
+        with pytest.raises(EccValueError, match="not a point"):
             ec.negate(ec.GJ)  # type: ignore[arg-type]
 
-        with pytest.raises(EccTypeError, match="not a Jacobian point"):
+        with pytest.raises(EccValueError, match="not a Jacobian point"):
             ec.negate_jac(ec.G)  # type: ignore[arg-type]
 
 

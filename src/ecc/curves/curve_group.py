@@ -285,7 +285,7 @@ class CurveGroup:
         # so that negate(INF) = INF
         if len(Q) == 2:
             return Q[0], (self.p - Q[1]) % self.p
-        raise EccTypeError("not a point")
+        raise EccValueError("not a point")
 
     def negate_jac(self, Q: JacPoint) -> JacPoint:
         """Return the opposite Jacobian point.
@@ -296,7 +296,7 @@ class CurveGroup:
         # so that negate(INF) = INF
         if len(Q) == 3:
             return Q[0], (self.p - Q[1]) % self.p, Q[2]
-        raise EccTypeError("not a Jacobian point")
+        raise EccValueError("not a Jacobian point")
 
     def aff_from_jac_var(self, Q: JacPoint) -> Point:
         """Return the affine point: one modular inversion.

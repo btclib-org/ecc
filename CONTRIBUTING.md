@@ -403,8 +403,6 @@ caller chooses between an answer and a reason.
 time cannot tell `tuple[int]` from `tuple[int, int]`. `is_on_curve` and the
 generator check raise `EccValueError` for a point of another length, and so
 do the pair and triple arguments of `ssa_halfagg` (btclib-org/ecc#368).
-`negate` and `negate_jac` still raise `EccTypeError` for a tuple of the wrong
-length, a leftover that btclib-org/ecc#377 corrects.
 
 **Both halves are gated.** `tests/input_validation_test.py` drives the two
 rules over every public function whose required parameters are all
