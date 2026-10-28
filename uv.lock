@@ -955,7 +955,7 @@ wheels = [
 
 [[package]]
 name = "ecc"
-version = "2026.10.28"
+version = "2026.11"
 source = { editable = "." }
 dependencies = [
     { name = "typing-extensions" },
