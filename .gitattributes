@@ -43,7 +43,10 @@ tests/schemes/_data/packet_encoding_test_vectors.csv -text
 tests/schemes/_data/secp256k1_recovery_vectors.json -text
 tests/schemes/_data/sig_agg_vectors.json -text
 tests/schemes/_data/sign_verify_vectors.json -text
+tests/schemes/_data/test_vectors_aggregate.csv -text
 tests/schemes/_data/test_vectors_generate_proof.csv -text
+tests/schemes/_data/test_vectors_incaggregate.csv -text
+tests/schemes/_data/test_vectors_verify.csv -text
 tests/schemes/_data/test_vectors_verify_proof.csv -text
 tests/schemes/_data/tweak_vectors.json -text
 tests/schemes/_data/wallet-test-vectors.json -text

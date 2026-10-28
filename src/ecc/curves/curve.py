@@ -886,9 +886,9 @@ def _multi_mult_x_only_var(
 ) -> Point:
     """Return sum(scalars[i]*P_i), each P_i the even-y point of an x.
 
-    The terms of BIP340's batch verification, which is the one caller and
-    the one place in this package that hands the bindings many scalars at once,
-    libsecp256k1 exposing no batch verification of its own.
+    The terms of BIP340's batch verification and of BIP458's aggregate
+    verification: its callers are `ssa.assert_batch_as_valid_` and
+    `ssa_halfagg`, libsecp256k1 exposing neither verification of its own.
 
     The two arms differ in what they need of a term. `0x02 || x` is the
     even-y point an x-only key names, and the bindings lift it inside the
@@ -909,10 +909,14 @@ def _multi_mult_x_only_var(
     twice the multiplication end to end.
 
     Every scalar is required to be in 1..n-1 and every x to be an x-coordinate.
-    The caller is what holds to that -- ssa's rand is drawn in that range, its
-    challenge is refused at zero, n is prime -- so what is left for the bindings
-    to refuse is a term they cannot read, and finding which is the lift the
-    accepting path does not pay. Issue btclib-org/btclib#622 made that trade the
+    The callers are what hold to the scalars -- ssa's rand is drawn in that
+    range, its challenge is refused at zero, n is prime -- so what is left for
+    the bindings to refuse is a term they cannot read, and finding which is the
+    lift the accepting path does not pay. ssa_halfagg's randomizer is a tagged
+    hash reduced mod n, zero only at a preimage of that hash as the challenge
+    is, and is not refused: on the bindings such a zero is a ValueError, which
+    the loop below does not explain and so lets out, where the Python arm
+    answers the sum. Issue btclib-org/btclib#622 made that trade the
     other way round in `Sig.assert_valid`, and it is the same one: the refusing
     path can afford a square root. The message is `ec.y_var`'s, from the lift
     itself rather than restated.
@@ -924,11 +928,10 @@ def _multi_mult_x_only_var(
         except ValueError:
             for x in x_coords:
                 _y_even_var(x, ec)
-            # the loop above raises, every ValueError from the bindings
-            # here being a term they could not read: the pragma is the
-            # one borromean and dleq carry, for a line the arithmetic
-            # rules out
-            raise  # pragma: no cover -- the loop above always raises first
+            # the loop above raises for a term the bindings could not read,
+            # and what it leaves is a zero scalar, which no caller hands
+            # over short of a hash preimage (see the docstring)
+            raise  # pragma: no cover -- reached only by a zero scalar
         return INF if total is None else _point_from_sec(total)
 
     points = [(x, _y_even_var(x, ec)) for x in x_coords]
@@ -1649,13 +1652,14 @@ def multi_mult_var(
     _multi_mult_var dispatches on the count, at the size the two measure the
     same. On secp256k1 the bindings serve the whole sum instead.
 
-    ssa's batch verification is what hands many scalars over at once,
-    libsecp256k1 exposing no batch verification of its own, and it is the
-    Python arm of that sum which arrives here: the delegated arm reaches
-    `_libsecp256k1_multi_mult_var_` below with its terms as octets, this
-    signature taking points and a point being what its terms would have
-    to be lifted into for the multiplication to write them straight back
-    out.
+    The callers handing it many scalars at once are musig2's key
+    aggregation, frost's interpolation over its public shares, and the
+    Python arm of `_multi_mult_x_only_var`, which serves ssa's batch
+    verification and ssa_halfagg's aggregate verification. On the
+    delegated arm those verifications reach `_libsecp256k1_multi_mult_var_`
+    with their terms as octets, this signature taking points and a point
+    being what their terms would have to be lifted into for the
+    multiplication to write them straight back out.
     """
     _assert_valid_ec(ec)
     if len(scalars) != len(points):

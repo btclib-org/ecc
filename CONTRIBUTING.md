@@ -377,12 +377,13 @@ the line, and it is there because a measurement put it there rather than
 because the rule reaches it: its own wycheproof vectors ask that question
 over profiles built for it, and answer False.
 
-`ssa.batch_verify` and `batch_verify_` raise for an empty batch, the one
-thing on the raising side of the line that the rule does not put there:
-`Sequence[Sig]` declares no size. BIP340 reads an empty batch as valid,
-but a caller who built one by mistake learns nothing from True, and
-False would report a failed verification where there is no signature to
-fail (btclib-org/ecc#222).
+An empty sequence is the one case on the raising side that the rule does
+not put there: `ssa.batch_verify` and `batch_verify_` raise for an empty
+batch, and `ssa_halfagg.verify` for an empty aggregate. BIP340 accepts
+the first, and BIP458 the second when its s is zero, but a caller who
+built one by mistake learns nothing from True, and False would report a
+failed verification where there is no signature to fail
+(btclib-org/ecc#222).
 
 A verification also raises where the caller asked to be refused instead of
 served by the Python arithmetic: under
@@ -397,6 +398,13 @@ happens to derive from: those two coincide only by accident
 (btclib-org/btclib#745). The `assert_*` twin beside each of these is the
 spelling that says *why* a value was refused, and the two are how a
 caller chooses between an answer and a reason.
+
+**A tuple of the wrong arity is a wrong value**, though mypy refuses it: run
+time cannot tell `tuple[int]` from `tuple[int, int]`. `is_on_curve` and the
+generator check raise `EccValueError` for a point of another length, and so
+do the pair and triple arguments of `ssa_halfagg` (btclib-org/ecc#368).
+`negate` and `negate_jac` still raise `EccTypeError` for a tuple of the wrong
+length, a leftover that btclib-org/ecc#377 corrects.
 
 **Both halves are gated.** `tests/input_validation_test.py` drives the two
 rules over every public function whose required parameters are all

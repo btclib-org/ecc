@@ -144,8 +144,9 @@ and a `-text` line for the file to `.gitattributes`.
 The two hashes match for every file whose verdict is **identical**. Where
 upstream is CRLF they cannot, this repository being LF throughout, and the
 entry says so with our own blob alongside. Every csv file vendored from
-bitcoin/bips is that case, and so far only those: `bip340_test_vectors.csv`,
-the BIP324 files and the BIP374 files. A csv there is written on
+bitcoin/bips or from a fork's pull request to it is that case, and so far
+only those: `bip340_test_vectors.csv`, the BIP324 files, the BIP374 files
+and the BIP458 files. A csv there is written on
 Windows line endings often enough that it is worth expecting rather than
 discovering -- `mixed-line-ending` rewrites the file with `--fix=lf` as it
 is staged, so the blob to compare is never the one just fetched.
@@ -482,6 +483,79 @@ name. `tests/schemes/ssa_tweak_test.py` reads the internal key, the tweak, the
 output key and the control blocks of every `scriptPubKey` vector, and the
 internal and tweaked private keys of every `keyPathSpending` input. The
 script trees, addresses and signature hashes are read by nothing here.
+
+## fjahr/bips
+
+### BIP458 (half-aggregation): files under `tests/schemes/_data/`
+
+`test_vectors_aggregate.csv`, `test_vectors_incaggregate.csv` and
+`test_vectors_verify.csv`, under upstream's own names, which is the whole
+of `bip-0458/vectors/`. The BIP is a draft, bitcoin/bips#2205, and its
+files live only on the `halfagg` branch of the fork the pull request
+comes from, hence the `ref` line of each entry. Each file is pinned to
+the commit on that branch that last touched it;
+`2f436b02f60b2ffb4eed8db65aed21e95d1fc4eb`, the revision
+[ISS 365](https://github.com/btclib-org/ecc/issues/365) names,
+is a later commit that only adds the BIP to the repository's README
+index, and holds the same blobs.
+
+`tests/schemes/ssa_halfagg_test.py` runs every vector of each file.
+Each one agrees with this package but the empty aggregate of the
+verification file, which BIP458 accepts and `ssa_halfagg.verify`
+refuses with an `EccValueError`, as `CONTRIBUTING.md`'s "The public
+surface" states. Wrong sizes, which the files expect to fail, raise
+rather than answer False, by the same rule.
+
+### `tests/schemes/_data/test_vectors_aggregate.csv`
+
+```text
+repo    fjahr/bips
+path    bip-0458/vectors/test_vectors_aggregate.csv
+ref     halfagg
+commit  684923c5c9aa05d4124d0a6a4a82f5f9c1c9f959  2026-10-20
+blob    dce0fb1bb9df161db1dcb7e24b85f34090a466be
+ours    a5657f86ff62fc484697fced7c23df15dfd3a93b
+pulled  2026-10-25
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the same exception
+`bip340_test_vectors.csv` documents: our blob is the `ours` line and
+not the `blob` one.
+
+### `tests/schemes/_data/test_vectors_incaggregate.csv`
+
+```text
+repo    fjahr/bips
+path    bip-0458/vectors/test_vectors_incaggregate.csv
+ref     halfagg
+commit  684923c5c9aa05d4124d0a6a4a82f5f9c1c9f959  2026-10-20
+blob    dd9fd28fdb3bc03b069e03852988857d60548ccf
+ours    92909886511fc7398498e4788f5a6d336b9af38e
+pulled  2026-10-25
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the same exception
+`bip340_test_vectors.csv` documents: our blob is the `ours` line and
+not the `blob` one.
+
+### `tests/schemes/_data/test_vectors_verify.csv`
+
+```text
+repo    fjahr/bips
+path    bip-0458/vectors/test_vectors_verify.csv
+ref     halfagg
+commit  684923c5c9aa05d4124d0a6a4a82f5f9c1c9f959  2026-10-20
+blob    35d50525f6dfa5b7e3203bfab3b5e93b771b061a
+ours    b7f0149193dd9f96bfaefde240a30cebf34d753b
+pulled  2026-10-25
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the same exception
+`bip340_test_vectors.csv` documents: our blob is the `ours` line and
+not the `blob` one.
 
 ## siv2r/bip-frost-signing
 
@@ -1711,8 +1785,9 @@ Against a pinned upstream blob:
 - identical but for a trailing newline: `WYCHEPROOF_COPYING`,
   `dlc_schnorr_test.json` and the BIP445 vector files.
 - identical but for CRLF against LF: `bip340_test_vectors.csv`, the
-  BIP324 vector files and the BIP374 vector files -- every csv
-  vendored from bitcoin/bips, so far.
+  BIP324 vector files, the BIP374 vector files and the BIP458 vector
+  files -- every csv vendored from bitcoin/bips or a pull request to it,
+  so far.
 - JSON-equal, reformatted: `pubkey.json`, `ecdsa_sig.json`,
   `ecdsa_custom_nonce_sig.json`.
 

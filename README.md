@@ -89,6 +89,8 @@ It is fully annotated and ships `py.typed`.
 - single-signer BIP340 adaptor signatures, after the module
   [BlockstreamResearch/secp256k1-zkp#299](https://github.com/BlockstreamResearch/secp256k1-zkp/pull/299)
   proposes
+- [half-aggregation](https://github.com/bitcoin/bips/pull/2205) of
+  BIP340 signatures (draft BIP458)
 - [BIP374](https://github.com/bitcoin/bips/blob/master/bip-0374.mediawiki)
   discrete logarithm equality proofs
 - ECIES in the BIE1 layout, the block cipher supplied by the caller

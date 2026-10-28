@@ -60,7 +60,7 @@ import pytest
 
 from ecc.alias import INF
 from ecc.curves import bytes_from_point, mult, secp256k1
-from ecc.ecc import dleq, dsa, pedersen, ssa
+from ecc.ecc import dleq, dsa, pedersen, ssa, ssa_halfagg
 from ecc.hashes import reduce_to_hlen
 
 _Q = 12
@@ -74,6 +74,11 @@ _SSA_SIG = ssa.sign(_MSG, _Q)
 _DLEQ_B = bytes_from_point(mult(2))
 _DLEQ_C = bytes_from_point(mult(2 * _Q))
 _DLEQ_PROOF = dleq.generate_proof(_Q, _DLEQ_B)
+# the BIP458 aggregate of one signature over a 32-byte message
+_HALFAGG_PAIRS = [(_X_ONLY, _MSG_HASH)]
+_HALFAGG_SIG = ssa_halfagg.aggregate(
+    [(_X_ONLY, _MSG_HASH, ssa.sign_(_MSG_HASH, _Q).serialize())]
+)
 # rG + vH for the very (r, v) its case opens it with
 _GEN = pedersen.second_generator()
 _COMMITMENT = pedersen.commit(1, 2, _GEN)
@@ -198,6 +203,20 @@ _CASES = (
             2: _WRONG_KEY_VALUE,
             3: _WRONG_OCTETS_VALUE,
         },
+    ),
+    _Case(
+        "ssa_halfagg.verify",
+        ssa_halfagg.verify,
+        (_HALFAGG_SIG, _HALFAGG_PAIRS),
+        # an aggregate of the right length whose s does not open it, and a
+        # message of the right size that was not signed
+        {
+            0: _HALFAGG_SIG[:32] + bytes(32),
+            1: [(_X_ONLY, bytes(32))],
+        },
+        # an aggregate that is no octets, and a key that is no 32 octets:
+        # both positions declare a size
+        {0: _WRONG_OCTETS_VALUE, 1: [(_WRONG_KEY_VALUE, _MSG_HASH)]},
     ),
 )
 

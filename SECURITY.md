@@ -216,9 +216,10 @@ package is used to teach and to prototype as much as to build:
     `dsa.verify` and `ssa.verify` are one libsecp256k1 call each, where
     the dispatch is on, for secp256k1 with sha256, a high-s signature
     being normalized first where the lower-s form is not being enforced.
-    Batch verification is the exception, libsecp256k1 having no call for
-    it, so `ssa.batch_verify` is the Python equation over delegated
-    multiplications. `musig2.partial_sig_verify_` is a narrower
+    Batch verification and BIP458's aggregate verification are the
+    exceptions, libsecp256k1 having no call for either, so
+    `ssa.batch_verify` and `ssa_halfagg.verify` are the Python equation
+    over delegated multiplications. `musig2.partial_sig_verify_` is a narrower
     delegation again, of one MuSig2 round-two check rather than of every
     operation the module offers (btclib-org/btclib#1049): for secp256k1,
     sha256, a 32-byte message and a session with no adaptor.
@@ -313,7 +314,7 @@ package is used to teach and to prototype as much as to build:
     that arm and infinity is not delegated at all --
     `curve._libsecp256k1_mult` at
     `libsecp256k1_shared_point(_sec_from_point(Q), m, False)`
-    (`src/ecc/curves/curve.py:969`). `dh.diffie_hellman` at
+    (`src/ecc/curves/curve.py:972`). `dh.diffie_hellman` at
     `sec = libsecp256k1_shared_point(`
     (`src/ecc/ecc/dh.py:123`) and `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m, False)`
@@ -334,7 +335,7 @@ package is used to teach and to prototype as much as to build:
     (`src/ecc/ecc/pedersen.py:382`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/ecc/curves/curve.py:1430`):
+    (`src/ecc/curves/curve.py:1433`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at

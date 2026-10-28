@@ -121,6 +121,11 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
         "sign_verify_vectors.json",
     ),
     "schemes/rfc6979_test.py": ("rfc6979.json",),
+    "schemes/ssa_halfagg_test.py": (
+        "test_vectors_aggregate.csv",
+        "test_vectors_incaggregate.csv",
+        "test_vectors_verify.csv",
+    ),
     "schemes/ssa_test.py": ("bip340_test_vectors.csv",),
     "schemes/ssa_tweak_test.py": ("wallet-test-vectors.json",),
     "schemes/wycheproof_test.py": (
@@ -144,6 +149,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
         "schemes/rfc6979_test.py",
+        "schemes/ssa_halfagg_test.py",
         "schemes/ssa_test.py",
         "schemes/wycheproof_test.py",
     ),
@@ -158,11 +164,15 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
         "schemes/rfc6979_test.py",
+        "schemes/ssa_halfagg_test.py",
         "schemes/ssa_test.py",
         "schemes/ssa_tweak_test.py",
         "schemes/wycheproof_test.py",
     ),
-    "curves.curve._multi_mult_x_only_var": ("schemes/ssa_test.py",),
+    "curves.curve._multi_mult_x_only_var": (
+        "schemes/ssa_halfagg_test.py",
+        "schemes/ssa_test.py",
+    ),
     "curves.curve._sum_var": (
         "curves/curve_test.py",
         "schemes/frost_test.py",
@@ -185,6 +195,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
         "schemes/rfc6979_test.py",
+        "schemes/ssa_halfagg_test.py",
         "schemes/ssa_test.py",
         "schemes/ssa_tweak_test.py",
         "schemes/wycheproof_test.py",
@@ -200,6 +211,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "curves/curve_test.py",
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
+        "schemes/ssa_halfagg_test.py",
         "schemes/ssa_test.py",
     ),
     "curves.sec_point._mult_sec": (),
@@ -233,12 +245,16 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/dlc_oracle_test.py",
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
+        "schemes/ssa_halfagg_test.py",
         "schemes/ssa_test.py",
     ),
     "ecc.ssa.assert_batch_as_valid_": ("schemes/ssa_test.py",),
     "ecc.ssa.prv_key_tweak_add": ("schemes/ssa_tweak_test.py",),
     "ecc.ssa.pub_key_tweak_add_var": ("schemes/ssa_tweak_test.py",),
-    "ecc.ssa.sign_": ("schemes/ssa_test.py",),
+    "ecc.ssa.sign_": (
+        "schemes/ssa_halfagg_test.py",
+        "schemes/ssa_test.py",
+    ),
 }
 
 # the arms the measurement found nothing for, named so that closing one
