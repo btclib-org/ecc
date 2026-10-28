@@ -151,44 +151,56 @@ def test_xdh_vectors(row: list[str]) -> None:
     assert ellswift.xdh(ell_a, ell_b, prv_key, initiating) == shared_secret
 
 
+class _LibReads:
+    """Stand in for the bindings' cffi `lib`, recording each name read."""
+
+    def __init__(self, lib: object, names: list[str]) -> None:
+        self._lib = lib
+        self._names = names
+
+    def __getattr__(self, name: str) -> object:
+        self._names.append(name)
+        return getattr(self._lib, name)
+
+
 @needs_bindings
 def test_xdh_on_the_bindings_is_one_call(monkeypatch: pytest.MonkeyPatch) -> None:
     """Where the bindings serve, `xdh` makes one libsecp256k1 call.
 
-    A profile hook records every C call whose name starts with
-    `secp256k1_`, through whatever Python handle it is made, and the
-    record has to be `secp256k1_ellswift_xdh` alone. The Python decoding
-    and `mult` are replaced by a recorder that computes nothing, so a
-    point computed in Python fails the test too. The hook is the one the
-    test found, put back whatever happens.
+    Every module global bound to the bindings' cffi `lib` is replaced by
+    a recorder of the names read from it, and the record has to be
+    `secp256k1_ellswift_xdh` and the BIP324 hash function the bindings
+    pass to it. The names read are recorded, not the calls made. PyPy's
+    profile hook sees no call to a cffi function. A Python wrapper cannot
+    stand in for the hash function, which the bindings pass to C, and on
+    PyPy it cannot be told by its type from the function they call: both
+    are cdata of function type. The Python decoding and `mult` are
+    replaced by a recorder that computes nothing, so a point computed in
+    Python fails the test too.
     """
     q_a, _ = _key_pair()
     q_b, _ = _key_pair()
     ell_a, ell_b = ellswift.create(q_a), ellswift.create(q_b)
 
-    calls: list[str] = []
+    lib = pytest.importorskip("btclib_secp256k1").lib
+    reads: list[str] = []
     points: list[object] = []
 
-    previous = sys.getprofile()
     with monkeypatch.context() as spied:
         spied.setattr(ellswift, "mult", lambda *args: points.append(args))
         spied.setattr(
             ellswift, "_point_from_ell_var", lambda *args: points.append(args)
         )
-        sys.setprofile(
-            lambda _frame, event, arg: (
-                calls.append(arg.__name__)
-                if event == "c_call"
-                and getattr(arg, "__name__", "").startswith("secp256k1_")
-                else None
-            )
-        )
-        try:
-            secret = ellswift.xdh(ell_a, ell_b, q_b, False)
-        finally:
-            sys.setprofile(previous)
+        for module in list(sys.modules.values()):
+            for name, value in list(getattr(module, "__dict__", {}).items()):
+                if value is lib:
+                    spied.setattr(module, name, _LibReads(lib, reads))
+        secret = ellswift.xdh(ell_a, ell_b, q_b, False)
 
-    assert calls == ["secp256k1_ellswift_xdh"]
+    assert reads == [
+        "secp256k1_ellswift_xdh",
+        "secp256k1_ellswift_xdh_hash_function_bip324",
+    ]
     assert not points
     assert len(secret) == 32
 
