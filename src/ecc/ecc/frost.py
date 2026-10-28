@@ -5,9 +5,10 @@
 """FROST threshold Schnorr signing, according to BIP445.
 
 https://github.com/siv2r/bip-frost-signing, `README.md` at v0.12.1,
-head `75318bc740`. The BIP is a draft, not in `bitcoin/bips` `master`;
-`tests/_data/README.md` records why this module pins that repository
-rather than its pull request, https://github.com/bitcoin/bips/pull/2070.
+head `ba299badfbe647e670686de75578dd501a627028`. The BIP is a draft,
+not in `bitcoin/bips` `master`; `tests/_data/README.md` records why
+this module pins that repository rather than its pull request,
+https://github.com/bitcoin/bips/pull/2070.
 
 FROST turns *t* of *n* participants into one signer: a threshold secret
 key is Shamir-shared among *n* participants at key generation, and any
