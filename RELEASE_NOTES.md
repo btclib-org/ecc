@@ -9,6 +9,26 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.10.28
+
+- **The release's attestation names its signer workflow at a commit**
+  (issue btclib-org/.github#1870). `release.yml` calls `reusable-build.yml`
+  of `btclib-org/.github` at the commit of its tag `v2026.10.26`, where it
+  called it at `refs/heads/main`.
+
+  Act on it if you verify a release with `--signer-workflow` naming
+  `reusable-build.yml@refs/heads/main`: name the workflow without a ref, as
+  `SECURITY.md` does.
+- **musig2 and frost refuse a `session_ctx` that is not a `SessionContext`
+  as `EccTypeError`** (closes #367). `session_values`, `sign`,
+  `partial_sig_verify_` and `partial_sig_agg` of both modules, and
+  `partial_sig_agg_adaptor`, `adapt` and `extract_adaptor` of musig2, raised
+  `AttributeError` where they read a field of it.
+
+  Act on it if you catch `AttributeError` there: catch `EccTypeError`.
+
+`CHANGELOG.md`'s own `v2026.10.28` section has the rest.
+
 ## v2026.10.23
 
 No breaking changes. The `secp256k1` extra asks for `btclib-secp256k1` at

@@ -23,6 +23,92 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.10.28
+
+### `ellswift.xdh`, BIP324's shared secret
+
+It returns the shared secret of two ElligatorSwift encodings, through
+`secp256k1_ellswift_xdh` where the bindings serve, and refuses a curve whose
+cofactor is not 1 (closes #344).
+
+### musig2 and frost refuse a `session_ctx` that is not a `SessionContext`
+
+As `EccTypeError`, where the first field read raised `AttributeError`
+(closes #367).
+
+### The calls of btclib-org/.github name the commit of its tag `v2026.10.26`
+
+`claude-review.yml`'s included, so the release's attestation names
+`reusable-build.yml` at that commit (issue btclib-org/.github#1870).
+
+### The publish jobs use `pypa/gh-action-pypi-publish` v1.14.3
+
+(issue btclib-org/.github#1844)
+
+### A release is verified by its repository's id
+
+RELEASING.md and SECURITY.md verify with `--owner btclib-org` and compare the
+certificate's repository id, which a rename keeps (closes #349, closes #356).
+
+### uv 0.13.4 or later
+
+`[tool.uv] required-version` is `>=0.13.4`, past GHSA-hq85-5cpj-mr62 (issue
+btclib-org/.github#1844).
+
+### `uv.lock` takes setuptools 84.2.1, filelock 4.2.4 and virtualenv 21.14.13
+
+They are past their advisories (issue btclib-org/.github#1849, issue
+btclib-org/.github#1844).
+
+### frost is tested on key material from ChillDKG
+
+(closes #342)
+
+### `Sig.parse` is compared with Core and libsecp256k1 on mutated DER
+
+(issue #383, closes #359)
+
+### More edges for `point_from_octets_var`, ellswift and `ssa.sign_`
+
+`point_from_octets_var` at the field's edges (closes #360), the ElligatorSwift
+inverse seeded and at its edges (closes #361), and distinct `ssa.sign_` nonces
+for messages sharing a prefix, a padding or a digest (closes #372).
+
+### The `xdh` test reads the bindings' calls on PyPy too
+
+It records the names read from the bindings' lib, where PyPy emits no profile
+event for a cffi call (closes #398).
+
+### The secp256k1 symbol set moves to upstream's tip
+
+Its re-derivation collates in C (closes #387, closes #321).
+
+### The dev tooling and the pinned hooks move
+
+hypothesis 6.170.5, uv-build 0.13.3, Dependabot's actions bumps and the
+pre-commit hook revisions. The check-sdist hook builds with `uv_build<0.14`
+(closes #352).
+
+### `dependabot.yml` names the `uv.lock` exception
+
+It says only `uv_build` has a ceiling (issue btclib-org/.github#1818, issue
+btclib-org/.github#1848).
+
+### The link check skips the GMP manual page runners cannot reach
+
+(closes #323)
+
+### Docs
+
+The where-the-threshold-lives page is in the docs (closes #364), and `dleq`'s
+`G` argument serves another generator, not another curve (closes #332).
+
+### Development is LLM-based
+
+CONTRIBUTING.md and README.md say so, and REVIEWING.md takes the shared part of
+btclib-org/.github 72e0222 (issue btclib-org/.github#1846, issue
+btclib-org/.github#1904).
+
 ## v2026.10.23
 
 ### The `secp256k1` extra asks for `btclib-secp256k1>=0.8.0.12`
