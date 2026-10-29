@@ -13,12 +13,12 @@ What this module exports is the class, the three multiplications,
 its own will come back, so that the tables built for it are kept -- the
 catalogue, the standards it is the union of, and the `*_params2` each of
 those is built from, which is what test_catalogued_curves rebuilds every
-curve out of with every check on. Beside the multiplications
-are `sum_var`, `tweak_add_var` and `is_x_coordinate_var`, each checking
-its arguments for a private twin the library composes internally, and
-`TweakChain`, which checks its own. The standards are SEC2v1,
-SEC2v2, NIST and Brainpool, and this module is where ecc.curves keeps
-them: a standard is a question about a curve, not a way of finding one.
+curve out of with every check on. Beside the multiplications are `add`,
+`sum_var`, `tweak_add_var` and `is_x_coordinate_var`, each checking its
+arguments for a private twin the library composes internally, and
+`TweakChain`, which checks its own. The standards are SEC2v1, SEC2v2,
+NIST and Brainpool, and this module is where ecc.curves keeps them: a
+standard is a question about a curve, not a way of finding one.
 
 `datadir` stays out: it is where this package keeps the json files
 loaded below, so it answers a question about the installation rather than
@@ -97,6 +97,7 @@ __all__ = [
     "SEC2v2",
     "SEC2v2_params2",
     "TweakChain",
+    "add",
     "double_mult_var",
     "is_libsecp256k1_serving",
     "is_x_coordinate_var",
@@ -1440,6 +1441,27 @@ def _add(P: Point, Q: Point, ec: Curve) -> Point:
     PJ = _blinded_jac(_jac_from_aff(P), ec)
     QJ = _blinded_jac(_jac_from_aff(Q), ec)
     return ec.aff_from_jac_var(ec._add_jac(PJ, QJ))
+
+
+def add(P: Point, Q: Point, ec: Curve = secp256k1) -> Point:
+    """Return P + Q, for two points that may be secret.
+
+    `_add` behind a check of its arguments: the curve, and both points on
+    the curve. `sum_var` is the sum of points that are public.
+
+    The contract differs by arm. Where the libsecp256k1 bindings serve,
+    which is for secp256k1 while `is_libsecp256k1_serving()` is True, the
+    sum is `secp256k1_ec_pubkey_combine`, constant time on the C side of
+    the boundary. A term at infinity, which libsecp256k1 has no key for,
+    is not handed over, but the call is still made, so the crossing does
+    not tell it apart. Everywhere else it is the Python arithmetic on two
+    blinded points, which is not constant time. SECURITY.md's
+    *Limitations, not vulnerabilities* says what each arm leaves.
+    """
+    _assert_valid_ec(ec)
+    ec.require_on_curve(P)
+    ec.require_on_curve(Q)
+    return _add(P, Q, ec)
 
 
 def _tweak_add_var(P: Point, t: int, ec: Curve) -> Point:

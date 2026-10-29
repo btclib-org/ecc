@@ -74,6 +74,7 @@ from ecc.curves.curve import (
     Curve,
     PreparedPoint,
     TweakChain,
+    add,
     double_mult_var,
     is_x_coordinate_var,
     mult,
@@ -180,6 +181,11 @@ _CASES = (
         "ecc.curves.curve.is_x_coordinate_var",
         is_x_coordinate_var,
         {"x": _PUB_KEY[0]},
+    ),
+    _Case(
+        "ecc.curves.curve.add",
+        add,
+        {"P": _PUB_KEY, "Q": _PUB_KEY_2},
     ),
     _Case(
         "ecc.curves.curve.sum_var",
