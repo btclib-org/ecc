@@ -24,8 +24,9 @@ Only `curves/__init__.py` imports `curve_group_f`.
 each. It may import every lower layer, and none of them imports it. Within
 it, `dsa` builds on `commit_nonce` and `rfc6979_nonce`, `ssa` on
 `commit_nonce` and `bip340_nonce`, `ecdsa_adaptor` on `dsa`, and
-`dlc_oracle`, `frost`, `musig2` and `ssa_adaptor` on `ssa`. `rangeproof`
-builds on `borromean`, `pedersen` and `rfc6979_nonce`, and `dh` on `kdf`.
+`dlc_oracle`, `frost`, `musig2`, `ssa_adaptor` and `ssa_halfagg` on `ssa`.
+`rangeproof` builds on `borromean`, `pedersen` and `rfc6979_nonce`, and
+`dh` on `kdf`.
 
 `test_the_layers_import_only_downwards`, in `tests/imports_test.py`,
 holds each module to the imports that file's `_MAY_IMPORT` table names

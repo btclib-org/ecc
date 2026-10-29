@@ -188,10 +188,10 @@ Saltzer and Schroeder's principles.
   so a caller can tell a forgery from a mistake (CONTRIBUTING.md's *The
   public surface*, and `tests/bool_contract_test.py`).
 - **Layering.** ARCHITECTURE.md states the layers and
-  `tests/imports_test.py` holds them. The package imports nothing of this
-  organization's other packages but the optional `btclib_secp256k1`:
-  `test_no_module_imports_outside_the_stdlib_and_the_extras`, in the same
-  file, holds that.
+  `tests/imports_test.py` holds them. What the package may import of this
+  organization's other packages is in CONTRIBUTING.md's *The public
+  surface*, and `test_no_module_imports_outside_the_stdlib_and_the_extras`,
+  in the same file, holds it.
 
 **Constant time where it is claimed.** It is claimed only of
 libsecp256k1: CONTRIBUTING.md's `_var` section sets out the tiers of

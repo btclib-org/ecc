@@ -24,12 +24,11 @@ difference is this module's and the seam's, not a caller's:
 call goes to libsecp256k1 or to the Python arithmetic -- which is the
 only difference a caller can act on.
 
-A module that imports nothing of this package but `exceptions` and the
-root's `name`, and is therefore below every module that reads it. What it
-imports from the bindings is the whole of the surface this package uses, so
-this file is also the answer to "what does this package need these bindings
-for", which no reader has to assemble from the delegating modules' own
-imports.
+ARCHITECTURE.md says which layer this module sits in and what it imports of
+the package. What it imports from the bindings is the whole of the surface
+this package uses, so this file is also the answer to "what does this
+package need these bindings for", which no reader has to assemble from the
+delegating modules' own imports.
 
 The names are re-exported under the bindings' own spelling and the caller
 aliases them as it always did: a caller holding `keys` and reaching
