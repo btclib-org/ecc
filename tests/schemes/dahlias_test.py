@@ -842,9 +842,10 @@ def test_plain_tweak_is_a_sum(prv_key: int) -> None:
 
 @pytest.mark.parametrize("prv_key", [_EVEN_KEY, _ODD_KEY])
 def test_xonly_tweak_is_bip341_tweaking(prv_key: int) -> None:
-    """X-only tweaking is BIP341's, as `ecc.ecc.ssa` computes it."""
+    """X-only tweaking is BIP341's: the even-y key plus t, and ssa's key."""
     tweaked, pk = dahlias.xonly_tweak(prv_key, _TWEAK)
-    assert tweaked == ssa.prv_key_tweak_add(prv_key, _TWEAK)
+    d = prv_key if mult(prv_key)[1] % 2 == 0 else _N - prv_key
+    assert tweaked == (d + int.from_bytes(_TWEAK, "big")) % _N
     x, parity = ssa.pub_key_tweak_add_var(_xonly(prv_key), _TWEAK)
     assert pk == x.to_bytes(32, "big")
     full = dahlias.xonly_tweak_pub_key_var(_xonly(prv_key), _TWEAK)
