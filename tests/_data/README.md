@@ -405,9 +405,9 @@ implement.
 `test_vectors_generate_proof.csv` and `test_vectors_verify_proof.csv`,
 under upstream's own names, which is the whole of `bip-0374/`'s vector
 set. They are pinned separately below and their pins differ, which is
-the reason a shared one is not offered: the verification file was
-regenerated seven weeks after the generation file, and one pin would have
-had to be wrong about one of them.
+the reason a shared one is not offered: upstream last changed the files
+in different commits, and one pin would have had to be wrong about one of
+them.
 
 The names are unusually bare for a vendored file -- nothing in either
 says BIP374 -- and they keep them anyway, the naming rule above being
@@ -418,22 +418,24 @@ that upstream's name is the one thing a citation cannot drift away from.
 ```text
 repo    bitcoin/bips
 path    bip-0374/test_vectors_generate_proof.csv
-commit  24b4354e64e162ad0154d54f12b29602fe562d9f  2025-02-27
-blob    f913508df1ed633e9dde3de30b49f3c8c4e595d1
-ours    78d7870472fea2cdffbbaa11198c8838b71b53e2
-pulled  2026-08-13
+commit  afaa856630058b87188648111da5dab0dd311bf7  2026-10-26
+blob    4601ee0cfebba97f5df74c034a55097bf7ae3d6f
+ours    f8c6908b25086b840147872931bd63dd1064a9ba
+pulled  2026-08-13, refreshed 2026-10-29
 behind  0 revisions; that commit is the tip of the path
 ```
 
 Verdict: **identical but for line endings** — upstream is CRLF and this
 repository is LF throughout, which `mixed-line-ending` enforces with
-`--fix=lf`, so our blob is `78d78704` rather than the one above, the same
+`--fix=lf`, so our blob is `f8c6908b` rather than the one above, the same
 exception `bip340_test_vectors.csv` above documents.
 
-All 11 vectors, all eight columns: five over a generator that is not
-secp256k1's, three over secp256k1's own, and three failure cases -- a zero
-scalar, a scalar equal to n, and a B at infinity, which the file spells
-`INVALID` in the proof column and `INFINITY` in the point column.
+Every vector, every column: successes over generators that are not
+secp256k1's and over secp256k1's own, the latter including a = 1 and
+a = n - 1, and failure cases -- a zero scalar, a scalar equal to n, one
+equal to n + 1, which an implementation reducing the scalar mod n would
+accept, and a B at infinity. The file spells a failure `INVALID` in the
+proof column, and the point at infinity `INFINITY` in the point column.
 
 ### `tests/schemes/_data/test_vectors_verify_proof.csv`
 
@@ -450,13 +452,13 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical but for line endings**, the same exception, our blob
 `2d4acdf1` rather than the one above.
 
-All 17 vectors: the eight successes are the eight proofs of the file
-above, read back, and the nine failures are five permutations of A, B and
-C, a bit flipped in the proof, a bit flipped in the message, an `e` equal
-to the curve order and an `s` equal to the curve order -- so the pair
-covers both directions over one set of keys, and a permutation the
-challenge would have accepted is a defect the generation file alone could
-not show.
+Every vector: the successes are the proofs of the file above, read back,
+all but its a = 1 and a = n - 1 rows, and the failures are permutations
+of A, B and C, a bit flipped in the proof, a bit flipped in the message,
+an `e` equal to the curve order and an `s` equal to the curve order -- so
+the pair covers both directions over one set of keys, and a permutation
+the challenge would have accepted is a defect the generation file alone
+could not show.
 
 BIP374's failure conditions R1 and R2 landing on infinity have no vector
 in either file and are covered by `tests/schemes/dleq_test.py` instead.
