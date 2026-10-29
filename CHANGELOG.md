@@ -23,6 +23,26 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.10.30
+
+### `ssa_halfagg`, BIP458 half-aggregation of BIP340 signatures
+
+`ecc.ecc.ssa_halfagg` aggregates, extends and verifies aggregates, after the
+draft of bitcoin/bips#2205, whose vectors run. `verify` refuses an empty
+aggregate, which the draft accepts (issue #365).
+
+### `negate` and `negate_jac` raise `EccValueError` for a wrong-length tuple
+
+They raised `EccTypeError` (closes #377).
+
+### frost.py's BIP445 citation is pinned at `ba299ba`
+
+(closes #341)
+
+### BIP374's boundary generation vectors are vendored
+
+`dleq.generate_proof` passes them, `a = n + 1` refused (closes #336).
+
 ## v2026.10.28
 
 ### `ellswift.xdh`, BIP324's shared secret
