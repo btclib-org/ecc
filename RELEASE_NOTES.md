@@ -9,6 +9,17 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.10.30
+
+- **`negate` and `negate_jac` raise `EccValueError` for a tuple of the
+  wrong length** (closes #377). They are methods of `CurveGroup`, and so of
+  every `Curve`, and raised `EccTypeError`.
+
+  Act on it if you catch `TypeError` or `EccTypeError` there: catch
+  `EccValueError`, `ValueError` or `EccException`.
+
+`CHANGELOG.md`'s own `v2026.10.30` section has the rest.
+
 ## v2026.10.28
 
 - **The release's attestation names its signer workflow at a commit**
