@@ -1650,9 +1650,9 @@ def test_add_crosses_with_a_term_at_infinity(monkeypatch: pytest.MonkeyPatch) ->
 
     A product at infinity is a zero scalar's, and a sum that skipped the
     call for it would show the zero as a missing call. This counts the
-    calls and nothing else: the Python work around each call is not the
-    same for a term at infinity, as SECURITY.md's limitations say. The
-    answer is `test_add_is_add_var`'s to check.
+    calls and nothing else, and SECURITY.md's limitations say what the
+    Python around them leaves. The answer is `test_add_is_add_var`'s to
+    check.
     """
     calls: list[int] = []
 

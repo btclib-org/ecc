@@ -335,7 +335,7 @@ package is used to teach and to prototype as much as to build:
     (`src/ecc/ecc/pedersen.py:384`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/ecc/curves/curve.py:1436`):
+    (`src/ecc/curves/curve.py:1435`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at
