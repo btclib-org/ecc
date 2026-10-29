@@ -52,14 +52,14 @@ _VERIFY_VECTORS = load_csv("schemes", "_data", "test_vectors_verify_proof.csv")
 def test_generate_proof_vectors(
     G: str, a: str, B: str, aux: str, msg: str, proof: str
 ) -> None:
-    """BIP374's generation vectors, the three failure cases included."""
+    """BIP374's generation vectors, the failure cases included."""
     # an empty message column is no message at all, which is a different
     # input to the hashes than a 32-byte one
     m = msg or None
     if proof == _INVALID:
-        # a = 0, a = n, and B at infinity: the conditions BIP374 fails on
-        # before any arithmetic, and none of the three is expressible as a
-        # this package private key or public key in the first place
+        # a out of [1, n - 1], or B at infinity: the conditions BIP374 fails
+        # on before any arithmetic, and none of them is expressible as a
+        # private key or public key of this package in the first place
         with pytest.raises(EccValueError):
             dleq.generate_proof(a, B, aux, G, m)
         return
