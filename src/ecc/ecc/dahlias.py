@@ -49,10 +49,16 @@ from hashlib import sha256
 
 from ecc._utils import assert_type, bytes_from_octets, is_integer, is_octets
 from ecc.alias import Integer, Octets, Point
-from ecc.curves import mult, multi_mult_var, scalar_from_prv_key, secp256k1
+from ecc.curves import (
+    mult,
+    multi_mult_var,
+    prv_key_tweak_add,
+    scalar_from_prv_key,
+    secp256k1,
+)
 from ecc.curves.curve import _sum_var, _tweak_add_var
 from ecc.curves.sec_point import bytes_from_point, point_from_octets_var
-from ecc.ecc.ssa import point_from_bip340pub_key_var
+from ecc.ecc import ssa
 from ecc.exceptions import (
     EccRuntimeError,
     EccTypeError,
@@ -108,7 +114,9 @@ def _cpoint_var(octets: Octets) -> Point:
 
 def _lift_x_var(octets: Octets) -> Point:
     """Return the even-y point of a 32-byte x-only key, BIP459's lift_x."""
-    return point_from_bip340pub_key_var(bytes_from_octets(octets, _PK_SIZE), secp256k1)
+    return ssa.point_from_bip340pub_key_var(
+        bytes_from_octets(octets, _PK_SIZE), secp256k1
+    )
 
 
 def _bytes_xor(a: bytes, b: bytes) -> bytes:
@@ -470,21 +478,14 @@ def _tweak(tweak: Octets) -> int:
     return t
 
 
-def _tweaked_key_pair(d: int, t: int) -> tuple[int, bytes]:
-    d = (d + t) % secp256k1.n
-    if d == 0:
-        raise EccValueError("tweaked key at infinity")
-    return d, _xbytes(mult(d, ec=secp256k1))
-
-
 def plain_tweak(prv_key: Integer, tweak: Octets) -> tuple[int, bytes]:
     """Return the plainly tweaked secret key and its 32-byte x-only key.
 
     BIP459's plain tweaking, as in BIP32 unhardened derivation:
     sk' = sk + t. The x-only key is what goes in the list of public keys.
     """
-    d = scalar_from_prv_key(prv_key, secp256k1)
-    return _tweaked_key_pair(d, _tweak(tweak))
+    d = prv_key_tweak_add(prv_key, _tweak(tweak), secp256k1)
+    return d, _xbytes(mult(d, ec=secp256k1))
 
 
 def xonly_tweak(prv_key: Integer, tweak: Octets) -> tuple[int, bytes]:
@@ -493,10 +494,8 @@ def xonly_tweak(prv_key: Integer, tweak: Octets) -> tuple[int, bytes]:
     BIP459's x-only tweaking, as in BIP341 key path spending: the secret
     key is negated where its point has odd y, then sk' = sk + t.
     """
-    d = scalar_from_prv_key(prv_key, secp256k1)
-    if mult(d, ec=secp256k1)[1] % 2:
-        d = secp256k1.n - d
-    return _tweaked_key_pair(d, _tweak(tweak))
+    d = ssa.prv_key_tweak_add(prv_key, _tweak(tweak), secp256k1)
+    return d, _xbytes(mult(d, ec=secp256k1))
 
 
 def _tweaked_pub_key_var(P: Point, t: int) -> bytes:

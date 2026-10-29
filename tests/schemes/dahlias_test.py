@@ -900,22 +900,26 @@ def test_tweaking_refuses_a_tweak_out_of_range_or_size(
             call()
 
 
+# plain: t = n - sk; x-only: t = n - d, d the even-y key of the point
+_ODD_MINUS = (_N - _ODD_KEY).to_bytes(32, "big")
+_ODD_PLUS = (_ODD_KEY).to_bytes(32, "big")
+
+
+@both_arms
+def test_tweaking_refuses_a_private_key_of_zero() -> None:
+    """A tweak that cancels the secret key is refused."""
+    with pytest.raises(EccValueError, match="tweaked private key is zero"):
+        dahlias.plain_tweak(_ODD_KEY, _ODD_MINUS)
+    with pytest.raises(EccValueError, match="tweaked private key is zero"):
+        dahlias.xonly_tweak(_ODD_KEY, _ODD_PLUS)
+
+
 def test_tweaking_refuses_a_key_at_infinity() -> None:
-    """A tweak that cancels the key is refused."""
-    # plain: t = n - sk; x-only: t = n - d, d the even-y key of the point
-    odd_minus = (_N - _ODD_KEY).to_bytes(32, "big")
-    odd_plus = (_ODD_KEY).to_bytes(32, "big")
-    calls: list[Callable[[], object]] = [
-        lambda: dahlias.plain_tweak(_ODD_KEY, odd_minus),
-        lambda: dahlias.xonly_tweak(_ODD_KEY, odd_plus),
-        lambda: dahlias.plain_tweak_pub_key_var(
-            bytes_from_point(mult(_ODD_KEY)), odd_minus
-        ),
-        lambda: dahlias.xonly_tweak_pub_key_var(_xonly(_ODD_KEY), odd_plus),
-    ]
-    for call in calls:
-        with pytest.raises(EccValueError, match="infinity"):
-            call()
+    """A tweak that cancels the public key is refused."""
+    with pytest.raises(EccValueError, match="infinity"):
+        dahlias.plain_tweak_pub_key_var(bytes_from_point(mult(_ODD_KEY)), _ODD_MINUS)
+    with pytest.raises(EccValueError, match="infinity"):
+        dahlias.xonly_tweak_pub_key_var(_xonly(_ODD_KEY), _ODD_PLUS)
 
 
 def test_public_tweaking_refuses_a_key_that_is_no_point() -> None:
@@ -1101,6 +1105,7 @@ _TWEAK_VECTORS = _vectors("test_vectors_tweak.csv")
 
 
 @pytest.mark.parametrize("row", _TWEAK_VECTORS, ids=_ids(_TWEAK_VECTORS))
+@both_arms
 def test_tweak_vectors(row: list[str]) -> None:
     """Both halves of each tweak match, or both refuse."""
     _, sk, tweak, is_xonly, expected, tweaked_sk, tweaked_pk, _ = row
