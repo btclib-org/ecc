@@ -1424,10 +1424,12 @@ def _add(P: Point, Q: Point, ec: Curve) -> Point:
 
     Infinity is what a zero scalar's product is, and libsecp256k1 has no
     public key for it: `_libsecp256k1_sum` drops such a term and answers
-    the other one without crossing, so the duration would say what
-    `mult`'s does not, that a scalar was zero. The other term is summed
-    with itself instead and the answer dropped, so that the crossing is
-    made either way.
+    the other one without crossing, so a zero scalar would show as a
+    missing call. The other term is summed with itself instead and the
+    answer dropped, so that the call is made either way. Only that call
+    is constant time: the branch that picks the stand-in, and the
+    conversion of each point to octets and back, are Python on the
+    secret points.
     """
     if _libsecp256k1_serves(ec, None):
         if P[1] and Q[1]:
@@ -1452,11 +1454,15 @@ def add(P: Point, Q: Point, ec: Curve = secp256k1) -> Point:
     The contract differs by arm. Where the libsecp256k1 bindings serve,
     which is for secp256k1 while `is_libsecp256k1_serving()` is True, the
     sum is `secp256k1_ec_pubkey_combine`, constant time on the C side of
-    the boundary. A term at infinity, which libsecp256k1 has no key for,
-    is not handed over, but the call is still made, so the crossing does
-    not tell it apart. Everywhere else it is the Python arithmetic on two
-    blinded points, which is not constant time. SECURITY.md's
-    *Limitations, not vulnerabilities* says what each arm leaves.
+    the boundary. The Python steps around that call run on the secret
+    points and are not constant time. Among them, the check that both
+    are on the curve does less work for a point at infinity than for any
+    other, and `_add` tests for infinity to choose what to hand over. So
+    a term at infinity, which libsecp256k1 has no key for, still costs
+    one call, but not the same Python work around it. Everywhere else it
+    is the Python arithmetic on two blinded points, which is not
+    constant time. SECURITY.md's *Limitations, not vulnerabilities* says
+    what each arm leaves.
     """
     _assert_valid_ec(ec)
     ec.require_on_curve(P)

@@ -275,11 +275,13 @@ def generator_from_seed(seed: Octets, blind: Integer | None = None) -> Point:
     The seed and the blinding factor are secrets, as zkp treats them:
     the generator is published to hide which asset an output carries,
     and the seed is that asset's tag. blind*G is `curves.mult` and each
-    sum `curves.curve._add`, so on the bindings arm their duration
-    follows neither; the map is Python on either arm, and regular in the
-    seed rather than constant time, `_shallue_van_de_woestijne` says how.
-    Constant time in both is `btclib_secp256k1.zkp.generator.generate_blinded`,
-    where the bindings are built with the zkp extension.
+    sum `curves.curve._add`, so on the bindings arm the libsecp256k1
+    calls they make are constant time in both, and the Python around
+    those calls is not. The map is Python on either arm, and regular in
+    the seed rather than constant time, `_shallue_van_de_woestijne` says
+    how. Constant time in both is
+    `btclib_secp256k1.zkp.generator.generate_blinded`, where the
+    bindings are built with the zkp extension.
 
     `second_generator` is the other generator this module names, and the
     two are unrelated constructions: that one increments the hash of G
