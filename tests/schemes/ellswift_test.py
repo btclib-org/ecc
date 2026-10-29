@@ -247,14 +247,14 @@ def test_create_and_encode_give_a_fresh_encoding_each_call() -> None:
     """Two calls on one key give different encodings, on either arm.
 
     BIP324 requires an encoding to be indistinguishable from random,
-    which a key-derived encoding is not: the rust-bitcoin/bip324#174
-    handshake key was encoded with all-zero randomness, and anyone
-    seeing the first 64 bytes of a connection could tell them apart
-    from random by decoding and re-encoding them. Two calls returning
-    the same bytes is what a deterministic path looks like, on the
-    Python arm as on the bindings arm, so that is what this asserts --
-    and each encoding still decodes back to the key, so a different
-    but wrong encoding does not pass it either.
+    which an encoding derived from the public key alone is not: the
+    rust-bitcoin/bip324#174 handshake key is encoded with all-zero
+    randomness, and anyone seeing the first 64 bytes of a connection can
+    tell them apart from random by decoding and re-encoding them. Two
+    calls returning the same bytes is what a deterministic path looks
+    like, on the Python arm as on the bindings arm, so that is what this
+    asserts -- and each encoding still decodes back to the key, so a
+    different but wrong encoding does not pass it either.
     """
     for _ in range(4):
         q, Q = _key_pair()
