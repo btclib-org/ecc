@@ -241,3 +241,164 @@ def test_no_module_imports_outside_the_stdlib_and_the_extras() -> None:
     }
     assert "ecc/dsa.py" in found
     assert {file: names for file, names in found.items() if names} == {}
+
+
+# what each unit of the package may import from the package itself, as
+# ARCHITECTURE.md states. A unit is the root (`ecc`) or the first module
+# below it (`ecc.kdf`), so the subpackage `ecc.ecc` is one unit and its
+# schemes are free among themselves
+_EXCEPTIONS = "ecc.exceptions"
+_ALIAS = "ecc.alias"
+_UTILS = "ecc._utils"
+_NUMBER_THEORY = "ecc.number_theory"
+_HASHES = "ecc.hashes"
+_LIBSECP256K1 = "ecc._libsecp256k1"
+_KDF = "ecc.kdf"
+_CURVES = "ecc.curves"
+_SCHEMES = "ecc.ecc"
+_MAY_IMPORT: dict[str, frozenset[str]] = {
+    "ecc": frozenset(),
+    _EXCEPTIONS: frozenset(),
+    _ALIAS: frozenset(),
+    _UTILS: frozenset({_ALIAS, _EXCEPTIONS}),
+    _NUMBER_THEORY: frozenset({_UTILS, _EXCEPTIONS}),
+    _HASHES: frozenset({_UTILS, _ALIAS, _EXCEPTIONS}),
+    _LIBSECP256K1: frozenset({"ecc", _EXCEPTIONS}),
+    _KDF: frozenset({_UTILS, _ALIAS, _EXCEPTIONS, _HASHES}),
+    _CURVES: frozenset({_LIBSECP256K1, _UTILS, _ALIAS, _EXCEPTIONS, _NUMBER_THEORY}),
+    _SCHEMES: frozenset(
+        {
+            "ecc",
+            _LIBSECP256K1,
+            _UTILS,
+            _ALIAS,
+            _EXCEPTIONS,
+            _NUMBER_THEORY,
+            _HASHES,
+            _KDF,
+            _CURVES,
+        }
+    ),
+}
+
+
+# what a statement that binds the root reaches; no table entry allows it
+_ANY = "ecc.*"
+
+
+def _unit(module_name: str) -> str:
+    """Return the root, or the first module below it, a dotted name falls in."""
+    return ".".join(module_name.split(".")[:2])
+
+
+def _package_imports(
+    module_name: str, is_package: bool, source: str, known: set[str]
+) -> set[str]:
+    """Return the units of this package that one module's imports reach.
+
+    `from ecc import kdf` reaches `ecc.kdf` when that is a module, and the
+    root when it is a name the root holds, as `from ecc import name` is.
+    `import ecc`, with or without `as`, `import ecc.kdf` with no `as`, and
+    `from ecc import *` reach `_ANY`: the root loads any public module on
+    attribute access, and the star asks for every name in its `__all__`,
+    so each can reach every unit. `import ecc.kdf as k` binds only
+    `ecc.kdf`. A relative import is resolved against the module that makes
+    it.
+    """
+    parts = module_name.split(".")
+    package = parts if is_package else parts[:-1]
+    targets: list[str] = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            targets.extend(
+                _ANY
+                if _is_ours(a.name) and (a.asname is None or a.name == "ecc")
+                else a.name
+                for a in node.names
+            )
+        elif isinstance(node, ast.ImportFrom):
+            base = node.module or ""
+            if node.level:
+                kept = package[: len(package) - (node.level - 1)]
+                base = ".".join([*kept, *([node.module] if node.module else [])])
+            targets.extend(
+                _ANY
+                if base == "ecc" and alias.name == "*"
+                else f"{base}.{alias.name}"
+                if f"{base}.{alias.name}" in known
+                else base
+                for alias in node.names
+            )
+    return {_unit(t) for t in targets if _is_ours(t)}
+
+
+def _imports_the_rule_refuses(
+    sources: dict[str, tuple[bool, str]],
+) -> dict[str, list[str]]:
+    """Return, per module, the units it imports and may not.
+
+    `sources` maps a module name to whether it is a package and its text.
+    """
+    known = set(sources)
+    broken: dict[str, list[str]] = {}
+    for name, (is_package, source) in sorted(sources.items()):
+        found = _package_imports(name, is_package, source, known)
+        extra = sorted(found - _MAY_IMPORT[_unit(name)] - {_unit(name)})
+        if extra:
+            broken[name] = extra
+    return broken
+
+
+def _package_sources(root: Path) -> dict[str, tuple[bool, str]]:
+    """Return every file of the package, read, by module name."""
+    return {
+        ".".join(("ecc", *path.relative_to(root).with_suffix("").parts)).removesuffix(
+            ".__init__"
+        ): (path.name == "__init__.py", path.read_text(encoding="utf-8"))
+        for path in root.rglob("*.py")
+    }
+
+
+def test_the_layers_import_only_downwards() -> None:
+    """Hold the rule ARCHITECTURE.md states.
+
+    Read statically, so an import inside a function or behind
+    `TYPE_CHECKING` counts.
+    """
+    sources = _package_sources(Path(ecc.__path__[0]))
+    assert {_unit(name) for name in sources} == set(_MAY_IMPORT)
+    assert _imports_the_rule_refuses(sources) == {}
+
+
+def test_the_layer_scan_finds_a_planted_import() -> None:
+    """The scan resolves each import form to a unit, and the rule refuses it."""
+    known = {"ecc", "ecc.kdf", "ecc.hashes", "ecc.ecc", "ecc.ecc.dsa"}
+    source = "from ecc import kdf, name\nimport ecc.ecc.dsa as dsa\nimport json\n"
+    assert _package_imports("ecc.curves", True, source, known) == {
+        "ecc.kdf",
+        "ecc",
+        "ecc.ecc",
+    }
+    assert _package_imports("ecc._utils", False, "import ecc\n", known) == {_ANY}
+    assert _package_imports("ecc._utils", False, "import ecc as e\n", known) == {_ANY}
+    star = "from ecc import *\n"
+    assert _package_imports("ecc._utils", False, star, known) == {_ANY}
+    assert _package_imports("ecc._utils", False, "import ecc.kdf\n", known) == {_ANY}
+    relative = "from .. import hashes\nfrom ..kdf import x\n"
+    assert _package_imports("ecc.curves.curve", False, relative, known) == {
+        "ecc.hashes",
+        "ecc.kdf",
+    }
+    planted = {
+        "ecc": (True, ""),
+        "ecc.hashes": (False, "from ecc import kdf\n"),
+        "ecc.kdf": (False, "from ecc.hashes import tagged_hash\n"),
+        "ecc.curves": (True, "from ecc.kdf import hkdf\n"),
+        "ecc.exceptions": (False, "import ecc\n"),
+        "ecc.ecc": (True, "from ecc import hashes\n"),
+    }
+    assert _imports_the_rule_refuses(planted) == {
+        "ecc.curves": ["ecc.kdf"],
+        "ecc.exceptions": [_ANY],
+        "ecc.hashes": ["ecc.kdf"],
+    }

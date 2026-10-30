@@ -10,8 +10,8 @@ catalogued curves (secp256k1 among them), and the SEC encoding of a point.
 Nothing here knows what a signature is.
 
 What is built *on* a curve lives in ecc.ecc -- dsa, ssa, borromean,
-pedersen, Diffie-Hellman, the nonces -- and the rule between the two is that
-direction: ecc.ecc imports ecc.curves, never the other way round.
+pedersen, Diffie-Hellman, the nonces -- and ARCHITECTURE.md says which of
+the two imports the other.
 
 The two names are easy to conflate -- everything in ecc.ecc is also about
 curves -- so the anchor is worth stating: `from ecc.curves import mult`,
