@@ -195,7 +195,7 @@ package is used to teach and to prototype as much as to build:
     above, then for secp256k1 as the curve, then for a hash function
     that is sha256 or absent -- it declines
     `hf is not None and hf is not sha256`
-    (`src/ecc/curves/curve.py:697`) -- with whatever further
+    (`src/ecc/curves/curve.py:698`) -- with whatever further
     options the call site passes it. The hash function is matched
     by identity rather than by what it computes, so
     `functools.partial(sha256)`, or any other wrapper a caller writes to
@@ -318,7 +318,7 @@ package is used to teach and to prototype as much as to build:
     that arm and infinity is not delegated at all --
     `curve._libsecp256k1_mult` at
     `libsecp256k1_shared_point(_sec_from_point(Q), m, False)`
-    (`src/ecc/curves/curve.py:972`). `dh.diffie_hellman` at
+    (`src/ecc/curves/curve.py:973`). `dh.diffie_hellman` at
     `sec = libsecp256k1_shared_point(`
     (`src/ecc/ecc/dh.py:123`) and `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m, False)`
@@ -336,16 +336,23 @@ package is used to teach and to prototype as much as to build:
     scalars are secrets, is a `mult` of each and their sum instead --
     `pedersen._commit` at
     `return _add(mult(r, ec.G, ec), mult(v, gen, ec), ec)`
-    (`src/ecc/ecc/pedersen.py:382`), under `pedersen.commit`,
+    (`src/ecc/ecc/pedersen.py:384`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/ecc/curves/curve.py:1433`):
+    (`src/ecc/curves/curve.py:1435`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at
     infinity, which `_add` does not hand over: it sums the other term
-    with itself and drops the answer, so the crossing is made for a zero
-    as for any other value.
+    with itself and drops the answer, so the call is made for a zero as
+    for any other value. Only the call is constant time: `_add` tests
+    for infinity in Python to choose the stand-in, and converts each
+    point to octets and back in Python. `curves.add` is that sum behind
+    a check of its arguments, published for a caller whose points are as
+    secret as these. Its check is Python on the secret points as well,
+    and does less work for a point at infinity than for any other. Where
+    the bindings do not serve, `curves.add` is the Python arithmetic the
+    bullet above describes.
     `pedersen.generator_from_seed` treats its seed and its blinding
     factor as secrets, as libsecp256k1-zkp does: its blind*G is `mult`
     and its sums are `_add`, and the map its seed goes through is Python
@@ -362,8 +369,10 @@ package is used to teach and to prototype as much as to build:
     `secp256k1_ecmult_const_xonly`, is constant time in its scalar.
     These calls and `secp256k1_ecdh` are
     among the entry points libsecp256k1's own `src/ctime_tests.c`
-    declassifies a secret for, and
-    `secp256k1_ec_pubkey_tweak_mul` is named nowhere in that file
+    declassifies a secret for. `secp256k1_ec_pubkey_tweak_mul` and
+    `secp256k1_ec_pubkey_combine` are named nowhere in that file, so what
+    makes the second constant time is the group law and the inversion it
+    calls, not a test
 - `rangeproof.rewind` on the Python arm takes time that depends on the value
     it recovers: `rangeproof._value_encoding_var` at
     `return position, int.from_bytes(tmp[24:32], "big")`

@@ -22,10 +22,11 @@ are looked up in, the scalar multiplications, the SEC point codec, and
 PreparedPoint, which is a point plus a caller's word that it will be
 multiplied again -- the one thing the memoized tables below cannot infer
 and the whole of what stands between a repeated point and the treatment
-the generator gets. Beside them are a sum of points, a point plus a
-multiple of the generator -- once, or along a chain of tweaks of one
-point -- a private key plus a tweak, which is the same sum on the
-private side, and the test of whether an x is a coordinate of the curve.
+the generator gets. Beside them are the sum of two points that may be
+secret, a sum of public points, a point plus a multiple of the generator
+-- once, or along a chain of tweaks of one point -- a private key plus a
+tweak, which is the same sum on the private side, and the test of
+whether an x is a coordinate of the curve.
 
 `CURVES` is what makes the catalogue reachable -- `secp256k1` is
 exported by name because nearly every caller wants that one, and every
@@ -110,6 +111,7 @@ from ecc.curves.curve import (
     Curve,
     PreparedPoint,
     TweakChain,
+    add,
     double_mult_var,
     is_libsecp256k1_serving,
     is_x_coordinate_var,
@@ -140,6 +142,7 @@ __all__ = [
     "PreparedPoint",
     "PubKey",
     "TweakChain",
+    "add",
     "bytes_from_point",
     "bytes_from_prv_key_int",
     "double_mult_var",

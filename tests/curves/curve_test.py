@@ -28,6 +28,7 @@ from ecc.curves import (
     Curve,
     CurveGroup,
     PreparedPoint,
+    add,
     bytes_from_point,
     # the module, not only the names in it: `_libsecp256k1_available` is a
     # module attribute, and switching it off is how no_bindings below
@@ -1575,7 +1576,7 @@ def test_sum_var(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
 def test_add_is_add_var(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
     """The sum of two secret points is the affine sum, on either arm.
 
-    `_add` is `secp256k1_ec_pubkey_combine` where the bindings serve and
+    `add` is `secp256k1_ec_pubkey_combine` where the bindings serve and
     `add_jac` on two blinded points everywhere else: both have to answer
     what `add_var` does, for products at every width of the scalar, for
     either term at infinity, and for the two points that coincide or are
@@ -1590,12 +1591,12 @@ def test_add_is_add_var(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None
     points = [INF, *(mult(m, H) for m in _scalars_of_every_width(ec.n))]
     points += [mult(3), ec.negate(mult(3))]
     for P, Q in itertools.product(points, repeat=2):
-        assert _add(P, Q, ec) == ec.add_var(P, Q)
+        assert add(P, Q, ec) == ec.add_var(P, Q)
 
     for other in low_card_curves.values():
         every = [INF, *(mult(k, other.G, other) for k in range(1, other.n))]
         for P, Q in itertools.product(every, repeat=2):
-            assert _add(P, Q, other) == other.add_var(P, Q)
+            assert add(P, Q, other) == other.add_var(P, Q)
 
 
 @needs_bindings
@@ -1645,11 +1646,13 @@ def test_a_zero_scalar_is_multiplied_as_one(monkeypatch: pytest.MonkeyPatch) -> 
 
 @needs_bindings
 def test_add_crosses_with_a_term_at_infinity(monkeypatch: pytest.MonkeyPatch) -> None:
-    """One `pubkey_sum` per `_add`, whichever of its terms is infinity.
+    """One `pubkey_sum` per `add`, whichever of its terms is infinity.
 
     A product at infinity is a zero scalar's, and a sum that skipped the
-    crossing for it would time the zero `mult` does not. The answer is
-    `test_add_is_add_var`'s to check; this counts the crossings.
+    call for it would show the zero as a missing call. This counts the
+    calls and nothing else, and SECURITY.md's limitations say what the
+    Python around them leaves. The answer is `test_add_is_add_var`'s to
+    check.
     """
     calls: list[int] = []
 
@@ -1661,7 +1664,7 @@ def test_add_crosses_with_a_term_at_infinity(monkeypatch: pytest.MonkeyPatch) ->
 
     H = second_generator(secp256k1)
     for P, Q in ((mult(3), H), (mult(3), INF), (INF, H), (INF, INF)):
-        assert _add(P, Q, secp256k1) == secp256k1.add_var(P, Q)
+        assert add(P, Q, secp256k1) == secp256k1.add_var(P, Q)
     assert calls == [2, 2, 2, 2]
 
 
@@ -1678,11 +1681,12 @@ def test_public_spellings_check_what_their_twins_trust(
     """Each public spelling is its twin's answer, behind a check of its own.
 
     The twins take what the library has already validated: an int, a
-    Curve, a sequence. What the public name adds is the refusal of
-    anything else as an `EccTypeError`, and the reduction of a tweak
-    handed over as any `Integer`. `TweakChain` checks its own arguments,
-    and its base and curve are read-only: the chain holds the base on
-    the far side, so a reassigned one would split its two arms.
+    Curve, a sequence, a point on the curve. What the public name adds
+    is the refusal of anything else, as an `EccTypeError` or, for a
+    point off the curve, an `EccValueError`, and the reduction of a
+    tweak handed over as any `Integer`. `TweakChain` checks its own
+    arguments, and its base and curve are read-only: the chain holds the
+    base on the far side, so a reassigned one would split its two arms.
     """
     if not bindings:
         no_bindings(monkeypatch)
@@ -1698,6 +1702,15 @@ def test_public_spellings_check_what_their_twins_trust(
     for x in (1.5, "01", True):
         with pytest.raises(EccTypeError, match="non-integer x-coordinate"):
             is_x_coordinate_var(x)  # type: ignore[arg-type]
+
+    assert add(P, Q) == _add(P, Q, ec)
+    assert add(INF, INF) == INF
+    with pytest.raises(EccValueError, match="point not on curve"):
+        add(P, (ec.G[0], ec.G[1] + 1))
+    with pytest.raises(EccTypeError, match="invalid point type"):
+        add(None, Q)  # type: ignore[arg-type]
+    with pytest.raises(EccTypeError, match="invalid ec type"):
+        add(P, Q, None)  # type: ignore[arg-type]
 
     assert sum_var([P, Q]) == _sum_var([P, Q], ec)
     assert sum_var([]) == INF
