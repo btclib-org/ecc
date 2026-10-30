@@ -18,9 +18,10 @@ expect anything else.
 envelope decoders for an hour a week; this asks it of every class
 decoder and of the module-level decoders in `BINARY_PARSERS`, on every
 run, for as long as hypothesis spends on a test. `WIRE_FUNCTIONS` asks
-it of the functions that read what peers send: musig2's and frost's
-nonce aggregation, musig2's key aggregation, dleq's proof verification
-and the two adaptor verifications. The other functions of those modules
+it of the functions that read what peers send: musig2's, frost's and
+dahlias's nonce aggregation, musig2's key aggregation, dleq's proof
+verification, dahlias's aggregate verification and the two adaptor
+verifications. The other functions of those modules
 are not driven here.
 """
 
@@ -37,6 +38,7 @@ from hypothesis import strategies as st
 from ecc.curves import mult, secp256k1
 from ecc.curves.sec_point import bytes_from_point, point_from_octets_var
 from ecc.ecc import (
+    dahlias,
     dleq,
     dsa,
     ecdsa_adaptor,
@@ -256,6 +258,18 @@ _SSA_PRE_SIG = ssa_adaptor.presign(_MSG, 1, _KEY, bytes(32))
 _ECDSA_ADAPTOR_SIG = ecdsa_adaptor.encrypt(_MSG, 1, _KEY, bytes(32))
 
 
+def _dahlias_sig() -> bytes:
+    """Return the aggregate signature of one signer, key 1, over _MSG."""
+    sec_nonce, pub_nonce = dahlias.nonce_gen_(bytes(32), 1)
+    session = dahlias.SessionContext(
+        dahlias.nonce_agg_var([pub_nonce]), [_X_ONLY_KEY], [_MSG], [pub_nonce]
+    )
+    return dahlias.sig_agg([dahlias.sign(sec_nonce, 1, _MSG, session)], session)
+
+
+_DAHLIAS_SIG = _dahlias_sig()
+
+
 # Where each scalar of a sample starts: dleq's e and s, the s of a
 # pre-signature after its point, and the s_a, e and s of an ECDSA adaptor
 # signature after its two points
@@ -263,6 +277,7 @@ _SCALAR_OFFSETS = {
     _DLEQ_PROOF: (0, 32),
     _SSA_PRE_SIG: (33,),
     _ECDSA_ADAPTOR_SIG: (66, 98, 130),
+    _DAHLIAS_SIG: (32,),
 }
 
 
@@ -309,6 +324,16 @@ WIRE_FUNCTIONS: dict[str, tuple[Callable[..., Any], type, st.SearchStrategy[Any]
     "musig2.nonce_agg_var": (musig2.nonce_agg_var, bytes, _wire_list(_PUB_NONCE)),
     "musig2.key_agg_var": (musig2.key_agg_var, musig2.KeyAggContext, _wire_list(_KEY)),
     "frost.nonce_agg_var": (frost.nonce_agg_var, bytes, _wire_list(_PUB_NONCE)),
+    "dahlias.nonce_agg_var": (dahlias.nonce_agg_var, bytes, _wire_list(_PUB_NONCE)),
+    "dahlias.verify": (
+        dahlias.verify,
+        bool,
+        st.one_of(
+            st.builds(lambda k: ([k], [_MSG], _DAHLIAS_SIG), _wire(_X_ONLY_KEY)),
+            st.builds(lambda m: ([_X_ONLY_KEY], [m], _DAHLIAS_SIG), _wire(_MSG)),
+            st.builds(lambda s: ([_X_ONLY_KEY], [_MSG], s), _wire(_DAHLIAS_SIG)),
+        ),
+    ),
     "dleq.verify_proof": (
         dleq.verify_proof,
         bool,
@@ -353,6 +378,8 @@ def test_the_wire_samples_are_accepted() -> None:
     assert musig2.nonce_agg_var([_PUB_NONCE])
     assert isinstance(musig2.key_agg_var([_KEY]), musig2.KeyAggContext)
     assert frost.nonce_agg_var([_PUB_NONCE])
+    assert dahlias.nonce_agg_var([_PUB_NONCE])
+    assert dahlias.verify([_X_ONLY_KEY], [_MSG], _DAHLIAS_SIG)
     assert dleq.verify_proof(_DLEQ_A, _KEY, _DLEQ_A, _DLEQ_PROOF)
     assert ssa_adaptor.verify(_SSA_PRE_SIG, _MSG, _X_ONLY_KEY, _KEY)
     assert ecdsa_adaptor.verify(_ECDSA_ADAPTOR_SIG, _MSG, _KEY, _KEY)

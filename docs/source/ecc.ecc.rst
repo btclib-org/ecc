@@ -25,6 +25,13 @@ ecc.ecc.commit\_nonce module
    :members:
    :show-inheritance:
 
+ecc.ecc.dahlias module
+----------------------
+
+.. automodule:: ecc.ecc.dahlias
+   :members:
+   :show-inheritance:
+
 ecc.ecc.dh module
 -----------------
 

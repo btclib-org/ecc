@@ -93,6 +93,13 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
         "test_vectors_generate_proof.csv",
         "test_vectors_verify_proof.csv",
     ),
+    "schemes/dahlias_test.py": (
+        "test_vectors_partial_sig_verify.csv",
+        "test_vectors_sign.csv",
+        "test_vectors_sign_error.csv",
+        "test_vectors_tweak.csv",
+        "test_vectors_verify.csv",
+    ),
     "schemes/dlc_oracle_test.py": ("dlc_schnorr_test.json",),
     # what it checks is that the recovered key is the WIF's key, which no
     # libsecp256k1 output supplies; `tests/_data/README.md` has the details in
@@ -155,6 +162,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.curve._mult_checked": (
         "curves/curve_test.py",
+        "schemes/dahlias_test.py",
         "schemes/der_test.py",
         "schemes/dlc_oracle_test.py",
         "schemes/dleq_test.py",
@@ -175,17 +183,20 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.curve._sum_var": (
         "curves/curve_test.py",
+        "schemes/dahlias_test.py",
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
     ),
     "curves.curve._tweak_add_var": (
         "curves/curve_test.py",
+        "schemes/dahlias_test.py",
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
         "schemes/ssa_tweak_test.py",
     ),
     "curves.curve._x_octets": (
         "curves/curve_test.py",
+        "schemes/dahlias_test.py",
         "schemes/der_test.py",
         "schemes/dlc_oracle_test.py",
         "schemes/dleq_test.py",
@@ -209,6 +220,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.curve.multi_mult_var": (
         "curves/curve_test.py",
+        "schemes/dahlias_test.py",
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
         "schemes/ssa_halfagg_test.py",
@@ -216,7 +228,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.sec_point._mult_sec": (),
     "curves.sec_point.bytes_from_prv_key_int": ("schemes/musig2_test.py",),
-    "curves.sec_point.prv_key_tweak_add": (),
+    "curves.sec_point.prv_key_tweak_add": ("schemes/dahlias_test.py",),
     "ecc.commit_nonce.commit_nonce_": ("schemes/ssa_test.py",),
     "ecc.dh.diffie_hellman": ("schemes/wycheproof_test.py",),
     "ecc.dsa.Signer.__init__": (),
@@ -249,8 +261,14 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/ssa_test.py",
     ),
     "ecc.ssa.assert_batch_as_valid_": ("schemes/ssa_test.py",),
-    "ecc.ssa.prv_key_tweak_add": ("schemes/ssa_tweak_test.py",),
-    "ecc.ssa.pub_key_tweak_add_var": ("schemes/ssa_tweak_test.py",),
+    "ecc.ssa.prv_key_tweak_add": (
+        "schemes/dahlias_test.py",
+        "schemes/ssa_tweak_test.py",
+    ),
+    "ecc.ssa.pub_key_tweak_add_var": (
+        "schemes/dahlias_test.py",
+        "schemes/ssa_tweak_test.py",
+    ),
     "ecc.ssa.sign_": (
         "schemes/ssa_halfagg_test.py",
         "schemes/ssa_test.py",
@@ -275,13 +293,9 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 #   of `_THIRD_PARTY_VECTORS` for the reason `tests/_data/README.md` gives
 #   in its entry for `bitcoin_core_compact_vectors.json`.
 #   A recoverable signature made by another implementation would close it.
-# - `curves.sec_point.prv_key_tweak_add`, a private key plus a tweak. BIP32's
-#   private derivation is this sum, so its test vectors, vendored, would
-#   close it.
 _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",
-        "curves.sec_point.prv_key_tweak_add",
         "ecc.dsa.Signer.__init__",
         "ecc.dsa.Signer.sign_",
         "ecc.dsa.sign_recoverable_",

@@ -7,7 +7,8 @@
 **The schemes.** ecc.ecc holds what is built *on* an elliptic curve:
 dsa, ssa and borromean signatures, the MuSig2 aggregation of many
 ssa signers into one, the FROST threshold signing in which a subset of
-a group sharing one key signs for all of it, pedersen commitments, the
+a group sharing one key signs for all of it, the DahLIAS aggregate
+signature of many signers over their own messages, pedersen commitments, the
 Confidential Transactions rangeproof built over one and the rewind that
 reads a value, a blinding factor and a message back out of it, the
 Diffie-Hellman key agreement, the BIE1 ECIES built on top of it, the
@@ -68,6 +69,7 @@ from ecc.ecc import (
     bip340_nonce,
     borromean,
     commit_nonce,
+    dahlias,
     dh,
     dlc_oracle,
     dleq,
@@ -91,6 +93,7 @@ __all__ = [
     "bip340_nonce",
     "borromean",
     "commit_nonce",
+    "dahlias",
     "dh",
     "diffie_hellman",
     "dlc_oracle",
