@@ -64,8 +64,8 @@ size, whatever *n* is.
 `OP_CHECKMULTISIG` stops at `MAX_PUBKEYS_PER_MULTISIG` keys, which
 btclib's `btclib.script.engine.script` enforces. A `multi_a()` leaf is
 bounded by the stack instead, one element per key, which is what
-`_MAX_PUBKEYS_PER_MULTI_A` in btclib-wallet's
-`btclib_wallet.descriptors.miniscript` states; and a tapscript spend
+`_MAX_PUBKEYS_PER_MULTI_A` in bip32-descriptors'
+`bip32_descriptors.descriptors.miniscript` states; and a tapscript spend
 charges its sigops budget 50 for every non-empty signature, whether or
 not that signature verifies.
 
@@ -157,8 +157,8 @@ becomes of them when a psbt BIP assigns FROST type bytes.
 The two routes are both implemented, and they do not touch.
 
 The script threshold is btclib's: the op codes `OP_CHECKMULTISIG` and
-`OP_CHECKSIGADD` under `btclib.script`. btclib-wallet's
-`btclib_wallet.descriptors.descriptors` holds the descriptor grammar
+`OP_CHECKSIGADD` under `btclib.script`. bip32-descriptors'
+`bip32_descriptors.descriptors.descriptors` holds the descriptor grammar
 that writes one: `multi()` and `sortedmulti()` (BIP383), `multi_a()` and
 `sortedmulti_a()` (BIP386, BIP387).
 
