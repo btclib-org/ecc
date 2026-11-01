@@ -23,6 +23,46 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.11.2
+
+### `ecc.ecc.dahlias`, BIP459 DahLIAS fully aggregated signatures
+
+After the draft of bitcoin/bips#2210 at `8678edb4ad`, whose vectors run
+(closes #366).
+
+### `curves.add`, the sum of two points that may be secret
+
+`curves.curve._add` behind a check of the curve and of both points;
+`sum_var` is the sum of public points. SECURITY.md's *Limitations, not
+vulnerabilities* says which of its steps are constant time (closes #402).
+
+### ARCHITECTURE.md describes the package's layers
+
+`tests/imports_test.py` holds each unit of the package to the imports
+the page states (closes #357).
+
+### ellswift `create` and `encode_var` are tested for a fresh encoding each call
+
+(closes #404)
+
+### The calls of btclib-org/.github name the commit of its tag `v2026.10.29`
+
+With Dependabot's actions bumps (#413).
+
+### The dev tooling moves
+
+coverage 7.17.0, hypothesis 6.170.7, ruff 0.17.2 and uv-build 0.13.5 (#412).
+
+### Docs
+
+SECURITY.md links what changed since the security review (issue
+btclib-org/.github#1795), and the where-the-threshold-lives page names
+bip32-descriptors' modules (closes #416).
+
+### REVIEWING.md opens its own part's questions with btclib-org/.github's sentence
+
+(issue btclib-org/.github#1919)
+
 ## v2026.10.30
 
 ### `ssa_halfagg`, BIP458 half-aggregation of BIP340 signatures

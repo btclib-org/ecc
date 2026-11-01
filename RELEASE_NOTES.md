@@ -9,6 +9,11 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.11.2
+
+No breaking changes. `CHANGELOG.md`'s own `v2026.11.2` section has what the
+release adds.
+
 ## v2026.10.30
 
 - **`negate` and `negate_jac` raise `EccValueError` for a tuple of the
