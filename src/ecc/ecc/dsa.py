@@ -311,7 +311,7 @@ class Sig:
     **The encoding is not delegated, and it is the one thing about a signature
     that is not** (issue btclib-org/btclib#911). The bindings have the same
     encoding as C -- `dsa.to_der`, `to_compact`, `normalize` and `is_low_s` --
-    and four things say no:
+    and these say no:
 
     - a `Sig` carries an `ec` and writes its DER for `ec.n_size`, where
       the bindings answer for secp256k1 alone. A delegation is a second
@@ -322,19 +322,10 @@ class Sig:
       `to_compact` answers is r || s, which this side would still have
       to split and build a `Sig` from. `lower_s` is one comparison
       against n // 2, an order of magnitude under `is_low_s`;
-    - the exception messages are a public contract. `Sig.parse` names
-      which rule the encoding broke, one message each; libsecp256k1
-      returns a single 0, and the bindings' `parse_der` says "invalid
-      DER signature" for all of them;
-    - and the two do not answer the same question. `secp256k1_der_parse_integer`
-      reads an integer that is negative, wider than 32 octets or not below n as
-      an *overflow*, zeroes it and reports success
-      (bitcoin-core/secp256k1#1981). BIP66 and the parser above refuse a
-      negative integer and a DER signature over 72 octets. Each disagreement
-      with libsecp256k1 that `tests/schemes/der_test.py` and
-      `der_differential_test.py` beside it find is that overflow. Pairing a
-      parser with libsecp256k1 as a validator is what bit btclib-org/btclib#680
-      and btclib-org/btclib#667, two libraries wrong the other way.
+    - and the exception messages are a public contract. `Sig.parse`
+      names which rule the encoding broke, one message each;
+      libsecp256k1 returns a single 0, and the bindings' `parse_der`
+      says "invalid DER signature" for all of them.
     """
 
     # 32 bytes scalar, 0 < r < ec.n (ec.n is the curve order)

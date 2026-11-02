@@ -150,7 +150,7 @@ package is used to teach and to prototype as much as to build:
     this package no longer holding a private key as a Python `int`, which
     is a change to that representation and not to a call site.
     `dsa.Signer.__init__` at `self._q.to_bytes(32, "big")`
-    (`src/ecc/ecc/dsa.py:1482`) crosses the same boundary the
+    (`src/ecc/ecc/dsa.py:1473`) crosses the same boundary the
     other way, once, at construction: the plain `int`
     `scalar_from_prv_key` already produced becomes a transient `bytes` on
     the way into the owned buffer `wipe` overwrites afterwards. That

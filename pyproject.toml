@@ -87,14 +87,16 @@ pull_requests = "https://github.com/btclib-org/ecc/pulls"
 # An extra rather than a dependency because every delegation declines
 # where they are absent and the Python arithmetic answers instead, which
 # is what lets a distribution package this with no C toolchain in reach.
-# The floor is 0.8.0.12, past GHSA-8h6f-34jj-7p6c, which 0.8.0.10 fixes.
+# The floor is 0.8.0.14, whose `dsa` refuses a signature with r or s
+# outside [1, n-1] (btclib-org/btclib-secp256k1#1279), as `Sig` does; it
+# is past GHSA-8h6f-34jj-7p6c too, which 0.8.0.10 fixes.
 # This package needs `ecdh.shared_point` (0.8.0.8,
 # btclib-org/btclib-secp256k1#1005), which `curves.curve`,
 # `curves.sec_point` and `ecc.ecc.dh` call to multiply a point other than
 # the generator by a private scalar. `_libsecp256k1` imports the whole
 # surface in one `try`, and a release missing one name of it fails that
 # import with an error naming the installed version and this floor
-secp256k1 = ["btclib-secp256k1>=0.8.0.12"]
+secp256k1 = ["btclib-secp256k1>=0.8.0.14"]
 # GMP's integers for the Python arm's field arithmetic, through gmpy2's
 # mpz: every curve then reduces by an mpz modulus. An extra for the reason
 # the bindings are one, the int arithmetic answering where it is absent.
@@ -114,7 +116,7 @@ gmpy2 = ["gmpy2>=2.3.2; implementation_name == 'cpython'"]
 # no default extra, so an extra alone would leave `uv sync` resolving the
 # project without the bindings. tests/pyproject_test.py refuses the day
 # the two specifiers stop agreeing
-bindings = ["btclib-secp256k1>=0.8.0.12"]
+bindings = ["btclib-secp256k1>=0.8.0.14"]
 # the `gmpy2` extra again, as a group, for the same reason and under the
 # same test
 gmpy2 = ["gmpy2>=2.3.2; implementation_name == 'cpython'"]

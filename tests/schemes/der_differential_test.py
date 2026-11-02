@@ -189,43 +189,23 @@ def test_der_parse_agrees_with_core_on_mutations() -> None:
             assert (sig.r, sig.s) == _core_scalars(der), der.hex()
 
 
-def _as_libsecp256k1_reads(scalar: int) -> bytes:
-    """Return the 32 octets libsecp256k1 reads a non-negative scalar as.
-
-    One not below n reads as zero: the overflow the `Sig` docstring names.
-    """
-    return (scalar if scalar < ec.n else 0).to_bytes(32, "big")
-
-
 @needs_bindings
 def test_der_parse_agrees_with_libsecp256k1_on_mutations() -> None:
-    """libsecp256k1 accepts what `Sig.parse` accepts, outside the overflow.
+    """libsecp256k1 reads what `Sig.parse` reads, where r and s are in range.
 
-    The overflow is the one the `Sig` docstring names. Where a scalar is
-    out of range, either answer is accepted here, the zero or the refusal,
-    for the reason `tests/schemes/der_test.py` gives in
-    `test_der_agrees_with_libsecp256k1_except_where_it_is_stricter`.
-
-    That overflow is behind both differences in the verdict:
-
-    - a negative scalar, which `Sig.parse` refuses, is the one
-      `tests/schemes/der_test.py` pins, and is not compared again here;
-    - more than 70 octets of r,s data, which `Sig.parse` refuses as Core
-      does, holds an integer wider than 32 octets: libsecp256k1 has no
-      size bound and reads it as zero.
+    `check_validity` is off here, so `Sig.parse` reads an r or s outside
+    [1, n-1], which the bindings refuse (btclib-org/btclib-secp256k1#1279).
+    A negative scalar, and more than 70 octets of r,s data, are refused by
+    both: by `Sig.parse` as by Core, and by the bindings, which refuse them
+    outright or as the zero libsecp256k1 reads them as.
     """
     for der in _encodings():
         sig = _parsed(der)
         compact = None
         with suppress(ValueError):
             compact = libsecp256k1_dsa.to_compact(der)
-        if isinstance(sig, Sig):
-            read = _as_libsecp256k1_reads(sig.r) + _as_libsecp256k1_reads(sig.s)
-            in_range = 0 < sig.r < ec.n and 0 < sig.s < ec.n
-            assert compact in ((read,) if in_range else (read, None)), der.hex()
-        elif sig.startswith("invalid negative scalar"):
-            continue
-        elif sig.startswith("invalid DER sequence length: "):
-            assert compact is None or bytes(32) in (compact[:32], compact[32:])
+        if isinstance(sig, Sig) and 0 < sig.r < ec.n and 0 < sig.s < ec.n:
+            read = sig.r.to_bytes(32, "big") + sig.s.to_bytes(32, "big")
+            assert compact == read, der.hex()
         else:
             assert compact is None, (der.hex(), sig)

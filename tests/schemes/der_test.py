@@ -4,8 +4,6 @@
 
 """Tests for the `ecc.ecc.dsa` module."""
 
-from contextlib import suppress
-
 import pytest
 
 from ecc._libsecp256k1 import dsa as libsecp256k1_dsa
@@ -321,7 +319,7 @@ def _malformed(good: bytes) -> list[tuple[str, bytes]]:
 
 
 @needs_bindings
-def test_der_agrees_with_libsecp256k1_except_where_it_is_stricter() -> None:
+def test_der_agrees_with_libsecp256k1() -> None:
     """libsecp256k1 as the oracle on a DER encoding, and where it is not one.
 
     Nothing here asks the bindings whether an encoding is well formed,
@@ -334,17 +332,12 @@ def test_der_agrees_with_libsecp256k1_except_where_it_is_stricter() -> None:
     above is put to `dsa.signature_verify` as well, which is
     secp256k1_ecdsa_signature_parse_der and a verdict.
 
-    On the corpus above the two agree on every rule but one: a negative
-    scalar, which this package refuses in BIP66's words and libsecp256k1
-    reads as the overflow the `Sig` docstring names, handing back r = 0 --
-    which no verification accepts. The bindings pass that zero on, and
-    btclib-org/btclib-secp256k1#1272 asks them to refuse the signature
-    instead, so either answer is accepted below, and nothing else. This is
-    what says so out loud rather than leaving the difference to be found by
-    a caller who used `to_compact` as a validator.
-
-    `der_differential_test.py` beside this file finds the other difference
-    the same overflow causes, the size bound.
+    On the corpus above the two agree on every rule, a negative scalar
+    included. This package refuses it in BIP66's words; libsecp256k1
+    reads it as zero, and the bindings refuse a zero r or s
+    (btclib-org/btclib-secp256k1#1279), so `signature_verify` answers
+    False and `to_compact` raises rather than hand a zero scalar to a
+    caller who used it as a validator.
     """
     sig = Sig(2**255 - 4, 2**247 - 1)
     good = sig.serialize()
@@ -360,24 +353,20 @@ def test_der_agrees_with_libsecp256k1_except_where_it_is_stricter() -> None:
             Sig.parse(bad, check_validity=False)
         assert not libsecp256k1_dsa.signature_verify(bad), name
 
-    # and the rule libsecp256k1 answers otherwise, on each scalar: a high
+    # and the rule libsecp256k1 reads as a zero, on each scalar: a high
     # bit set with no 0x00 in front of it, a negative integer
     r_value = good[4 : 4 + good[3]]
     s_value = good[4 + good[3] + 2 :]
     r, s = _element(r_value), _element(s_value)
-    for name, bad, zeroed in (
-        ("r", _sequence(_element(b"\x80" + r_value[1:]), s), slice(0, 32)),
-        ("s", _sequence(r, _element(b"\x80" + s_value[1:])), slice(32, 64)),
+    for name, bad in (
+        ("r", _sequence(_element(b"\x80" + r_value[1:]), s)),
+        ("s", _sequence(r, _element(b"\x80" + s_value[1:]))),
     ):
         with pytest.raises(EccValueError, match="invalid negative scalar"):
             Sig.parse(bad, check_validity=False)
-        # where it is read, what it read is the zero scalar, not the value
-        # those octets spell
-        scalar = None
-        with suppress(ValueError):
-            scalar = libsecp256k1_dsa.to_compact(bad)[zeroed]
-        verdict = libsecp256k1_dsa.signature_verify(bad), scalar
-        assert verdict in ((True, bytes(32)), (False, None)), name
+        assert not libsecp256k1_dsa.signature_verify(bad), name
+        with pytest.raises(ValueError, match="^invalid DER signature$"):
+            libsecp256k1_dsa.to_compact(bad)
 
 
 @needs_bindings
