@@ -2,7 +2,8 @@
 name: api-break
 
 # Labels a pull request `api-break` when it breaks the public API: the griffe
-# walk of `reusable-public-api.yml`, run against the pull request's base commit
+# walk and the `api_gaps.py` comparison of `reusable-public-api.yml`, run
+# against the merge's first parent, the higher exit code deciding
 # (btclib-org/.github#1674). The walk, the label and the removal of it on a
 # later push that finds no break are `btclib-org/.github`'s
 # `reusable-api-break.yml`, called at a tagged commit (section 10 of
@@ -50,6 +51,6 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # the label; read-only on a fork
-    uses: btclib-org/.github/.github/workflows/reusable-api-break.yml@ed616d71c43cd4c8bded40d1182befccd99e6ee7 # v2026.10.29
+    uses: btclib-org/.github/.github/workflows/reusable-api-break.yml@7b85b373d1957dcfc1a648a21dd7233954ef410b # v2026.11.2
     with:
       package: ecc

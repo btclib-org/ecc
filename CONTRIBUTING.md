@@ -748,6 +748,10 @@ uv run --locked --no-default-groups --group docs \
     sphinx-build -n -W -b html docs/source docs/build/html
 ```
 
+The documentation gate ends with the reads of the pages it wrote that the
+`docs.yml` block under *Reproducing what CI runs* gives,
+`check_included_links.py` among them.
+
 `--cov` is in `addopts`, so the bare `pytest` above is the coverage gate
 and `fail_under` is what it answers against — 100%, and coverage takes
 that literally: a statement or a branch no test reaches fails it. A
@@ -1040,12 +1044,24 @@ if grep -rn 'href="#\.\.\?/' docs/build/html --include='*.html'; then
     echo "::error::the links above resolve to no page (unresolved relative path)"
     exit 1
 fi
+served=$(mktemp -d)
+git clone --depth 1 --filter=blob:none --sparse \
+    https://github.com/btclib-org/.github "$served"
+git -C "$served" sparse-checkout set .github/scripts
+uv run --no-project --python 3.15 \
+    "$served"/.github/scripts/check_included_links.py docs/build/html
 ```
 
 What myst renders for a destination it cannot resolve is an anchor to an
 id no page has. `-W` reports it because `docs/source/conf.py` resolves the
 links the included root files carry and suppresses no myst warning; the
 `grep` is what still finds one the day a suppression goes back in.
+
+`check_included_links.py` refuses a built page that links a file the
+documentation renders at its GitHub URL instead of its page. It is
+btclib-org/.github's: the job checks it out at the commit `docs.yml`
+pins, and the commands above fetch it from `main`, as for
+`generate_sbom.py`.
 
 `codeql.yml` has no line here: its jobs run `github/codeql-action` and no
 command of this project's, so reproducing it locally means the CodeQL CLI

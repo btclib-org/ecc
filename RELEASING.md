@@ -257,8 +257,9 @@ result.
    promises that a breaking change is announced there, the calendar version
    promising nothing, and nothing else reads that promise: the suite judges the
    code, and a reviewer weighs what the prose says rather than what it leaves
-   out. griffe reads both revisions and answers that second question — not
-   whether the list is right, but whether it is complete:
+   out. griffe reads both revisions and answers that second question for the
+   breaks it compares — not whether the list is right, but whether it is
+   complete:
 
    ```shell
    uv run --locked --with griffe griffe check ecc \
@@ -288,14 +289,15 @@ result.
    1 on a finding, so the day that reasoning stops holding — a cycle that
    means to break nothing — making it a gate is one line.
 
-   `release.yml` asks the same question again as its `public-api` job,
-   and a red one there is a break `RELEASE_NOTES.md` does not name: the
-   job gates nothing, its own comment saying why, and
-   every job behind it opens its `if:` with `always()` and names the
-   results it does require, so a red `public-api` costs the release
-   nothing. What it costs is the run's own badge, red while every job
-   that matters is green, which is why the step after the approval below
-   reads the run job by job rather than as a whole.
+   `release.yml` asks the same question again as its `public-api` job, which
+   also runs btclib-org/.github's `api_gaps.py` for the breaks griffe does not
+   compare or can skip; this step does not (btclib-org/.github#1940). A red
+   `public-api` is a break `RELEASE_NOTES.md` does not name: the job gates
+   nothing, its own comment saying why, and every job behind it opens its `if:`
+   with `always()` and names the results it does require, so a red `public-api`
+   costs the release nothing. What it costs is the run's own badge, red while
+   every job that matters is green, which is why the step after the approval
+   below reads the run job by job rather than as a whole.
 
 1. Name in RELEASE_NOTES.md every change to the release's assets or to how they
    are verified — a file name, a signer, a `--source-ref` — in the release that
@@ -558,24 +560,24 @@ result.
      "repos/btclib-org/ecc/actions/runs/${run:?}/jobs?per_page=100"
    ```
 
-   On a tag `Publish to TestPyPI` is `skipped`, its trigger being the
-   dispatch, and `public-api` is red for a break `RELEASE_NOTES.md` does not
-   name, being the griffe step above run again. `Run the lint workflow /
-   lint / Dependency review` and `Run the lint workflow / lint / Sign-off`
-   are `skipped` on every run, as they run only on a `pull_request`; a
-   tagged commit had both checks on its own pull request. Every other job
-   reads `success`, the ones behind `public-api` included: each of them
-   opens its `if:` with `always()` and names the results it does require, so
-   a red `public-api` costs the release nothing, and a `skipped` among them
-   is a defect in `release.yml` rather than a red to look past. A rehearsal
-   is the mirror image, `Publish to PyPI` skipped and with it whatever is
-   guarded on its success, and `documented` skipped on its own account, its
-   guard being the push. `gh run rerun` does not reach a skipped job,
-   `--failed` rerunning `failure` and `--job` refusing a skip outright, so
-   what recovers one is doing by hand what it would have done: for
-   `github-release` the script "If something goes wrong" gives, for
-   `published` a dispatch of `pypi-install.yml`, which installs what the
-   index serves at the time.
+   On a tag `Publish to TestPyPI` is `skipped`, its trigger being the dispatch,
+   and `public-api` is red for a break `RELEASE_NOTES.md` does not name: the
+   griffe step above run again, and btclib-org/.github's `api_gaps.py`, which
+   reports breaks griffe does not compare or can skip. `Run the lint workflow /
+   lint / Dependency review` and `Run the lint workflow / lint / Sign-off` are
+   `skipped` on every run, as they run only on a `pull_request`; a tagged
+   commit had both checks on its own pull request. Every other job reads
+   `success`, the ones behind `public-api` included: each of them opens its
+   `if:` with `always()` and names the results it does require, so a red
+   `public-api` costs the release nothing, and a `skipped` among them is a
+   defect in `release.yml` rather than a red to look past. A rehearsal is the
+   mirror image, `Publish to PyPI` skipped and with it whatever is guarded on
+   its success, and `documented` skipped on its own account, its guard being
+   the push. `gh run rerun` does not reach a skipped job, `--failed` rerunning
+   `failure` and `--job` refusing a skip outright, so what recovers one is
+   doing by hand what it would have done: for `github-release` the script "If
+   something goes wrong" gives, for `published` a dispatch of
+   `pypi-install.yml`, which installs what the index serves at the time.
 
 1. Install what was just published, in an environment of its own rather
    than one that may already hold it, and run something with it:
