@@ -1604,10 +1604,14 @@ def test_a_zero_scalar_is_multiplied_as_one(monkeypatch: pytest.MonkeyPatch) -> 
     """The bindings arm multiplies one where the scalar is zero.
 
     A Pedersen commitment's value is a secret and may be zero, so a zero
-    has to cost what any other scalar costs: the call is made with one,
-    the substitution libsecp256k1 makes for a key it refuses, and
-    infinity is answered. The Python arms are made to fail here, so a
-    zero that reached them would fail the test rather than pass slower.
+    makes the call any other scalar makes: the same call, with one, the
+    substitution libsecp256k1 makes for a key it refuses, and infinity is
+    answered. This checks which calls are made and with what scalar, for
+    a zero and for another scalar of each point, and the answer. It does
+    not check the Python around the call, which tests the zero, as
+    SECURITY.md's limitations say. The Python arms are made to fail here,
+    so a zero that reached them would fail the test rather than pass
+    slower.
     """
 
     def refuse(*_: object, **__: object) -> None:
@@ -1618,30 +1622,40 @@ def test_a_zero_scalar_is_multiplied_as_one(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(curve, "_mult_fixed_base", refuse)
     monkeypatch.setattr(curve, "_mult_endomorphism_secp256k1", refuse)
 
-    scalars: list[object] = []
+    calls: list[tuple[str, int]] = []
 
-    def record(wrapped: Callable[..., Any]) -> Callable[..., Any]:
+    def record(name: str, wrapped: Callable[..., Any]) -> Callable[..., Any]:
         def recorded(*args: Any, **kwargs: Any) -> Any:
-            scalars.append(next(a for a in args if isinstance(a, int)))
+            calls.append((name, next(a for a in args if isinstance(a, int))))
             return wrapped(*args, **kwargs)
 
         return recorded
 
-    monkeypatch.setattr(
-        curve,
-        "libsecp256k1_pubkey_from_prvkey",
-        record(libsecp256k1_pubkey_from_prvkey),
-    )
-    monkeypatch.setattr(
-        curve, "libsecp256k1_shared_point", record(libsecp256k1_shared_point)
-    )
+    for name, wrapped in (
+        ("libsecp256k1_pubkey_from_prvkey", libsecp256k1_pubkey_from_prvkey),
+        ("libsecp256k1_shared_point", libsecp256k1_shared_point),
+    ):
+        monkeypatch.setattr(curve, name, record(name, wrapped))
 
     H = second_generator(secp256k1)
-    assert mult(0) == INF
-    assert mult(secp256k1.n, secp256k1.G) == INF
-    assert mult(0, H) == INF
-    assert PreparedPoint(H).mult(secp256k1.n) == INF
-    assert scalars == [1, 1, 1, 1]
+    n = secp256k1.n
+    # each zero beside a scalar that is not one, on the same point and
+    # through the same entry point
+    for multiply in (
+        mult,
+        partial(mult, Q=secp256k1.G),
+        partial(mult, Q=H),
+        PreparedPoint(H).mult,
+    ):
+        for zero in (0, n):
+            calls.clear()
+            assert multiply(zero) == INF
+            zero_calls = calls.copy()
+            calls.clear()
+            assert multiply(zero + 5) != INF
+            assert len(calls) == 1
+            assert zero_calls == [(name, 1) for name, _ in calls]
+            assert calls == [(name, 5) for name, _ in zero_calls]
 
 
 @needs_bindings

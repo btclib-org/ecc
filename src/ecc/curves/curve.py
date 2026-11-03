@@ -1036,9 +1036,11 @@ def _mult_checked(m: int, Q: Point | None, ec: Curve, *, prepared: bool) -> Poin
         # m == 0 is the infinity point, which the bindings reject as a
         # scalar: one is multiplied in its place and the product dropped,
         # the substitution `secp256k1_ec_pubkey_create` and `secp256k1_ecdh`
-        # make for a key they refuse, so that a zero costs what every
-        # other scalar costs -- a Pedersen commitment's value is a secret,
-        # and zero is one of its values
+        # make for a key they refuse, so that a zero makes the call any
+        # other scalar makes -- a Pedersen commitment's value is a secret,
+        # and zero is one of its values. The Python here still tests m for
+        # zero, before the call and after it: SECURITY.md's limitations
+        # name both steps
         stand_in = m or 1
         # the generator is ec_pubkey_create, with no point to parse first
         if Q is None or Q == ec.G:

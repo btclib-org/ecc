@@ -445,9 +445,10 @@ def prv_key_tweak_add(prv_key: Integer, t: Integer, ec: Curve = secp256k1) -> in
     On secp256k1 the bindings compute it,
     `secp256k1_keypair_xonly_tweak_add`, in constant time in the key; the
     tweak is not treated as a secret, and libsecp256k1 multiplies the
-    generator by it in variable time. The Python arm is not
-    constant-time. `curves.prv_key_tweak_add` is the sum without the
-    negation.
+    generator by it in variable time. The Python checks and conversions
+    around that call are not constant time, nor is the Python arm.
+    SECURITY.md's limitations name the Python steps.
+    `curves.prv_key_tweak_add` is the sum without the negation.
     """
     q = scalar_from_prv_key(prv_key, ec)
     tweak = _scalar_from_tweak(t, ec)

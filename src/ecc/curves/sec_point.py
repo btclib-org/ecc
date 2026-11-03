@@ -131,9 +131,11 @@ def prv_key_tweak_add(prv_key: Integer, t: Integer, ec: Curve = secp256k1) -> in
     sum of zero is no private key and is refused.
 
     On secp256k1 the bindings compute the sum,
-    `secp256k1_ec_seckey_tweak_add`, in constant time; Python's `%` on
-    the other arm is not. `ssa.prv_key_tweak_add` is BIP341's sum, which
-    negates the key first where its point has an odd y.
+    `secp256k1_ec_seckey_tweak_add`, in constant time; the Python checks
+    and conversions around that call are not, and neither is Python's `%`
+    on the other arm. SECURITY.md's limitations name the Python steps.
+    `ssa.prv_key_tweak_add` is BIP341's sum, which negates the key first
+    where its point has an odd y.
     """
     q = scalar_from_prv_key(prv_key, ec)
     tweak = _scalar_from_tweak(t, ec)
@@ -417,7 +419,10 @@ def _mult_sec(sec: bytes, m: int, ec: Curve) -> Point:
     `ecdh.shared_point`, which is the call libsecp256k1 would have made
     on the bytes it was handed. That call is `secp256k1_ecdh`, constant
     time in m, and the Python arm is `mult`'s own, regular and blinded:
-    the name is plain because neither arm's work follows m.
+    the name is plain because neither arm's work follows m. Which calls
+    are made does follow m: a zero skips the call above for a parse of
+    the octets and `mult`, which crosses with its stand-in where the
+    bindings serve, and SECURITY.md's limitations name that step.
 
     The octets need not be proved a point first -- `_sec_from_pub_key` hands
     them in unproven, the same trade `ecc.ecc.dsa` makes for its own delegated
@@ -454,7 +459,8 @@ def mult_pub_key(m: Integer, pub_key: PubKey, ec: Curve = secp256k1) -> Point:
     The name is plain, as `mult`'s is, because the scalar is a secret: a
     private key, or BIP352's input_hash*a. The Python arm is `mult`'s own,
     and the arm the bindings serve is `secp256k1_ecdh`, constant time in
-    the scalar.
+    the scalar. The Python around that call is not, and a zero scalar
+    leaves it for `mult`: SECURITY.md's limitations name those steps.
     """
     _assert_valid_ec(ec)
     scalar = int_from_integer(m) % ec.n

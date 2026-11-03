@@ -314,7 +314,8 @@ package is used to teach and to prototype as much as to build:
     predicate asks; a zero reduced scalar is multiplied as one and the
     product dropped, the substitution `secp256k1_ec_pubkey_create` and
     `secp256k1_ecdh` make for a key they refuse, so a zero is not told
-    apart by the arm it takes; the generator is a different call inside
+    apart by the arm it takes, though the Python around the call tests it
+    (the next bullet); the generator is a different call inside
     that arm and infinity is not delegated at all --
     `curve._libsecp256k1_mult` at
     `libsecp256k1_shared_point(_sec_from_point(Q), m, False)`
@@ -322,7 +323,7 @@ package is used to teach and to prototype as much as to build:
     `sec = libsecp256k1_shared_point(`
     (`src/ecc/ecc/dh.py:123`) and `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m, False)`
-    (`src/ecc/curves/sec_point.py:434`), under
+    (`src/ecc/curves/sec_point.py:439`), under
     `sec_point.mult_pub_key` and `ecies.derive_keys`, make the same call
     on the octets they already hold.
     `double_mult_var` and `multi_mult_var`, and `ssa.batch_verify`, are
@@ -339,20 +340,17 @@ package is used to teach and to prototype as much as to build:
     (`src/ecc/ecc/pedersen.py:384`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/ecc/curves/curve.py:1435`):
+    (`src/ecc/curves/curve.py:1437`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at
     infinity, which `_add` does not hand over: it sums the other term
     with itself and drops the answer, so the call is made for a zero as
-    for any other value. Only the call is constant time: `_add` tests
-    for infinity in Python to choose the stand-in, and converts each
-    point to octets and back in Python. `curves.add` is that sum behind
-    a check of its arguments, published for a caller whose points are as
-    secret as these. Its check is Python on the secret points as well,
-    and does less work for a point at infinity than for any other. Where
-    the bindings do not serve, `curves.add` is the Python arithmetic the
-    bullet above describes.
+    for any other value. Only the call is constant time, and the next
+    bullet names the Python around it. `curves.add` is that sum behind a
+    check of its arguments, published for a caller whose points are as
+    secret as these. Where the bindings do not serve, `curves.add` is the
+    Python arithmetic the bullet above describes.
     `pedersen.generator_from_seed` treats its seed and its blinding
     factor as secrets, as libsecp256k1-zkp does: its blind*G is `mult`
     and its sums are `_add`, and the map its seed goes through is Python
@@ -373,6 +371,88 @@ package is used to teach and to prototype as much as to build:
     `secp256k1_ec_pubkey_combine` are named nowhere in that file, so what
     makes the second constant time is the group law and the inversion it
     calls, not a test
+- **the Python around a crossing is not constant time, and this is what it
+    does with the secret.** A function is listed here where it is public,
+    takes a secret, and hands that secret to libsecp256k1 through a dispatch
+    of its own: its body, or a private function it reaches through private
+    functions only, asks `curve._libsecp256k1_serves` or calls the bindings.
+    `tests/security_census_test.py` finds those that reach their dispatch
+    through calls made by name, and fails on one that is not listed in the
+    items below, unless its name is a `_var` one or a verification's, or
+    that file names it as handed public values only. A function that reaches
+    the bindings only through a listed one, such as `dsa.gen_keys` through
+    `curve.mult`, takes that function's steps and adds its own Python
+    arithmetic, which is the Python arithmetic described above. Each step
+    below runs while the bindings serve, on the secret, on a value computed
+    from it, or, for the multiplications, on the point multiplied.
+
+    Some steps are common to most of them. A private key passes through
+    `sec_point.scalar_from_prv_key`, which reads it from octets where it
+    arrives as octets and refuses one outside 1..n-1 with a Python
+    comparison. A scalar that is not that, the one `curve.mult`,
+    `sec_point.mult_pub_key`, `sec_point.bytes_from_prv_key_int` and the
+    `pedersen` functions take, is read by `_utils.int_from_integer`, which
+    turns a string or octets into an int. btclib-secp256k1's own Python,
+    `_scalar.scalar`, which its entry points apply to a scalar argument,
+    checks an int against 2^256 and writes it to 32 octets before the C
+    call. After the call, its `ecdh._shared_point_`, under every
+    `secp256k1_ecdh` this package makes, assembles the octets it answers in
+    Python: it copies the coordinates out and, where the call asks for the
+    compressed form, as `dh.diffie_hellman`'s does, sets the prefix from the
+    parity of the product's y, `_EVEN_Y | (coordinates[63] & 1)`.
+
+    - `curve.mult` and `curve.PreparedPoint.mult` reduce the scalar mod n
+        and test it for zero before the call, `stand_in = m or 1`, and
+        after it, `product if m else INF`. Both compare the point with
+        the generator, and read the product back from octets. A point
+        other than the generator they test for infinity and write to
+        octets for the call, and `curve.mult` runs `require_on_curve` on
+        it first
+    - `curve.add` runs `require_on_curve` on both points, which for a
+        point at infinity skips the range check of y and its square, work
+        any other point costs. `curve._add` under it tests each point for
+        infinity to choose the stand-in, writes the points to octets for
+        the call, and reads the sum back
+    - `pedersen.commit` refuses an r that is 0 mod n, and its commitment is a
+        `curve.mult` of each scalar and a `curve._add` of the products, with
+        their steps. `pedersen.generator_from_seed` is the map of its seed,
+        which the bullet above names, and a `curve._add`; given a blinding
+        factor, it refuses one outside 0..n-1 and adds its `curve.mult` with
+        another `curve._add`. `rangeproof.sign` and `rangeproof.rewind` are the
+        Python arithmetic around their commitments, which are
+        `pedersen._commit`, and `rewind` compares the commitment it rebuilds
+        with the one it was handed
+    - `sec_point.mult_pub_key` reduces its scalar mod n, and
+        `sec_point._mult_sec` under it sends a zero to `curve.mult`
+        through a parse of the key, `point_from_octets_var`, which for a
+        compressed key is a call more than any other scalar makes.
+        `ecies.derive_keys` takes its key through `scalar_from_prv_key`,
+        so no zero reaches that branch. It reads the shared point back
+        from octets and writes it to octets again with `bytes_from_point`,
+        which runs `require_on_curve` on it and picks the prefix from its
+        y, before hashing it with sha512
+    - `sec_point.bytes_from_prv_key_int` reduces its scalar mod n and
+        sends a zero to `curve.mult`, whose answer at infinity it refuses
+    - `sec_point.prv_key_tweak_add` and `ssa.prv_key_tweak_add` refuse a
+        tweak outside 0..n-1, turn the bindings' refusal of a zero sum
+        into their own, and read the sum back into an int.
+        `commit_nonce.commit_nonce_` multiplies its nonce with `curve.mult`
+        for the receipt, turns a refused zero sum into its own refusal,
+        and reads the tweaked nonce back into an int
+    - `dh.diffie_hellman` slices the x-coordinate out of the shared
+        point's octets and derives the key from it in Python,
+        `kdf.ansi_x9_63_kdf`, one hash call per block
+    - `ellswift.create`, `ellswift.xdh`, `dsa.sign_`,
+        `dsa.sign_recoverable_` and `ssa.sign_`, with the spellings that
+        reduce a message first, take the key through
+        `scalar_from_prv_key` and do nothing else with it in Python: what
+        comes back is a public key, a signature or, for `xdh`, the secret
+        octets as the bindings answer them
+    - `dsa.Signer` takes the key through `scalar_from_prv_key`, multiplies
+        it with `curve.mult` for the public key, and writes it to the
+        buffer it signs from, as the bullet on caller-owned buffers above
+        says. `ssa.Signer` hands the key to the bindings' keypair. Neither
+        does Python on the key when it signs
 - `rangeproof.rewind` on the Python arm takes time that depends on the value
     it recovers: `rangeproof._value_encoding_var` at
     `return position, int.from_bytes(tmp[24:32], "big")`
