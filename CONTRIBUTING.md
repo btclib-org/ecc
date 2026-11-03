@@ -1045,11 +1045,16 @@ if grep -rn 'href="#\.\.\?/' docs/build/html --include='*.html'; then
     exit 1
 fi
 served=$(mktemp -d)
-git clone --depth 1 --filter=blob:none --sparse \
+git clone --quiet --filter=blob:none --sparse \
     https://github.com/btclib-org/.github "$served"
 git -C "$served" sparse-checkout set .github/scripts
+git -C "$served" checkout --quiet \
+    "$(sed -n 's/.*reusable-docs\.yml@\([0-9a-f]*\).*/\1/p' .github/workflows/docs.yml)"
+found=0
 uv run --no-project --python 3.15 \
-    "$served"/.github/scripts/check_included_links.py docs/build/html
+    "$served"/.github/scripts/check_included_links.py docs/build/html || found=$?
+rm -rf "$served"
+test "$found" -eq 0
 ```
 
 What myst renders for a destination it cannot resolve is an anchor to an
@@ -1059,9 +1064,8 @@ links the included root files carry and suppresses no myst warning; the
 
 `check_included_links.py` refuses a built page that links a file the
 documentation renders at its GitHub URL instead of its page. It is
-btclib-org/.github's: the job checks it out at the commit `docs.yml`
-pins, and the commands above fetch it from `main`, as for
-`generate_sbom.py`.
+btclib-org/.github's: the commands above check it out at the commit
+`docs.yml` pins, as the job does.
 
 `codeql.yml` has no line here: its jobs run `github/codeql-action` and no
 command of this project's, so reproducing it locally means the CodeQL CLI
