@@ -191,6 +191,13 @@ def test_key_agg_error_vectors(
     assert_error(error, excinfo.value)
 
 
+@both_arms
+def test_key_agg_refuses_an_empty_list() -> None:
+    """There is no aggregate of no key: BIP327's KeyAgg asks for 0 < u."""
+    with pytest.raises(EccValueError, match="`pubkeys` array must not be empty"):
+        musig2.key_agg_var([])
+
+
 def nonce_gen_vectors() -> list[Any]:
     """One param per case of nonce_gen_vectors.json."""
     test_data = load("schemes", "_data", "nonce_gen_vectors.json")
@@ -259,6 +266,13 @@ def test_nonce_agg_error_vectors(pub_nonces: list[bytes], error: Any) -> None:
     with pytest.raises(_ERRORS) as excinfo:
         musig2.nonce_agg_var(pub_nonces)
     assert_error(error, excinfo.value)
+
+
+@both_arms
+def test_nonce_agg_refuses_an_empty_list() -> None:
+    """There is no aggregate of no nonce: BIP327's NonceAgg asks for 0 < u."""
+    with pytest.raises(EccValueError, match="`pubnonces` array must not be empty"):
+        musig2.nonce_agg_var([])
 
 
 _SIGN_VERIFY = load("schemes", "_data", "sign_verify_vectors.json")
@@ -651,6 +665,41 @@ def test_sig_agg_error_vectors(case: dict[str, Any]) -> None:
     with pytest.raises(_ERRORS) as excinfo:
         musig2.partial_sig_agg(psigs, session_ctx)
     assert_error(case["error"], excinfo.value)
+
+
+def _sig_agg_session(
+    adaptor: bytes | None,
+) -> tuple[musig2.SessionContext, list[bytes]]:
+    """Return the first valid sig_agg case's session and its psigs."""
+    case = _SIG_AGG["valid_test_cases"][0]
+    session_ctx = musig2.SessionContext(
+        bytes.fromhex(case["aggnonce"]),
+        [_SA_PUB_KEYS[i] for i in case["key_indices"]],
+        [_SA_TWEAKS[i] for i in case["tweak_indices"]],
+        case["is_xonly"],
+        _SA_MSG,
+        adaptor,
+    )
+    return session_ctx, [_SA_PSIGS[i] for i in case["psig_indices"]]
+
+
+@both_arms
+def test_partial_sig_agg_refuses_a_count_unlike_the_signers() -> None:
+    """One partial signature per public key, as BIP445's PartialSigAgg asks."""
+    session_ctx, psigs = _sig_agg_session(None)
+    for wrong in ([], psigs[:1], psigs + psigs[:1]):
+        with pytest.raises(EccValueError, match="`psigs` and `pubkeys` arrays"):
+            musig2.partial_sig_agg(wrong, session_ctx)
+
+
+@both_arms
+def test_partial_sig_agg_adaptor_refuses_a_count_unlike_the_signers() -> None:
+    """The adaptor twin takes one partial signature per public key too."""
+    adaptor = bytes_from_point(mult(3, ec=secp256k1), secp256k1)
+    session_ctx, psigs = _sig_agg_session(adaptor)
+    for wrong in ([], psigs[:1], psigs + psigs[:1]):
+        with pytest.raises(EccValueError, match="`psigs` and `pubkeys` arrays"):
+            musig2.partial_sig_agg_adaptor(wrong, session_ctx)
 
 
 # The bindings oracle, issue btclib-org/btclib#1048: every test below

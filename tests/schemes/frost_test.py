@@ -206,6 +206,13 @@ def test_nonce_agg_error_vectors(pub_nonces: list[bytes], error: Any) -> None:
     assert_error(error, excinfo.value)
 
 
+@both_arms
+def test_nonce_agg_refuses_an_empty_list() -> None:
+    """There is no aggregate of no nonce: BIP445's NonceAgg asks for 1 <= u."""
+    with pytest.raises(EccValueError, match="pubnonces list must not be empty"):
+        frost.nonce_agg_var([])
+
+
 # --------------------------------------------------------------------
 # sign_verify_vectors.json
 # --------------------------------------------------------------------

@@ -667,8 +667,12 @@ def nonce_agg_var(pub_nonces: Sequence[Octets]) -> bytes:
     sum each half of the pair independently and serialize a half that
     sums to infinity as the 33-zero-byte placeholder, refusing that from
     one signer alone would let it stop the session at will.
+
+    An empty list is refused: BIP445 asks for at least one nonce.
     """
     _assert_octets_sequence(pub_nonces, "pub_nonces")
+    if not pub_nonces:
+        raise EccValueError("The pubnonces list must not be empty.")
     nonces = [bytes_from_octets(on, _NONCE_SIZE) for on in pub_nonces]
     agg_nonce = b""
     for j in (0, 1):

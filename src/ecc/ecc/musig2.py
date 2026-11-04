@@ -371,8 +371,12 @@ def key_agg_var(pub_keys: Sequence[Octets]) -> KeyAggContext:
     The order of the list is part of the key: aggregate the same keys in
     another order and the group is another group. `key_sort` is the
     usual way to agree on one.
+
+    BIP327 asks for at least one key, so an empty list is refused.
     """
     _assert_octets_sequence(pub_keys, "pub_keys")
+    if not pub_keys:
+        raise EccValueError("The `pubkeys` array must not be empty.")
     pks = _pub_keys(pub_keys)
     L = _hash_pub_keys(pks)
     second = _second_pub_key(pks)
@@ -580,8 +584,12 @@ def nonce_agg_var(pub_nonces: Sequence[Octets]) -> bytes:
     33-zero-byte placeholder comes from: refusing it here would let one
     signer, by publishing the negation of what the others published,
     stop the session at will.
+
+    An empty list is refused: BIP327 asks for at least one nonce.
     """
     _assert_octets_sequence(pub_nonces, "pub_nonces")
+    if not pub_nonces:
+        raise EccValueError("The `pubnonces` array must not be empty.")
     nonces = [bytes_from_octets(nonce, _NONCE_SIZE) for nonce in pub_nonces]
     agg_nonce = b""
     for j in (0, 1):
@@ -1120,9 +1128,16 @@ def _agg_s(psigs: Sequence[Octets], session_ctx: SessionContext) -> tuple[int, i
     two callers that decide what the sum is allowed to mean. Both are
     public and neither else validates `psigs`, so this is where it is
     checked, once, for both.
+
+    BIP327 requires a nonempty partial-signature list but does not compare
+    its length with the session's public keys. This refuses any other length,
+    as BIP445's PartialSigAgg and `frost.partial_sig_agg` do with signer ids.
     """
     _assert_octets_sequence(psigs, "psigs")
     values = session_values(session_ctx)
+    if len(psigs) != len(session_ctx.pub_keys):
+        err_msg = "The `psigs` and `pubkeys` arrays must have the same length."
+        raise EccValueError(err_msg)
     s = 0
     for i, psig in enumerate(psigs):
         s_i = int.from_bytes(bytes_from_octets(psig, _SCALAR_SIZE), "big")
