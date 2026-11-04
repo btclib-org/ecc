@@ -384,13 +384,13 @@ the line, and it is there because a measurement put it there rather than
 because the rule reaches it: its own wycheproof vectors ask that question
 over profiles built for it, and answer False.
 
-An empty sequence is the one case on the raising side that the rule does
-not put there: `ssa.batch_verify` and `batch_verify_` raise for an empty
-batch, and `ssa_halfagg.verify` for an empty aggregate. BIP340 accepts
-the first, and BIP458 the second when its s is zero, but a caller who
-built one by mistake learns nothing from True, and False would report a
-failed verification where there is no signature to fail
-(btclib-org/ecc#222).
+**An empty sequence answers what its BIP answers**: the identity or a
+vacuous truth where the BIP defines one, a refusal where the BIP fails.
+So `ssa.batch_verify` answers True for an empty batch, as BIP340 does,
+and `ssa_halfagg.verify` for the aggregate of no signature, as BIP458
+does. A caller that knows how many signatures to expect is the one to
+guard against an empty list (btclib-org/ecc#222, btclib-org/ecc#371,
+btclib-org/ecc#447).
 
 A verification also raises where the caller asked to be refused instead of
 served by the Python arithmetic: under

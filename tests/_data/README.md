@@ -486,6 +486,67 @@ output key and the control blocks of every `scriptPubKey` vector, and the
 internal and tweaked private keys of every `keyPathSpending` input. The
 script trees, addresses and signature hashes are read by nothing here.
 
+### BIP458 (half-aggregation): files under `tests/schemes/_data/`
+
+`test_vectors_aggregate.csv`, `test_vectors_incaggregate.csv` and
+`test_vectors_verify.csv`, under upstream's own names, which is the whole
+of `bip-0458/vectors/`. Each is pinned to the commit that last touched
+it, `2d439430`, the commit of bitcoin/bips#2205 that adds the BIP; the
+merge commit, `ada34196`, holds the same blobs.
+
+`tests/schemes/ssa_halfagg_test.py` runs every vector of each file, and
+each one agrees with this package. Wrong sizes, which the files expect to
+fail, raise rather than answer False, as `CONTRIBUTING.md`'s "The public
+surface" states.
+
+### `tests/schemes/_data/test_vectors_aggregate.csv`
+
+```text
+repo    bitcoin/bips
+path    bip-0458/vectors/test_vectors_aggregate.csv
+commit  2d439430b14fe44e189f57582d41718dd614f404  2026-11-01
+blob    653651b1d4d0bbae373be1fcbf97b57a75b9368a
+ours    357977745f47e8942505ac61c47d61586316c4e1
+pulled  2026-10-25, refreshed 2026-11-05
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the same exception
+`bip340_test_vectors.csv` documents: our blob is the `ours` line and
+not the `blob` one.
+
+### `tests/schemes/_data/test_vectors_incaggregate.csv`
+
+```text
+repo    bitcoin/bips
+path    bip-0458/vectors/test_vectors_incaggregate.csv
+commit  2d439430b14fe44e189f57582d41718dd614f404  2026-11-01
+blob    cabede0c6a8f7947e796a28a21047393ce927ba4
+ours    fcf1a9d416651bfd4ff54118a629ec284b964a06
+pulled  2026-10-25, refreshed 2026-11-05
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the same exception
+`bip340_test_vectors.csv` documents: our blob is the `ours` line and
+not the `blob` one.
+
+### `tests/schemes/_data/test_vectors_verify.csv`
+
+```text
+repo    bitcoin/bips
+path    bip-0458/vectors/test_vectors_verify.csv
+commit  2d439430b14fe44e189f57582d41718dd614f404  2026-11-01
+blob    85bb59cde896962e473997e8346b772a999f20a1
+ours    97d4cf27840f8487c484542e78ae308626232684
+pulled  2026-10-25, refreshed 2026-11-05
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the same exception
+`bip340_test_vectors.csv` documents: our blob is the `ours` line and
+not the `blob` one.
+
 ### BIP459 (DahLIAS): files under `tests/schemes/_data/bip459/`
 
 The csv files of `bip-0459/vectors/`, vendored whole and under upstream's
@@ -590,79 +651,6 @@ behind  0 revisions; that commit is the tip of the path
 Verdict: **identical but for line endings**, the exception
 `bip340_test_vectors.csv` above documents, our blob `97cfb815` rather
 than the one above.
-
-## fjahr/bips
-
-### BIP458 (half-aggregation): files under `tests/schemes/_data/`
-
-`test_vectors_aggregate.csv`, `test_vectors_incaggregate.csv` and
-`test_vectors_verify.csv`, under upstream's own names, which is the whole
-of `bip-0458/vectors/`. The BIP is a draft, bitcoin/bips#2205, and its
-files live only on the `halfagg` branch of the fork the pull request
-comes from, hence the `ref` line of each entry. Each file is pinned to
-the commit on that branch that last touched it;
-`2f436b02f60b2ffb4eed8db65aed21e95d1fc4eb`, the revision
-[ISS 365](https://github.com/btclib-org/ecc/issues/365) names,
-is a later commit that only adds the BIP to the repository's README
-index, and holds the same blobs.
-
-`tests/schemes/ssa_halfagg_test.py` runs every vector of each file.
-Each one agrees with this package but the empty aggregate of the
-verification file, which BIP458 accepts and `ssa_halfagg.verify`
-refuses with an `EccValueError`, as `CONTRIBUTING.md`'s "The public
-surface" states. Wrong sizes, which the files expect to fail, raise
-rather than answer False, by the same rule.
-
-### `tests/schemes/_data/test_vectors_aggregate.csv`
-
-```text
-repo    fjahr/bips
-path    bip-0458/vectors/test_vectors_aggregate.csv
-ref     halfagg
-commit  684923c5c9aa05d4124d0a6a4a82f5f9c1c9f959  2026-10-20
-blob    dce0fb1bb9df161db1dcb7e24b85f34090a466be
-ours    a5657f86ff62fc484697fced7c23df15dfd3a93b
-pulled  2026-10-25
-behind  0 revisions; that commit is the tip of the path
-```
-
-Verdict: **identical but for line endings**, the same exception
-`bip340_test_vectors.csv` documents: our blob is the `ours` line and
-not the `blob` one.
-
-### `tests/schemes/_data/test_vectors_incaggregate.csv`
-
-```text
-repo    fjahr/bips
-path    bip-0458/vectors/test_vectors_incaggregate.csv
-ref     halfagg
-commit  684923c5c9aa05d4124d0a6a4a82f5f9c1c9f959  2026-10-20
-blob    dd9fd28fdb3bc03b069e03852988857d60548ccf
-ours    92909886511fc7398498e4788f5a6d336b9af38e
-pulled  2026-10-25
-behind  0 revisions; that commit is the tip of the path
-```
-
-Verdict: **identical but for line endings**, the same exception
-`bip340_test_vectors.csv` documents: our blob is the `ours` line and
-not the `blob` one.
-
-### `tests/schemes/_data/test_vectors_verify.csv`
-
-```text
-repo    fjahr/bips
-path    bip-0458/vectors/test_vectors_verify.csv
-ref     halfagg
-commit  684923c5c9aa05d4124d0a6a4a82f5f9c1c9f959  2026-10-20
-blob    35d50525f6dfa5b7e3203bfab3b5e93b771b061a
-ours    b7f0149193dd9f96bfaefde240a30cebf34d753b
-pulled  2026-10-25
-behind  0 revisions; that commit is the tip of the path
-```
-
-Verdict: **identical but for line endings**, the same exception
-`bip340_test_vectors.csv` documents: our blob is the `ours` line and
-not the `blob` one.
 
 ## siv2r/bip-frost-signing
 

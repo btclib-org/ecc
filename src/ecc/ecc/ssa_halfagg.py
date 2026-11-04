@@ -4,7 +4,7 @@
 
 """Half-aggregation of BIP340 signatures, according to BIP458.
 
-https://github.com/bitcoin/bips/pull/2205 (draft BIP458)
+https://github.com/bitcoin/bips/blob/master/bip-0458.mediawiki
 
 Half-aggregation turns u BIP340 signatures into one aggregate signature
 of 32*(u+1) bytes: the r of each signature, in order, then one scalar s,
@@ -39,7 +39,7 @@ from typing import Any
 from ecc._utils import assert_type, bytes_from_octets, is_octets
 from ecc.alias import Octets
 from ecc.curves import secp256k1
-from ecc.curves.curve import _multi_mult_x_only_var, mult
+from ecc.curves.curve import INF, _multi_mult_x_only_var, mult
 from ecc.ecc.ssa import challenge_
 from ecc.exceptions import EccRuntimeError, EccTypeError, EccValueError
 
@@ -175,17 +175,12 @@ def _parse(
 ) -> tuple[list[bytes], int]:
     """Return r_i || pk_i || m_i for each pair, and the s of aggsig.
 
-    Raises for what cannot be an aggregate signature or its pairs: no
-    pair at all, a key or a message that is not 32 bytes, and an aggsig
-    whose length does not match the number of pairs. s is not checked
-    against the group order.
+    Raises for what cannot be an aggregate signature or its pairs: a key
+    or a message that is not 32 bytes, and an aggsig whose length does
+    not match the number of pairs. s is not checked against the group
+    order.
     """
     pms = _pub_keys_msgs(pm_aggd)
-    # BIP458 accepts the aggregate of no signature when its s is zero;
-    # this refuses it, as ssa.batch_verify refuses an empty batch:
-    # CONTRIBUTING.md's "The public surface" gives the reason
-    if not pms:
-        raise EccValueError("empty aggregate: no signatures to verify")
     u = len(pms)
     aggsig_bytes = bytes_from_octets(aggsig, _SIZE * (u + 1))
     rpms = [aggsig_bytes[i * _SIZE : (i + 1) * _SIZE] + pms[i] for i in range(u)]
@@ -213,7 +208,11 @@ def _assert_as_valid_(rpms: list[bytes], s: int) -> None:
 
     # an r or a key that is no x-coordinate is refused by the lift inside
     # the multiplication, as an EccValueError
-    if mult(s) != _multi_mult_x_only_var(scalars, x_coords, secp256k1):
+
+    # with no pair the sum is empty, the point at infinity, and the
+    # multiplication refuses an empty sum on both arms
+    total = _multi_mult_x_only_var(scalars, x_coords, secp256k1) if rpms else INF
+    if mult(s) != total:
         raise EccRuntimeError("aggregate signature verification failed")
 
 
@@ -223,8 +222,6 @@ def assert_as_valid(aggsig: Octets, pm_aggd: Sequence[tuple[Octets, Octets]]) ->
     BIP458's VerifyAggregate, raising where it fails. pm_aggd lists the
     (public key, message) pairs in the order they were aggregated.
     `verify` is the spelling that answers True or False.
-
-    Unlike BIP458, an empty pm_aggd raises: see `verify`.
     """
     _assert_as_valid_(*_parse(aggsig, pm_aggd))
 
@@ -237,11 +234,11 @@ def verify(aggsig: Octets, pm_aggd: Sequence[tuple[Octets, Octets]]) -> bool:
 
     Raises where the input cannot be an aggregate signature and its pairs:
     a key or a message that is not 32 bytes, a tuple of the wrong arity,
-    an aggsig whose length is not 32 times the number of pairs plus one,
-    and an empty pm_aggd, which BIP458 accepts with an s of zero. Answers
-    False for well-formed input that does not verify: an s at or above the
-    group order, an r or a key that is no x-coordinate, an equation that
-    does not hold.
+    and an aggsig whose length is not 32 times the number of pairs plus
+    one. Answers False for well-formed input that does not verify: an s at
+    or above the group order, an r or a key that is no x-coordinate, an
+    equation that does not hold. An empty pm_aggd is BIP458's aggregate of
+    no signature: True for 32 zero bytes, False for any other s.
     """
     parsed = _parse(aggsig, pm_aggd)
     try:

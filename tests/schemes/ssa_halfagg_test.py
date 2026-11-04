@@ -5,7 +5,7 @@
 """Tests for the `ecc.ecc.ssa_halfagg` module.
 
 The vectors are BIP458's own, the csv files of `bip-0458/vectors/` in
-bitcoin/bips#2205, vendored under `tests/schemes/_data/`;
+bitcoin/bips, vendored under `tests/schemes/_data/`;
 `tests/_data/README.md` pins the revision. Every vector of each file is
 run.
 
@@ -31,16 +31,16 @@ _AGGREGATE_VECTORS = load_csv("schemes", "_data", "test_vectors_aggregate.csv")
 _INC_AGGREGATE_VECTORS = load_csv("schemes", "_data", "test_vectors_incaggregate.csv")
 _VERIFY_VECTORS = load_csv("schemes", "_data", "test_vectors_verify.csv")
 
-# the verification vectors that raise where BIP458 expects FALSE or TRUE,
-# by index, with the vector's own comment: a wrong size is no aggregate to
-# answer False about, and the empty aggregate is refused where BIP458
-# accepts it -- both CONTRIBUTING.md's "The public surface"
+# the verification vectors that raise where BIP458 expects FALSE, by
+# index, with the vector's own comment: a wrong size is no aggregate to
+# answer False about, as CONTRIBUTING.md's "The public surface" says
 _VERIFY_RAISES = {
-    "0": "Empty signature list",
     "20": "Aggregate signature too short",
     "21": "Aggregate signature too long",
     "22": "Public key too short",
     "23": "Message too long",
+    "24": "Public key too long",
+    "25": "Message too short",
 }
 
 
@@ -112,20 +112,29 @@ def test_one_signature_aggregates_to_itself() -> None:
     assert ssa_halfagg.aggregate(triples) == triples[0][2]
 
 
+@both_arms
 def test_the_empty_aggregate() -> None:
     """Aggregating nothing gives BIP458's starting aggregate, 32 zero bytes.
 
-    Verifying it raises, where BIP458 accepts it: CONTRIBUTING.md's
-    "The public surface" says why.
+    It verifies against no pair, as BIP458 has it. Another s does not
+    verify, and an aggsig of another length is no aggregate of no pair.
     """
     empty = ssa_halfagg.aggregate([])
     assert empty == bytes(32)
     assert ssa_halfagg.inc_aggregate(empty, [], []) == empty
-    for function in (ssa_halfagg.verify, ssa_halfagg.assert_as_valid):
-        with pytest.raises(EccValueError, match="empty aggregate"):
-            function(empty, [])
-        with pytest.raises(EccValueError, match="empty aggregate"):
-            function(bytes(31) + b"\x01", [])
+    assert ssa_halfagg.verify(empty, [])
+    ssa_halfagg.assert_as_valid(empty, [])
+    one = bytes(31) + b"\x01"
+    assert not ssa_halfagg.verify(one, [])
+    with pytest.raises(EccRuntimeError, match="verification failed"):
+        ssa_halfagg.assert_as_valid(one, [])
+    assert not ssa_halfagg.verify(_N, [])
+    with pytest.raises(EccValueError, match="not in 0..n-1"):
+        ssa_halfagg.assert_as_valid(_N, [])
+    for wrong_length in (b"", bytes(31), bytes(33), bytes(64)):
+        for function in (ssa_halfagg.verify, ssa_halfagg.assert_as_valid):
+            with pytest.raises(EccValueError):
+                function(wrong_length, [])
 
 
 def test_incremental_aggregation_equals_one_shot() -> None:
@@ -414,8 +423,7 @@ def test_verify_vectors(
     """BIP458's VerifyAggregate vectors, each pinned to its answer here.
 
     TRUE is True and FALSE is False, but for the vectors of
-    `_VERIFY_RAISES`, which raise. Vector 0, the empty aggregate, is the
-    one disagreement with BIP458: it expects TRUE.
+    `_VERIFY_RAISES`, which raise.
     """
     pm_aggd = list(zip(_split(pubkeys), _split(messages), strict=True))
     if index in _VERIFY_RAISES:
@@ -435,7 +443,7 @@ def test_verify_vectors(
 
 
 def test_the_raising_verify_vectors_are_the_ones_named() -> None:
-    """Each index `_VERIFY_RAISES` names exists; only vector 0 is TRUE."""
+    """Each index `_VERIFY_RAISES` names exists, and BIP458 expects FALSE."""
     rows = {row[0]: row for row in _VERIFY_VECTORS}
     assert set(_VERIFY_RAISES) <= set(rows)
-    assert [i for i in _VERIFY_RAISES if rows[i][4] == "TRUE"] == ["0"]
+    assert {rows[i][4] for i in _VERIFY_RAISES} == {"FALSE"}

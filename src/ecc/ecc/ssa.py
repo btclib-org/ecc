@@ -1522,19 +1522,6 @@ def _assert_batch_sequences(
         assert_type(value, Sequence, what)
 
 
-def _assert_batch_not_empty(
-    msgs: Sequence[Octets], Qs: Sequence[BIP340PubKey], sigs: Sequence[Sig]
-) -> None:
-    """Refuse an empty batch, which BIP340 reads as valid.
-
-    CONTRIBUTING.md's "The public surface" has the reason. The
-    batch spellings ask this ahead of their `try`, so that the refusal
-    escapes where a failed verification answers False.
-    """
-    if len(msgs) == len(Qs) == len(sigs) == 0:
-        raise EccValueError("empty batch: no signatures provided")
-
-
 def assert_batch_as_valid_(
     msgs: Sequence[Octets],
     Qs: Sequence[BIP340PubKey],
@@ -1546,8 +1533,8 @@ def assert_batch_as_valid_(
     BIP340's batch verification: one multi-scalar equation over
     random coefficients -- and which signature failed is not in the
     answer, only that one did. Messages enter as they are; every
-    signature must share one curve. An empty batch raises, where BIP340
-    reads it as valid.
+    signature must share one curve. An empty batch is valid, as in
+    BIP340.
 
     **It is not the fast way to verify n signatures of secp256k1.**
     Measured against n delegated `verify_` calls, the batch costs about
@@ -1596,13 +1583,13 @@ def assert_batch_as_valid_(
     # and the three sequences, for that reason again
     _assert_batch_sequences(msgs, Qs, sigs)
 
-    _assert_batch_not_empty(msgs, Qs, sigs)
     batch_size = len(Qs)
-
     if len(msgs) != batch_size:
         raise EccValueError(_err_msg(batch_size, "messages", msgs))
     if len(sigs) != batch_size:
         raise EccValueError(_err_msg(batch_size, "signatures", sigs))
+    if batch_size == 0:
+        return
     # from two signatures up nothing hands hf to the bindings; this asks
     # so that the batch answers as its batch of one does, which raises
     # where the bindings are required and decline hf. The answer is unused
@@ -1720,18 +1707,16 @@ def batch_verify_(
 
     Messages enter prepared, as in ``assert_batch_as_valid_``.
 
-    Raises for an empty batch, as ``assert_batch_as_valid_`` does, and
-    where a public key is structurally invalid -- spelled in a way BIP340
-    has no reading for. It answers False otherwise: a
+    Raises where a public key is structurally invalid -- spelled in a
+    way BIP340 has no reading for. It answers False otherwise: a
     failed verification and a well-formed key or scalar that is merely
     not authentic are both False, see `_assert_structurally_valid_`.
 
     Where the bindings are required (`curves.set_libsecp256k1_serving` with
-    `required=True`) and decline `hf`, it raises `EccRuntimeError`
-    and does not answer False: nothing was checked.
+    `required=True`) and decline `hf`, a batch that is not empty raises
+    `EccRuntimeError` and does not answer False: nothing was checked.
     """
     _assert_batch_sequences(msgs, Qs, sigs)
-    _assert_batch_not_empty(msgs, Qs, sigs)
     _assert_batch_pub_keys_structurally_valid_(Qs, sigs)
     # ValueError and EccRuntimeError: a well-formed batch that is not
     # authentic is False; a caller's own mistake is refused above rather
@@ -1754,11 +1739,9 @@ def batch_verify(
 ) -> bool:
     """Batch verification of BIP340 signatures.
 
-    Raises and answers False for the same reasons `batch_verify_` does,
-    and raises where the bindings are required and decline `hf`.
+    Raises and answers False for the same reasons `batch_verify_` does.
     """
     _assert_batch_sequences(ms, Qs, sigs)
-    _assert_batch_not_empty(ms, Qs, sigs)
     _assert_batch_pub_keys_structurally_valid_(Qs, sigs)
     # `assert_batch_as_valid` and not a delegation to the prepared spelling: the
     # reduction has to be inside the try, or a message that is no octets is
