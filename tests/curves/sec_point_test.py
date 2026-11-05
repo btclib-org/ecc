@@ -28,10 +28,10 @@ from ecc.curves import (
     point_from_pub_key,
     prv_key_tweak_add,
     scalar_from_prv_key,
+    sec_point,
     secp256k1,
     tweak_add_var,
 )
-from ecc.curves import sec_point
 from ecc.curves.curve import CURVES
 from ecc.curves.sec_point import _mult_sec, mult_pub_key
 from ecc.exceptions import (
@@ -823,7 +823,9 @@ def test_pub_key_tweak_chain_builds_no_point(monkeypatch: pytest.MonkeyPatch) ->
     """
 
     def refuse(*_: object, **__: object) -> Any:
-        raise AssertionError("a Python point was built")  # pragma: no cover
+        raise AssertionError(  # pragma: no cover -- runs only on a defect
+            "a Python point was built"
+        )
 
     monkeypatch.setattr(sec_point, "point_from_octets_var", refuse)
     monkeypatch.setattr(sec_point, "mult", refuse)
@@ -846,7 +848,7 @@ def test_pub_key_tweak_chain_builds_no_point(monkeypatch: pytest.MonkeyPatch) ->
 
 @both_arms
 def test_pub_key_tweak_chain_refusals() -> None:
-    """What is not a compressed key of a point is refused when the chain is built."""
+    """What is no compressed key of a point is refused by the constructor."""
     ec = secp256k1
     Q = mult(7)
     with pytest.raises(EccValueError):

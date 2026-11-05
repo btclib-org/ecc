@@ -162,6 +162,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/wycheproof_test.py",
     ),
     "curves.curve._mult_checked": (
+        "curves/bip32_public_derivation_test.py",
         "curves/curve_test.py",
         "schemes/dahlias_test.py",
         "schemes/der_test.py",
@@ -196,6 +197,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/ssa_tweak_test.py",
     ),
     "curves.curve._x_octets": (
+        "curves/bip32_public_derivation_test.py",
         "curves/curve_test.py",
         "schemes/dahlias_test.py",
         "schemes/der_test.py",

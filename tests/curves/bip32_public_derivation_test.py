@@ -50,7 +50,7 @@ def test_public_derivation(vector: dict[str, Any]) -> None:
 @both_arms
 @pytest.mark.parametrize("vector", _VECTORS["invalid_pub_keys"])
 def test_an_invalid_pub_key_is_refused(vector: dict[str, Any]) -> None:
-    """A key field that is no compressed point is refused when the chain is built."""
+    """A key field that is no compressed point is refused by the constructor."""
     _, key = _chain_code_and_key(vector["xpub"])
     with pytest.raises(EccValueError):
         PubKeyTweakChain(key)
