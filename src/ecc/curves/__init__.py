@@ -126,6 +126,7 @@ from ecc.curves.curve_group import CurveGroup
 from ecc.curves.curve_group_f import find_all_points, find_subgroup_points
 from ecc.curves.sec_point import (
     PubKey,
+    PubKeyTweakChain,
     bytes_from_point,
     bytes_from_prv_key_int,
     mult_pub_key,
@@ -141,6 +142,7 @@ __all__ = [
     "CurveGroup",
     "PreparedPoint",
     "PubKey",
+    "PubKeyTweakChain",
     "TweakChain",
     "add",
     "bytes_from_point",

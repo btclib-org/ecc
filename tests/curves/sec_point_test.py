@@ -8,12 +8,15 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from ecc._libsecp256k1 import keys as libsecp256k1_keys
 from ecc.alias import INF, Point
 from ecc.curves import (
     Curve,
     PreparedPoint,
+    PubKeyTweakChain,
     bytes_from_point,
     bytes_from_prv_key_int,
     # the module, not only the names in it: `_libsecp256k1_available` is
@@ -28,6 +31,7 @@ from ecc.curves import (
     secp256k1,
     tweak_add_var,
 )
+from ecc.curves import sec_point
 from ecc.curves.curve import CURVES
 from ecc.curves.sec_point import _mult_sec, mult_pub_key
 from ecc.exceptions import (
@@ -761,3 +765,112 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
     with pytest.raises(EccException) as refused:
         call(secret)
     assert_secret_free(refused.value, spellings)
+
+
+@needs_bindings
+@given(
+    q=st.integers(min_value=1, max_value=secp256k1.n - 1),
+    tweaks=st.lists(st.integers(min_value=0, max_value=secp256k1.n - 1), max_size=4),
+)
+def test_pub_key_tweak_chain_arms_agree(q: int, tweaks: list[int]) -> None:
+    """Both arms return the same octets, step after step."""
+    key = bytes_from_prv_key_int(q)
+    chain = PubKeyTweakChain(key)
+    on_bindings = [chain.tweak_add_var(t) for t in tweaks]
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(curve, "_libsecp256k1_available", False)
+        chain = PubKeyTweakChain(key)
+        on_python = [chain.tweak_add_var(t) for t in tweaks]
+    assert on_bindings == on_python
+    for t, sec in zip(tweaks, on_bindings, strict=True):
+        q = (q + t) % secp256k1.n
+        assert sec == bytes_from_prv_key_int(q)
+
+
+@both_arms
+def test_pub_key_tweak_chain_ends_at_infinity() -> None:
+    """A step onto infinity raises, and so does every step after it."""
+    ec = secp256k1
+    chain = PubKeyTweakChain(bytes_from_prv_key_int(7))
+    assert chain.tweak_add_var(0) == bytes_from_prv_key_int(7)
+    # a tweak outside 0..n-1 is refused and leaves the chain where it was
+    with pytest.raises(EccValueError, match="tweak not in 0..n-1"):
+        chain.tweak_add_var(ec.n)
+    assert chain.tweak_add_var(1) == bytes_from_prv_key_int(8)
+    with pytest.raises(EccValueError, match="the sum is the point at infinity"):
+        chain.tweak_add_var(ec.n - 8)
+    with pytest.raises(EccValueError, match="the chain ended"):
+        chain.tweak_add_var(1)
+
+
+@needs_bindings
+def test_pub_key_tweak_chain_builds_no_point(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Where the bindings serve, each step asks them for compressed octets.
+
+    The Python parse, multiplication and addition are patched to raise,
+    so a step that built a Python point would fail here.
+    """
+
+    def refuse(*_: object, **__: object) -> Any:
+        raise AssertionError("a Python point was built")  # pragma: no cover
+
+    monkeypatch.setattr(sec_point, "point_from_octets_var", refuse)
+    monkeypatch.setattr(sec_point, "mult", refuse)
+    monkeypatch.setattr(Curve, "add_var", refuse)
+
+    compressed_asked: list[bool] = []
+    tweak_add = libsecp256k1_keys.PubkeyTweakChain.tweak_add
+
+    def record(chain: Any, tweak: Any, compressed: bool = True) -> bytes:
+        compressed_asked.append(compressed)
+        return tweak_add(chain, tweak, compressed)
+
+    monkeypatch.setattr(libsecp256k1_keys.PubkeyTweakChain, "tweak_add", record)
+
+    chain = PubKeyTweakChain(bytes_from_prv_key_int(1))
+    assert chain.tweak_add_var(2) == libsecp256k1_keys.pubkey_from_prvkey(3, True)
+    assert chain.tweak_add_var(3) == libsecp256k1_keys.pubkey_from_prvkey(6, True)
+    assert compressed_asked == [True, True]
+
+
+@both_arms
+def test_pub_key_tweak_chain_refusals() -> None:
+    """What is not a compressed key of a point is refused when the chain is built."""
+    ec = secp256k1
+    Q = mult(7)
+    with pytest.raises(EccValueError):
+        PubKeyTweakChain(bytes_from_point(Q, ec, False))
+    # the size of a compressed key, and a prefix that is not one; a zero
+    # prefix is an xprv's private key, which is not echoed
+    for prefix in (b"\x00", b"\x04", b"\x06"):
+        sec = prefix + Q[0].to_bytes(ec.p_size, "big")
+        with pytest.raises(EccValueError, match="not a compressed key: prefix 0x"):
+            PubKeyTweakChain(sec)
+    # an x that is no point's
+    x_Q = 0xEEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34
+    with pytest.raises(EccValueError):
+        PubKeyTweakChain(b"\x02" + x_Q.to_bytes(ec.p_size, "big"))
+    with pytest.raises(EccTypeError):
+        PubKeyTweakChain(12)  # type: ignore[arg-type]
+    with pytest.raises(EccTypeError):
+        PubKeyTweakChain(bytes_from_point(Q), "secp256k1")  # type: ignore[arg-type]
+    chain = PubKeyTweakChain(bytes_from_point(Q))
+    assert chain.ec is ec
+    with pytest.raises(EccTypeError):
+        chain.tweak_add_var(True)
+    with pytest.raises(EccValueError, match="tweak not in 0..n-1"):
+        chain.tweak_add_var(-1)
+
+
+def test_pub_key_tweak_chain_on_other_curves() -> None:
+    """A curve the bindings do not serve walks the same chain in Python."""
+    for ec in low_card_curves.values():
+        chain = PubKeyTweakChain(bytes_from_point(ec.G, ec), ec)
+        k = 1
+        for t in range(ec.n):
+            k += t
+            if k % ec.n == 0:
+                with pytest.raises(EccValueError, match="point at infinity"):
+                    chain.tweak_add_var(t)
+                break
+            assert chain.tweak_add_var(t) == bytes_from_point(mult(k, ec.G, ec), ec)
