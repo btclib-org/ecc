@@ -23,11 +23,13 @@ PreparedPoint, which is a point plus a caller's word that it will be
 multiplied again -- the one thing the memoized tables below cannot infer
 and the whole of what stands between a repeated point and the treatment
 the generator gets. Beside them are the sum of two points that may be
-secret, a sum of public points, a point plus a multiple of the generator
--- once, or along a chain of tweaks of one point -- a compressed public
-key tweaked step after step, as a BIP32 path is, a private key plus a
-tweak, which is the same sum on the private side, and the test of
-whether an x is a coordinate of the curve.
+secret, a sum of public points, and the test of whether an x is a
+coordinate of the curve.
+
+A point plus a multiple of the generator is there once, as many tweaks
+of one point, and as a compressed public key tweaked step after step,
+which is how a BIP32 path is walked. A private key plus a tweak is the
+same sum on the private side.
 
 `CURVES` is what makes the catalogue reachable -- `secp256k1` is
 exported by name because nearly every caller wants that one, and every

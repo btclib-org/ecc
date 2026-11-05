@@ -488,8 +488,9 @@ class PubKeyTweakChain:
     once, when the chain is built.
 
     A step whose sum is the point at infinity raises, and ends the chain:
-    libsecp256k1 leaves the key it holds invalid after such a step, so
-    every later step raises too. BIP32 refuses that child as well.
+    the chain records that it ended, and on either arm every later step
+    raises. libsecp256k1 leaves the key it holds invalid after such a
+    step, and BIP32 refuses that child as well.
 
     Args:
         pub_key: the compressed SEC octets of the starting key.
