@@ -1114,10 +1114,10 @@ not a list here. Which day each of the rest runs is section 10 of
 [the organization standard](https://github.com/btclib-org/.github), and
 not this file's to restate.
 
-The gates run one image on one interpreter: `ubuntu-latest`, and the
-version `.python-version` names. `claude-review` gates nothing: a review
-that gates a merge would make a model's judgement a branch rule. `api-break`
-gates nothing either: it adds a label. Why so
+The `test` and `lint`, `docs` rows run one image on one interpreter:
+`ubuntu-latest`, and the version `.python-version` names. `claude-review`
+gates nothing: a review that gates a merge would make a model's judgement
+a branch rule. `api-break` gates nothing either: it adds a label. Why so
 little gates is the ceiling on concurrent jobs the plan puts on the whole
 organization, and `REPOSITORY.md`'s *Plan-gated settings* is where that
 lives.
