@@ -377,7 +377,10 @@ def _key_pair() -> tuple[int, tuple[int, int]]:
 
 def _x_exists(x: int, ec: Any) -> bool:
     """Say whether x is an x-coordinate by Euler's criterion, no ellswift."""
-    return bool(pow(ec._y2(x), (ec.p - 1) // 2, ec.p) != ec.p - 1)
+    # bool(): ec is Any, and mypy refuses returning Any
+    return bool(
+        pow(ec._y2(x), (ec.p - 1) // 2, ec.p) != ec.p - 1
+    )  # sourcery skip: remove-unnecessary-cast
 
 
 def _spec_xswiftec(u: int, t: int, ec: Any) -> int:
@@ -434,7 +437,7 @@ def _spec_xswiftec_inv(x: int, u: int, case: int, ec: Any) -> int | None:
         if _x_exists((-x - u) % p, ec):
             return None
         v = x
-        s = -(pow(u, 3, p) + ec._b) * pow(u * u + u * v + v * v, -1, p) % p
+        s = -(pow(u, 3, p) + ec._b) * pow(u**2 + u * v + v**2, -1, p) % p
     else:
         s = (x - u) % p
         r = sqrt(-s * (4 * (pow(u, 3, p) + ec._b) + 3 * s * u * u) % p)

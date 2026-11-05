@@ -97,7 +97,7 @@ def _child_env(**extra: str) -> dict[str, str]:
     """
     env = {k: v for k, v in os.environ.items() if k != "FORCE_COLOR"}
     env["PYTHON_COLORS"] = "0"
-    return {**env, **extra}
+    return env | extra
 
 
 # what the child runs: the finder first, the package after it, and the answers

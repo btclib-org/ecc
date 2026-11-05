@@ -81,10 +81,14 @@ def _entry_points(tree: ast.Module) -> tuple[str, ...] | None:
 
 def _fuzz_target(tree: ast.Module) -> ast.FunctionDef | None:
     """Return the module-level `def fuzz_target(...)`, or None."""
-    for node in tree.body:
-        if isinstance(node, ast.FunctionDef) and node.name == "fuzz_target":
-            return node
-    return None
+    return next(
+        (
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "fuzz_target"
+        ),
+        None,
+    )
 
 
 def _import_bindings(tree: ast.Module) -> dict[str, tuple[str, str]]:
@@ -153,10 +157,14 @@ def _round_trip(spec: str, obj: Any, data: bytes) -> bool | None:
     if attr == "b64decode":
         if not hasattr(obj, "b64encode"):
             return None
-        return bool(obj.b64encode() == data.decode("ascii"))
+        # bool(): obj is Any, and mypy refuses returning Any
+        return bool(
+            obj.b64encode() == data.decode("ascii")
+        )  # sourcery skip: remove-unnecessary-cast
     if not hasattr(obj, "serialize"):
         return None
-    return bool(obj.serialize() == data)
+    # bool(): obj is Any, and mypy refuses returning Any
+    return bool(obj.serialize() == data)  # sourcery skip: remove-unnecessary-cast
 
 
 def _seed_paths(name: str) -> tuple[Path, ...]:

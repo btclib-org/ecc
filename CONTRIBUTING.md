@@ -1071,13 +1071,17 @@ btclib-org/.github's: the commands above check it out at the commit
 command of this project's, so reproducing it locally means the CodeQL CLI
 and a database rather than a `uv run`.
 
+`sourcery.yml` has no line here either: [the standard's *The set, and its
+cadence*](https://github.com/btclib-org/.github#the-set-and-its-cadence)
+says why it is a pull request's check and not a local gate.
+
 ### What gates a merge, and what only reports
 
-`lint.yml`, `test.yml` and `docs.yml` produce the required checks, and
-`REPOSITORY.md` reads the rule back from the endpoint rather than
-restating it. So a diff does not reach a review without having passed
-them or passing them beside it on the same sha, which is the reliance
-`REVIEWING.md` provides for.
+`lint.yml`, `test.yml`, `docs.yml` and `sourcery.yml` produce the
+required checks, and `REPOSITORY.md` reads the rule back from the
+endpoint rather than restating it. So a diff does not reach a review
+without having passed them or passing them beside it on the same sha,
+which is the reliance `REVIEWING.md` provides for.
 
 | workflow | when | what it varies |
 | --- | --- | --- |
@@ -1085,6 +1089,7 @@ them or passing them beside it on the same sha, which is the reliance
 | `lint`, `docs` | pull request, push | — |
 | `claude-review` | pull request, and `@claude` in a comment | — |
 | `api-break` | pull request | — |
+| `sourcery` | pull request | — |
 | `verified-signatures` | push to main | — |
 | `codeql` | pull request, push, and weekly | the languages |
 | `os-ubuntu` | weekly, a release | images × interpreters |

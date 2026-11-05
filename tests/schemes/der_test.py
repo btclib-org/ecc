@@ -230,8 +230,8 @@ def test_der_one_byte_scalar() -> None:
     not spare it -- and IndexError is not what a caller filtering parse
     failures catches.
     """
+    err_msg = "scalar r not in 1..n-1: "
     for strict in (True, False):
-        err_msg = "scalar r not in 1..n-1: "
         with pytest.raises(EccValueError, match=err_msg):
             Sig.parse("3006020100020100", strict=strict)
 

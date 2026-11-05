@@ -134,7 +134,10 @@ def _no_inverse(m: int) -> EccValueError:
     The operand is not named: it may be a secret.
     """
     err_msg = "no inverse mod "
-    err_msg += f"{hex_string(int(m))}" if m > 0xFFFFFFFF else f"{m}"
+    # int(): m may be gmpy2's mpz, which hex_string refuses
+    err_msg += (
+        f"{hex_string(int(m))}" if m > 0xFFFFFFFF else f"{m}"
+    )  # sourcery skip: remove-unnecessary-cast
     return EccValueError(err_msg)
 
 
@@ -467,7 +470,10 @@ def mod_sqrt_var(a: int, p: int) -> int:
 
     if r * r % p != a:
         err_msg = "no root mod "
-        err_msg += f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
+        # int(): p may be gmpy2's mpz, which hex_string refuses
+        err_msg += (
+            f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
+        )  # sourcery skip: remove-unnecessary-cast
         raise EccValueError(err_msg)
     return r
 
@@ -488,7 +494,10 @@ def tonelli_var(a: int, p: int) -> int:
     # Check solution existence for an odd prime p
     if legendre_symbol_var(a, p) != 1:
         err_msg = "no root mod "
-        err_msg += f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
+        # int(): p may be gmpy2's mpz, which hex_string refuses
+        err_msg += (
+            f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
+        )  # sourcery skip: remove-unnecessary-cast
         raise EccValueError(err_msg)
 
     # Factor p-1 on the form q * 2^s (with q odd)
@@ -512,7 +521,10 @@ def tonelli_var(a: int, p: int) -> int:
         z += 1
         if z == p:
             err_msg = "p is not prime: "
-            err_msg += f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
+            # int(): p may be gmpy2's mpz, which hex_string refuses
+            err_msg += (
+                f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
+            )  # sourcery skip: remove-unnecessary-cast
             raise EccValueError(err_msg)
     c = pow(z, q, p)
     r = pow(a, (q + 1) // 2, p)
@@ -542,7 +554,10 @@ def tonelli_var(a: int, p: int) -> int:
                 break
         else:
             err_msg = "p is not prime: "
-            err_msg += f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
+            # int(): p may be gmpy2's mpz, which hex_string refuses
+            err_msg += (
+                f"'{hex_string(int(p))}'" if p > 0xFFFFFFFF else f"{p}"
+            )  # sourcery skip: remove-unnecessary-cast
             raise EccValueError(err_msg)
 
     return r

@@ -957,6 +957,41 @@ def _det_nonce_hash(
     return int.from_bytes(tagged_hash(_DET_NONCE_TAG, buf), "big")
 
 
+def _agg_other_nonce_bytes(agg_other_nonce: Octets | None, u: int) -> bytes:
+    """Return `deterministic_sign`'s aggothernonce, empty for a sole signer.
+
+    Absent exactly where `u`, the number of signers, is 1, and otherwise
+    `_NONCE_SIZE` octets.
+    """
+    agg_other = None if agg_other_nonce is None else bytes_from_octets(agg_other_nonce)
+    if u == 1:
+        if agg_other is not None:
+            raise EccValueError(_AGG_OTHER_NONCE_ABSENT_ERR)
+    elif agg_other is None or len(agg_other) != _NONCE_SIZE:
+        raise EccValueError(_AGG_OTHER_NONCE_PRESENT_ERR)
+    return b"" if agg_other is None else agg_other
+
+
+def _masked_sec_share(
+    sec_share: Octets, tweak_ctx: TweakContext, aux_rand: Octets | None
+) -> bytes:
+    """Return the secret share as `sign` uses it, masked by any `aux_rand`.
+
+    `deterministic_sign`'s docstring says why the share is the one `sign`
+    uses rather than the one given.
+    """
+    d_ = int.from_bytes(bytes_from_octets(sec_share, _SCALAR_SIZE), "big")
+    if not 0 < d_ < secp256k1.n:
+        raise EccValueError(_SEC_SHARE_RANGE_ERR)
+    g = 1 if tweak_ctx.Q[1] % 2 == 0 else secp256k1.n - 1
+    d = (g * tweak_ctx.gacc * d_ % secp256k1.n).to_bytes(_SCALAR_SIZE, "big")
+    if aux_rand is None:
+        return d
+    return _bytes_xor(
+        d, tagged_hash(_AUX_TAG, bytes_from_octets(aux_rand, _SCALAR_SIZE))
+    )
+
+
 def deterministic_sign(
     sec_share: Octets,
     signer_id: int,
@@ -1005,28 +1040,11 @@ def deterministic_sign(
     if signer_id not in ids_:
         raise EccValueError(_SIGNER_ID_MISSING_ERR)
 
-    agg_other = None if agg_other_nonce is None else bytes_from_octets(agg_other_nonce)
-    if len(ids_) == 1:
-        if agg_other is not None:
-            raise EccValueError(_AGG_OTHER_NONCE_ABSENT_ERR)
-    elif agg_other is None or len(agg_other) != _NONCE_SIZE:
-        raise EccValueError(_AGG_OTHER_NONCE_PRESENT_ERR)
-    agg_other_nonce_bytes = b"" if agg_other is None else agg_other
+    agg_other_nonce_bytes = _agg_other_nonce_bytes(agg_other_nonce, len(ids_))
 
     tweak_ctx = thresh_pubkey_and_tweak_var(thresh_pk_bytes, tweaks, is_xonly)
     tweaked_thresh_pk_xonly = tweak_ctx.x_only_pub_key
-
-    d_ = int.from_bytes(bytes_from_octets(sec_share, _SCALAR_SIZE), "big")
-    if not 0 < d_ < secp256k1.n:
-        raise EccValueError(_SEC_SHARE_RANGE_ERR)
-    g = 1 if tweak_ctx.Q[1] % 2 == 0 else secp256k1.n - 1
-    d = (g * tweak_ctx.gacc * d_ % secp256k1.n).to_bytes(_SCALAR_SIZE, "big")
-    if aux_rand is None:
-        masked_sec_share = d
-    else:
-        masked_sec_share = _bytes_xor(
-            d, tagged_hash(_AUX_TAG, bytes_from_octets(aux_rand, _SCALAR_SIZE))
-        )
+    masked_sec_share = _masked_sec_share(sec_share, tweak_ctx, aux_rand)
 
     msg_bytes = bytes_from_octets(msg)
     k_1 = (

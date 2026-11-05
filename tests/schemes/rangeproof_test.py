@@ -1353,8 +1353,8 @@ def test_a_proof_refuses_a_header_field_that_is_no_integer(
         "exp": proof.exp,
         "mantissa": proof.mantissa,
         "min_value": None,
+        what: value,
     }
-    fields[what] = value
     with pytest.raises(EccTypeError, match=_refusal(value, what)):
         RangeProof(
             fields["exp"],
@@ -2127,8 +2127,8 @@ def test_parse_agrees_with_zkp_info_over_proofs_it_signs() -> None:
     """
     blind = bytes(31) + b"\x07"
     exps_seen = set()
+    value = 100000
     for exp in range(-1, 19):
-        value = 100000
         commitment = zkp_generator.pedersen_commit(blind, value)
         proof_octets = zkp_rangeproof.sign(
             commitment, blind, bytes(31) + bytes([exp + 2]), value, exp=exp, min_bits=8

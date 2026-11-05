@@ -416,8 +416,10 @@ class Curve(CurveGroup):
         is_point = super().is_on_curve(Q)
         if is_point and Q[1] == 0 and self._y2(Q[0]) == 0:
             x = Q[0]
-            err_msg = "ambiguous point: (x, 0) is both INF and this "
-            err_msg += "curve's real two-torsion point at x = "
+            err_msg = (
+                "ambiguous point: (x, 0) is both INF and this "
+                "curve's real two-torsion point at x = "
+            )
             err_msg += f"{hex_string(x)}" if x > HEX_THRESHOLD else f"{x}"
             raise EccValueError(err_msg)
         return is_point
@@ -659,11 +661,11 @@ def set_libsecp256k1_serving(*, serving: bool, required: bool = False) -> None:
     assert_type(required, bool, "required")
     if required and not serving:
         raise EccValueError("required needs serving: the bindings are off")
-    if serving and not _bindings_installed:
-        raise EccValueError(
-            "btclib_secp256k1 is not installed: the bindings cannot serve"
-        )
     if serving:
+        if not _bindings_installed:
+            raise EccValueError(
+                "btclib_secp256k1 is not installed: the bindings cannot serve"
+            )
         _check_bindings_once(setter=True)
 
     global _libsecp256k1_available, _libsecp256k1_required  # noqa: PLW0603

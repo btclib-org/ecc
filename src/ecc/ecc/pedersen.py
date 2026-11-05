@@ -224,7 +224,7 @@ def _shallue_van_de_woestijne(t: int) -> Point:
         err_msg += f"{hex_string(t)}" if t > HEX_THRESHOLD else f"{t}"
         raise EccValueError(err_msg)
 
-    t_2 = t * t % p
+    t_2 = t**2 % p
     wd = (t_2 + secp256k1._b + 1) % p
     x3d = -3 * t_2 % p
     j = wd * x3d % p

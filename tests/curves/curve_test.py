@@ -401,7 +401,8 @@ def test_hasse_half_width_is_exact() -> None:
     # would stop being buildable. weakness_check=False as that test builds
     # it: 7^12 = 1 (mod 13) makes it MOV-weak, which is a different
     # refusal and not the one under test here
-    assert 2 * isqrt(7) == 4
+    # the product is the 2*isqrt(p) spelling the comment above contrasts
+    assert 2 * isqrt(7) == 4  # sourcery skip: simplify-numeric-comparison
     assert isqrt(4 * 7) == 5
     assert Curve(7, 0, 3, (1, 2), 13, 1, False).cofactor == 1
 
@@ -712,6 +713,12 @@ class _CountedInt(int):
     the time they take is a measurement -- and a noisy one, Python
     integers costing what their size costs. The count is a class
     attribute because the operands of an operation are two.
+
+    Each counting operation reads `self` with `int()`, which otherwise
+    calls this same method again without end, and so does each forward
+    operation for `other`, whose reflected method would otherwise run and
+    count the operation twice; Sourcery's remove-unnecessary-cast is
+    skipped there.
     """
 
     calls = 0
@@ -719,7 +726,9 @@ class _CountedInt(int):
     @override
     def __mul__(self, other: int) -> "_CountedInt":
         _CountedInt.calls += 1
-        return _CountedInt(int(self) * int(other))
+        return _CountedInt(
+            int(self) * int(other)
+        )  # sourcery skip: remove-unnecessary-cast
 
     @override
     def __rmul__(self, other: int) -> "_CountedInt":
@@ -728,17 +737,23 @@ class _CountedInt(int):
     @override
     def __mod__(self, other: int) -> "_CountedInt":
         _CountedInt.calls += 1
-        return _CountedInt(int(self) % int(other))
+        return _CountedInt(
+            int(self) % int(other)
+        )  # sourcery skip: remove-unnecessary-cast
 
     @override
     def __rmod__(self, other: int) -> "_CountedInt":
         _CountedInt.calls += 1
-        return _CountedInt(int(other) % int(self))
+        return _CountedInt(
+            int(other) % int(self)
+        )  # sourcery skip: remove-unnecessary-cast
 
     @override
     def __add__(self, other: int) -> "_CountedInt":
         _CountedInt.calls += 1
-        return _CountedInt(int(self) + int(other))
+        return _CountedInt(
+            int(self) + int(other)
+        )  # sourcery skip: remove-unnecessary-cast
 
     @override
     def __radd__(self, other: int) -> "_CountedInt":
@@ -747,12 +762,16 @@ class _CountedInt(int):
     @override
     def __sub__(self, other: int) -> "_CountedInt":
         _CountedInt.calls += 1
-        return _CountedInt(int(self) - int(other))
+        return _CountedInt(
+            int(self) - int(other)
+        )  # sourcery skip: remove-unnecessary-cast
 
     @override
     def __rsub__(self, other: int) -> "_CountedInt":
         _CountedInt.calls += 1
-        return _CountedInt(int(other) - int(self))
+        return _CountedInt(
+            int(other) - int(self)
+        )  # sourcery skip: remove-unnecessary-cast
 
 
 def _counted(P: JacPoint) -> JacPoint:

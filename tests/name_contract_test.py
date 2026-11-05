@@ -45,10 +45,14 @@ _PROMISED: dict[str, str] = {
 
 def _promised_by(name: str) -> str | None:
     """Return the type the name promises, or None if it promises nothing."""
-    for prefix, promised in _PROMISED.items():
-        if name.startswith(prefix) or (prefix == "verify" and prefix in name):
-            return promised
-    return None
+    return next(
+        (
+            promised
+            for prefix, promised in _PROMISED.items()
+            if name.startswith(prefix) or (prefix == "verify" and prefix in name)
+        ),
+        None,
+    )
 
 
 def _return_type(returns: ast.expr) -> str:
@@ -234,7 +238,7 @@ def test_check_says_one_thing() -> None:
     named for what it returns, and a query for what it answers.
     """
     checks = {d for d in _NAMED if d.rpartition(".")[2].startswith("check_")}
-    assert checks == set()
+    assert not checks
 
 
 @pytest.mark.parametrize("dotted", _PUBLIC_BOOLS)

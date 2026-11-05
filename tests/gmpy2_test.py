@@ -88,7 +88,7 @@ def test_number_theory_admits_an_mpz() -> None:
     assert number_theory.legendre_symbol_var(az, pz) == (
         number_theory.legendre_symbol_var(a, p)
     )
-    square = a * a % p
+    square = a**2 % p
     assert number_theory.mod_sqrt_var(mpz(square), pz) in {a, p - a}
     # a p of 1 mod 8, which is the one that reaches Tonelli-Shanks
     p224 = CURVES["secp224r1"].p

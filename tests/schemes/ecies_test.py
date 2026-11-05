@@ -420,8 +420,8 @@ def test_envelope_fields_are_octets_like_every_other_field() -> None:
                 "eph_pub_key": envelope.eph_pub_key,
                 "ciphertext": envelope.ciphertext,
                 "mac": envelope.mac,
+                field: wrong,
             }
-            fields[field] = wrong
             with pytest.raises(EccTypeError, match="invalid octets type"):
                 ecies.Envelope(**fields)
         # and the factory, which concatenates before it builds: a magic

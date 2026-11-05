@@ -257,7 +257,7 @@ def test_the_family_takes_no_ec_or_hf() -> None:
             module_name, _, class_name = name.rpartition(".")
             cls = getattr(import_module(module_name), class_name)
             found[f"{name}.{method}"] = set(signature(getattr(cls, method)).parameters)
-    found.update(_module_codecs())
+    found |= _module_codecs()
 
     assert found
     offenders = {name for name, params in found.items() if params & {"ec", "hf"}}

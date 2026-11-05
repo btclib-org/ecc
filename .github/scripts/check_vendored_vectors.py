@@ -232,8 +232,7 @@ def _blocks(ledger: str) -> Iterator[tuple[str, dict[str, str]]]:
     heading = ""
     pos = 0
     for match in re.finditer(r"```text\n(.*?)\n```", ledger, re.DOTALL):
-        headings_before = _HEADING.findall(ledger[pos : match.start()])
-        if headings_before:
+        if headings_before := _HEADING.findall(ledger[pos : match.start()]):
             heading = headings_before[-1]
         pos = match.end()
         yield heading, dict(_FIELD.findall(match.group(1)))
@@ -424,11 +423,10 @@ def _upstream_blob(repo: str, path: str, commit: str) -> str | None:
     directory, _, name = path.rpartition("/")
     tree = f"{commit}:{directory}" if directory else commit
     answer = _gh_output("api", "--method", "GET", f"repos/{repo}/git/trees/{tree}")
-    for item in json.loads(answer)["tree"]:
-        if item["path"] == name:
-            sha: str = item["sha"]
-            return sha
-    return None
+    shas: Iterator[str] = (
+        item["sha"] for item in json.loads(answer)["tree"] if item["path"] == name
+    )
+    return next(shas, None)
 
 
 def find_mismatches(ledger_path: Path) -> tuple[list[str], list[str], int, int]:

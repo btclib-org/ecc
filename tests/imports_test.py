@@ -240,7 +240,7 @@ def test_no_module_imports_outside_the_stdlib_and_the_extras() -> None:
         for path in sorted(root.rglob("*.py"))
     }
     assert "ecc/dsa.py" in found
-    assert {file: names for file, names in found.items() if names} == {}
+    assert not {file: names for file, names in found.items() if names}
 
 
 # what each unit of the package may import from the package itself, as
@@ -343,8 +343,7 @@ def _imports_the_rule_refuses(
     broken: dict[str, list[str]] = {}
     for name, (is_package, source) in sorted(sources.items()):
         found = _package_imports(name, is_package, source, known)
-        extra = sorted(found - _MAY_IMPORT[_unit(name)] - {_unit(name)})
-        if extra:
+        if extra := sorted(found - _MAY_IMPORT[_unit(name)] - {_unit(name)}):
             broken[name] = extra
     return broken
 

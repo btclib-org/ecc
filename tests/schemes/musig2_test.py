@@ -75,26 +75,22 @@ from tests import (
 )
 from tests.secret_free import assert_secret_free
 
+# `INSTALLED` for the zkp import too, not `tests.ZKP_AVAILABLE`:
+# `btclib_secp256k1.zkp.musig`'s own docstring defers every
+# `ffi`/`lib`/`ctx` lookup to call time, through `context._bindings()`,
+# precisely so that importing this module never needs the flag --
+# Sphinx's autodoc does exactly this import, in a build that never sets
+# `BTCLIB_LIBSECP256K1_ZKP`. So that import succeeds whenever the bindings
+# exist at all, flagged or not; a job with the bindings installed but not
+# flagged imports a real, merely uncallable module here, and never calls
+# it, since every test below reaching for it is also `@needs_zkp`
 if INSTALLED:
     from btclib_secp256k1 import musig as libsecp256k1_musig
+    from btclib_secp256k1.zkp import musig as zkp_musig
 else:  # pragma: no cover -- only the no-bindings job reaches this
     # never called from a skipped test, mirroring the fallback
     # `ecc._libsecp256k1` gives every name it wraps
     libsecp256k1_musig = None  # type: ignore[assignment]
-
-# `INSTALLED`, not `tests.ZKP_AVAILABLE`: `btclib_secp256k1.zkp.musig`'s
-# own docstring defers every `ffi`/`lib`/`ctx` lookup to call time, through
-# `context._bindings()`, precisely so that importing this module never
-# needs the flag -- Sphinx's autodoc does exactly this import, in a build
-# that never sets `BTCLIB_LIBSECP256K1_ZKP`. So this import succeeds
-# whenever the bindings exist at all, flagged or not, the same condition
-# `libsecp256k1_musig` above already guards on; a job with the bindings
-# installed but not flagged imports a real, merely uncallable module here,
-# and never calls it, since every test below reaching for it is also
-# `@needs_zkp`
-if INSTALLED:
-    from btclib_secp256k1.zkp import musig as zkp_musig
-else:  # pragma: no cover -- only the no-bindings job reaches this
     zkp_musig = None  # type: ignore[assignment]
 
 # the two exception types BIP327 tells apart: a caller's own bad

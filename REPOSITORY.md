@@ -129,6 +129,7 @@ nothing.
 | `lint / Lint and type-check` | `lint.yml`, calling `reusable-lint.yml` |
 | `lint / Dependency review` | `lint.yml`, calling `reusable-lint.yml` |
 | `lint / Sign-off` | `lint.yml`, calling `reusable-lint.yml` |
+| `sourcery / Sourcery` | `sourcery.yml`, calling `reusable-sourcery.yml` |
 
 A merge waits for all of these checks, except an administrator's:
 `enforce_admins` is off (*Branch protection*).
@@ -139,6 +140,10 @@ job's own name, so `docs.yml`'s `docs` job calling a job named `Build the
 documentation` produces `docs / Build the documentation`. A context is
 matched by name, not by the workflow that reported it, so moving a job is
 free and renaming one is not.
+
+[Section 10 of the
+standard](https://github.com/btclib-org/.github#the-set-and-its-cadence)
+says when a tree requires `sourcery / Sourcery`.
 
 No sentinel appears in the rule, and none of them may: a workflow
 `CONTRIBUTING.md`'s *What gates a merge, and what only reports* lists as
@@ -171,7 +176,8 @@ gh api -X PUT repos/btclib-org/ecc/branches/main/protection \
    {"context": "docs / Build the documentation", "app_id": 15368},
    {"context": "lint / Lint and type-check", "app_id": 15368},
    {"context": "lint / Dependency review", "app_id": 15368},
-   {"context": "lint / Sign-off", "app_id": 15368}]},
+   {"context": "lint / Sign-off", "app_id": 15368},
+   {"context": "sourcery / Sourcery", "app_id": 15368}]},
  "enforce_admins": false,
  "required_pull_request_reviews": {"dismiss_stale_reviews": true,
    "require_code_owner_reviews": false,
@@ -204,14 +210,17 @@ gh api repos/btclib-org/ecc/branches/main/protection \
 #   ["docs / Build the documentation",15368],
 #   ["lint / Lint and type-check",15368],
 #   ["lint / Dependency review",15368],
-#   ["lint / Sign-off",15368]],
+#   ["lint / Sign-off",15368],
+#   ["sourcery / Sourcery",15368]],
 #  "conversation":true,"deletions":false,"enforce_admins":false,
 #  "force_pushes":false,"linear":true,
 #  "reviews":{"dismiss_stale_reviews":true,
 #   "required_approving_review_count":1},
 #  "strict":false}
-# ("strict" read on 2026-10-13, after it was turned off.)
 ```
+
+Read on 2026-11-05T07:17Z, after a `PATCH` of `required_status_checks`
+carrying the `checks` of the `PUT` above, it printed the answer above.
 
 Three rulesets sit beside it, additive — rules aggregate across rulesets
 and classic protection, taking the most restrictive combination.

@@ -491,6 +491,97 @@ def _assert_valid_pubk_rings(pubk_rings: Sequence[PubkeyRing], ec: Curve) -> Non
             bytes_from_point(Q, ec)
 
 
+def _sign_scalars(
+    ks: Sequence[Integer],
+    sign_key_idx: Sequence[int],
+    sign_keys: Sequence[Integer],
+    pubk_rings: Sequence[PubkeyRing],
+    ec: Curve,
+) -> tuple[list[int], list[int]]:
+    """Return `sign_`'s nonces and signing keys, read as scalars of `ec`.
+
+    What it refuses first is a shape: one entry per ring in each of the
+    four sequences, and a signing index inside its ring.
+    """
+    # one entry per ring in each of the four, checked here rather than left to
+    # the `strict=True` of `sign_`'s two loops: a short ks would truncate them
+    # silently and sign a subset of the rings -- a signature over fewer rings
+    # than the caller asked for, which is the one thing a ring signature must
+    # not do quietly. zip's own message is an EccValueError's class
+    # with none of its content, naming "argument 3" and no parameter of
+    # `sign_`; strict=True stays, as the assertion that this check and those
+    # loops cannot drift apart. sign_keys is part of this check for the same
+    # reason as the other three: step 2 indexes it per ring, through the
+    # `q_ints` built from it one entry at a time, so a shorter sequence there is
+    # the same shape exposure _assert_matches_pubk_rings refuses on the
+    # verification side, one ring's worth of tuple away from a bare IndexError
+    # instead of this message
+    if not len(pubk_rings) == len(sign_key_idx) == len(ks) == len(sign_keys):
+        err_msg = f"{len(pubk_rings)} rings, {len(sign_key_idx)} signing indexes, "
+        err_msg += f"{len(ks)} nonces and {len(sign_keys)} signing keys"
+        raise EccValueError(err_msg)
+
+    # sign_key_idx[i] is the real signer's position in pubk_rings[i], and
+    # nothing checked it was one before step 1 read it -- see
+    # `_assert_sign_key_idx_in_range`'s docstring for the two ways that went
+    # wrong (issues btclib-org/btclib#1094, btclib-org/btclib#1095). Checked
+    # once here, before either step, the same shape as the length check just
+    # above and btclib-org/btclib#1088's decision on the verification side
+    _assert_sign_key_idx_in_range(pubk_rings, sign_key_idx)
+
+    # both sequences are scalars and neither was read as one. Step 2 took
+    # `sign_keys[i]` as it came, so a key of 0, of n, or of q + n signed where
+    # every other signer in `ecc.ecc` refuses all three -- q + n silently the
+    # same key as q, the reduction being that line's own `% ec.n` -- and the
+    # octets and hex spellings `Integer` names left Python's `OverflowError` for
+    # a key and its `TypeError` for a nonce, neither of them anything this
+    # library declares (issue btclib-org/btclib#1243). Read before step 1 rather
+    # than in the loop that consumes each, so a scalar a later ring's would have
+    # refused costs no scalar multiplication first.
+    #
+    # The ring is not named here, where `_assert_sign_key_idx_in_range`
+    # names it: a ring's size is a fact the caller has to be told, and a
+    # key of 0 is one they can see in the sequence they passed.
+    k_ints = [scalar_from_prv_key(k, ec) for k in ks]
+    q_ints = [scalar_from_prv_key(q, ec) for q in sign_keys]
+    return k_ints, q_ints
+
+
+def _forge_to_ring_end(
+    m: bytes,
+    r: bytes,
+    i: int,
+    start_idx: int,
+    pubk_ring: PubkeyRing,
+    e_i: list[int],
+    s_i: list[int],
+    ec: Curve,
+    hf: HashF,
+) -> bytes:
+    """Walk ring i from start_idx to its end, from the point r encodes.
+
+    `sign_`'s step 1 after the real signer's own position: each e is the
+    hash of the point before it, written into `e_i`, and each point is
+    the one that e and the forged s of `s_i` give. What returns is the
+    last point's encoding.
+    """
+    for j in range(start_idx, len(pubk_ring)):
+        e_i[j] = int_from_bits(_hash(m, r, i, j, hf), ec.nlen) % ec.n
+        # e is already reduced mod n, so only zero can trip this, and for
+        # secp256k1 with sha256 zero is a 2**-255 accident: exactly two of the
+        # 256-bit outputs (0 and n) are 0 mod n. On a low-cardinality curve it
+        # is one message in n -- one in eleven on ec13_11 -- which is the corner
+        # case issue btclib-org/btclib#183 asked for and what makes ec a
+        # parameter worth having: tests/schemes/borromean_test.py reaches this
+        # raise, and the three below it, on that curve
+        if not 0 < e_i[j] < ec.n:
+            err_msg = "implausible signature failure"
+            raise BorromeanRingError(err_msg, i, j)
+        t = double_mult_var(-e_i[j], pubk_ring[j], s_i[j], ec.G, ec)
+        r = _bytes_from_ring_point(t, ec, i, j)
+    return r
+
+
 def sign_(
     msg_hash: Octets,
     ks: Sequence[Integer],
@@ -546,47 +637,7 @@ def sign_(
         for pubk_ring in pubk_rings
     ]
 
-    # one entry per ring in each of the four, checked here rather than left to
-    # the `strict=True` of the two loops below: a short ks would truncate them
-    # silently and sign a subset of the rings -- a signature over fewer rings
-    # than the caller asked for, which is the one thing a ring signature must
-    # not do quietly. zip's own message is an EccValueError's class
-    # with none of its content, naming "argument 3" and no parameter of this
-    # function; strict=True stays, as the assertion that this check and those
-    # loops cannot drift apart. sign_keys is part of this check for the same
-    # reason as the other three: step 2 indexes it per ring, through the
-    # `q_ints` built from it one entry at a time, so a shorter sequence there is
-    # the same shape exposure _assert_matches_pubk_rings refuses on the
-    # verification side, one ring's worth of tuple away from a bare IndexError
-    # instead of this message
-    if not len(pubk_rings) == len(sign_key_idx) == len(ks) == len(sign_keys):
-        err_msg = f"{len(pubk_rings)} rings, {len(sign_key_idx)} signing indexes, "
-        err_msg += f"{len(ks)} nonces and {len(sign_keys)} signing keys"
-        raise EccValueError(err_msg)
-
-    # sign_key_idx[i] is the real signer's position in pubk_rings[i], and
-    # nothing checked it was one before step 1 read it -- see the docstring
-    # above for the two ways that went wrong (issues btclib-org/btclib#1094,
-    # btclib-org/btclib#1095). Checked once here, before either step, the same
-    # shape as the length check just above and btclib-org/btclib#1088's decision
-    # on the verification side
-    _assert_sign_key_idx_in_range(pubk_rings, sign_key_idx)
-
-    # both sequences are scalars and neither was read as one. Step 2 took
-    # `sign_keys[i]` as it came, so a key of 0, of n, or of q + n signed where
-    # every other signer in `ecc.ecc` refuses all three -- q + n silently the
-    # same key as q, the reduction being that line's own `% ec.n` -- and the
-    # octets and hex spellings `Integer` names left Python's `OverflowError` for
-    # a key and its `TypeError` for a nonce, neither of them anything this
-    # library declares (issue btclib-org/btclib#1243). Read before step 1 rather
-    # than in the loop that consumes each, so a scalar a later ring's would have
-    # refused costs no scalar multiplication first.
-    #
-    # The ring is not named here, where `_assert_sign_key_idx_in_range`
-    # names it: a ring's size is a fact the caller has to be told, and a
-    # key of 0 is one they can see in the sequence they passed.
-    k_ints = [scalar_from_prv_key(k, ec) for k in ks]
-    q_ints = [scalar_from_prv_key(q, ec) for q in sign_keys]
+    k_ints, q_ints = _sign_scalars(ks, sign_key_idx, sign_keys, pubk_rings, ec)
 
     # step 1
     for i, (pubk_ring, j_star, k) in enumerate(
@@ -597,21 +648,7 @@ def sign_(
         # the real signer's own position: r here is R_{j_star} = k*G
         r = _bytes_from_ring_point(mult(k, ec.G, ec), ec, i, j_star)
         if start_idx != 0:
-            for j in range(start_idx, keys_size):
-                e[i][j] = int_from_bits(_hash(m, r, i, j, hf), ec.nlen) % ec.n
-                # e is already reduced mod n, so only zero can trip this, and
-                # for secp256k1 with sha256 zero is a 2**-255 accident: exactly
-                # two of the 256-bit outputs (0 and n) are 0 mod n. On a
-                # low-cardinality curve it is one message in n -- one in eleven
-                # on ec13_11 -- which is the corner case issue
-                # btclib-org/btclib#183 asked for and what makes ec a parameter
-                # worth having: tests/schemes/borromean_test.py reaches this
-                # raise, and the three below it, on that curve
-                if not 0 < e[i][j] < ec.n:
-                    err_msg = "implausible signature failure"
-                    raise BorromeanRingError(err_msg, i, j)
-                t = double_mult_var(-e[i][j], pubk_ring[j], s[i][j], ec.G, ec)
-                r = _bytes_from_ring_point(t, ec, i, j)
+            r = _forge_to_ring_end(m, r, i, start_idx, pubk_ring, e[i], s[i], ec, hf)
         e0bytes += r
     # the message closes the preimage the ring points opened, which is
     # where `secp256k1_borromean_sign` writes it into its own `sha256_e0`:
@@ -621,7 +658,7 @@ def sign_(
     hasher.update(e0bytes)
     e0 = hasher.digest()
     # step 2
-    # strict=True: see step 1
+    # strict=True: see _sign_scalars
     for i, (j_star, k) in enumerate(zip(sign_key_idx, k_ints, strict=True)):
         e[i][0] = int_from_bits(_hash(m, e0, i, 0, hf), ec.nlen) % ec.n
         # zero e again: the same accident documented above

@@ -339,7 +339,7 @@ class CurveGroup:
         # a hundred products cost -- which is also why the inverse itself
         # is the caller's, one of them being what the batch above shares
         p = self._modulus
-        z_inv2 = z_inv * z_inv % p
+        z_inv2 = z_inv**2 % p
         return Q[0] * z_inv2 % p, Q[1] * z_inv2 % p * z_inv % p
 
     def x_aff_from_jac_var(self, Q: JacPoint) -> int:
@@ -991,8 +991,7 @@ def _wNAF_of_m_var(m: int, w: int) -> list[int]:
     M: list[int] = []
     while m > 0:
         # a run of zero bits goes in one shift, not one bit at a time
-        zeros = (m & -m).bit_length() - 1
-        if zeros:
+        if zeros := (m & -m).bit_length() - 1:
             M.extend([0] * zeros)
             m >>= zeros
         if w == 1:
@@ -1186,7 +1185,7 @@ def _cached_fixed_base_multiples(
         for _ in range(spacing - 1):
             K = ec._double_jac(K)
     aff = ec._aff_from_jac_batch_var(chain)
-    powers, twice = aff[0::2], aff[1::2]
+    powers, twice = aff[::2], aff[1::2]
 
     jac: list[JacPoint] = []
     for j in range(0, blocks * teeth, teeth):
@@ -1897,7 +1896,7 @@ def _multi_mult_var(
     groups of order n).
     """
     # a length mismatch falls through to _multi_mult_pairs, which raises it
-    kept = sum(1 for n, PJ in zip(scalars, jac_points, strict=False) if n and PJ[2])
+    kept = sum(bool(n and PJ[2]) for n, PJ in zip(scalars, jac_points, strict=False))
     if kept < BOS_COSTER_THRESHOLD:
         return _multi_mult_w_NAF_var(
             scalars, jac_points, ec, _MULTI_MULT_W, ec._fixed_points
