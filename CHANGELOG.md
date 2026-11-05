@@ -23,6 +23,35 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.11.6
+
+### `ecc.curves.PubKeyTweakChain`, BIP32's public derivation on compressed SEC octets
+
+Each `tweak_add_var` step starts from the last child and returns its
+compressed key. Where the bindings serve, the chain is
+`keys.PubkeyTweakChain` and builds no Python point (issue #456).
+
+### Sourcery runs on every pull request
+
+Its findings are cleared, keeping every behaviour, raise and message
+(issue btclib-org/.github#2005).
+
+### The calls of btclib-org/.github name the commit of its tag `v2026.11.5`
+
+CodeQL runs the `security-extended` queries (issue btclib-org/.github#2005).
+
+### RELEASING.md is btclib-org/.github's shared copy up to this tree's own section
+
+(issue btclib-org/.github#1855, closes #410, closes #417, closes #422)
+
+### CONTRIBUTING.md names the rows that run on `.python-version`'s interpreter
+
+(issue btclib-org/.github#2051)
+
+### `check-executables-have-shebangs` runs
+
+(issue btclib-org/btclib#2852)
+
 ## v2026.11.5
 
 ### Empty sequences answer what their BIPs answer

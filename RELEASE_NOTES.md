@@ -9,6 +9,13 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.11.6
+
+No breaking changes. `ecc.curves.PubKeyTweakChain` is new: it adds
+successive tweaks to a compressed SEC public key, as BIP32's public
+derivation does, and where the bindings serve it builds no Python point
+(issue #456). `CHANGELOG.md`'s own `v2026.11.6` section has the rest.
+
 ## v2026.11.5
 
 - **Empty sequences answer what their BIPs answer**
