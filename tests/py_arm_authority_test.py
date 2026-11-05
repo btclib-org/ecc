@@ -87,6 +87,7 @@ _TESTS = Path(__file__).parent
 # binding of it, and the zkp vectors that of its fork, so a module built
 # on them closes the circle this file exists to break
 _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
+    "curves/bip32_public_derivation_test.py": ("bip32_public_derivation.json",),
     "curves/curve_test.py": ("pubkey.json",),
     "schemes/der_test.py": ("der_length_vectors.json",),
     "schemes/dleq_test.py": (
@@ -227,6 +228,9 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/ssa_test.py",
     ),
     "curves.sec_point._mult_sec": (),
+    "curves.sec_point.PubKeyTweakChain.__init__": (
+        "curves/bip32_public_derivation_test.py",
+    ),
     "curves.sec_point.bytes_from_prv_key_int": ("schemes/musig2_test.py",),
     "curves.sec_point.prv_key_tweak_add": ("schemes/dahlias_test.py",),
     "ecc.commit_nonce.commit_nonce_": ("schemes/ssa_test.py",),

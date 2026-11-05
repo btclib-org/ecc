@@ -1486,8 +1486,8 @@ def _tweak_add_var(P: Point, t: int, ec: Curve) -> Point:
 
     BIP32's public derivation and BIP341's output key are this shape as
     well, and each has a libsecp256k1 entry point of its own that does not
-    come through here: `keys.PubkeyTweakChain`, which `TweakChain` holds
-    across a whole path, and `xonly.tweak_add`, which
+    come through here: `keys.PubkeyTweakChain`, which `PubKeyTweakChain`
+    holds across a whole path, and `xonly.tweak_add`, which
     `ssa.pub_key_tweak_add_var` calls for the parity BIP341 commits to.
 
     The Python arm is the pair above, and answers what the bindings

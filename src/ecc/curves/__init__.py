@@ -24,7 +24,8 @@ multiplied again -- the one thing the memoized tables below cannot infer
 and the whole of what stands between a repeated point and the treatment
 the generator gets. Beside them are the sum of two points that may be
 secret, a sum of public points, a point plus a multiple of the generator
--- once, or along a chain of tweaks of one point -- a private key plus a
+-- once, or along a chain of tweaks of one point -- a compressed public
+key tweaked step after step, as a BIP32 path is, a private key plus a
 tweak, which is the same sum on the private side, and the test of
 whether an x is a coordinate of the curve.
 

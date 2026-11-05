@@ -47,6 +47,8 @@ is the same in each: there is no upstream file whose name they could take
 
 - `rfc6979.json` is transcribed from prose: no upstream file, so no
   upstream name to take.
+- `bip32_public_derivation.json` is transcribed from BIP32's prose, the
+  same case.
 - `WYCHEPROOF_COPYING` is upstream's `LICENSE`, renamed because a file
   of that name inside a directory of vendored vectors would read as
   licensing all of them. Its entry says so, and carries the upstream
@@ -152,6 +154,41 @@ discovering -- `mixed-line-ending` rewrites the file with `--fix=lf` as it
 is staged, so the blob to compare is never the one just fetched.
 
 ## bitcoin/bips
+
+### `tests/curves/_data/bip32_public_derivation.json`
+
+```text
+repo    bitcoin/bips
+path    bip-0032.mediawiki
+commit  c0644a054fd1568ecbfc9c2b656ad5200b16ff74  2026-03-05
+blob    558bbaab60d63e3e50648816d5e3449cfb887f85
+ours    8cc1cac1fb3836f89cb48a31bbb1d04a9d85d7cd
+pulled  2026-11-05
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **transcribed**, off the extended public keys of BIP32's test
+vectors. `derivations` holds each xpub followed by an unhardened index,
+with the indexes that lead from it and the xpubs they lead to;
+`invalid_pub_keys` holds the invalid xpubs whose key is no public key,
+each with the comment BIP32 gives it. Every value is in the pinned blob
+verbatim:
+
+```shell
+gh api -H 'Accept: application/vnd.github.raw' \
+    "repos/bitcoin/bips/git/blobs/558bbaab60d63e3e50648816d5e3449cfb887f85" \
+    | python3 -c "import json,sys
+text = sys.stdin.read()
+d = json.load(open(sys.argv[1]))
+values = [str(v) for e in d['derivations']
+          for v in (e['xpub'], *e['children'], *e['indexes'])]
+values += [v for e in d['invalid_pub_keys'] for v in e.values()]
+print(all(v in text for v in values))" \
+    tests/curves/_data/bip32_public_derivation.json
+```
+
+`tests/curves/bip32_public_derivation_test.py` walks each entry through
+`curves.PubKeyTweakChain` on both arms.
 
 ### `tests/schemes/_data/bip340_test_vectors.csv`
 
@@ -1891,7 +1928,8 @@ Against a pinned upstream blob:
 Not checked byte for byte against one:
 
 - transcribed, every value matched either in the pinned text or, for a
-  source file, by the check the entry itself states: `rfc6979.json`,
+  source file, by the check the entry itself states:
+  `bip32_public_derivation.json`, `rfc6979.json`,
   `zkp_rangeproof_fixed_vectors.json`, `zkp_generator_vectors.json`,
   `zkp_schnorr_adaptor_vectors.json`,
   `dsa_anti_exfil_test.py`, `secp256k1_symbols.txt`,

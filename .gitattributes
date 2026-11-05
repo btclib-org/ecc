@@ -4,6 +4,7 @@
 # with `core.autocrlf=true` (Git for Windows' default) from converting
 # them, so those bytes are the ones on disk on every platform.
 tests/_data/secp256k1_symbols.txt -text
+tests/curves/_data/bip32_public_derivation.json -text
 tests/curves/_data/pubkey.json -text
 tests/schemes/_data/WYCHEPROOF_COPYING -text
 tests/schemes/_data/bip340_test_vectors.csv -text

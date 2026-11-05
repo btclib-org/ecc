@@ -158,89 +158,6 @@ def prv_key_tweak_add(prv_key: Integer, t: Integer, ec: Curve = secp256k1) -> in
     return q
 
 
-class PubKeyTweakChain:
-    """A public key and the tweaks added to it one after the other.
-
-    Each step adds t*G to the key the previous step returned, and returns
-    the new key as compressed SEC octets. That is BIP32's public
-    derivation: each child is the next parent, and the next tweak is
-    hashed from the child's compressed key. `TweakChain` answers a
-    different question, many tweaks of one fixed point, each measured
-    from that point.
-
-    Where the bindings serve, the chain is `keys.PubkeyTweakChain`: the
-    key is parsed once, held on the C side, and no Python point is
-    built. Elsewhere the key is parsed with `point_from_octets_var`, and
-    each step is `ec.add_var(P, mult(t, ec.G, ec))`. The choice is made
-    once, when the chain is built.
-
-    A step whose sum is the point at infinity raises, and ends the chain:
-    libsecp256k1 leaves the key it holds invalid after such a step, so
-    every later step raises too. BIP32 refuses that child as well.
-
-    Args:
-        pub_key: the compressed SEC octets of the starting key.
-        ec: the curve the key belongs to.
-
-    Raises:
-        EccTypeError: if the curve is not a Curve, or the key not octets.
-        EccValueError: if the octets are not a compressed key of a point
-            of the curve.
-    """
-
-    def __init__(self, pub_key: Octets, ec: Curve = secp256k1) -> None:
-        _assert_valid_ec(ec)
-        sec = bytes_from_octets(pub_key, ec.p_size + 1)
-        if sec[0] not in {0x02, 0x03}:
-            # never echo the octets: a 0x00 prefix is an xprv's private key
-            raise EccValueError(f"not a compressed key: prefix 0x{sec[:1].hex()}")
-        self._ec = ec
-        self._ended = False
-        self._chain: Libsecp256k1PubkeyTweakChain | None = None
-        self._point: Point = (0, 0)
-        if _libsecp256k1_serves(ec, None):
-            # as in `point_from_pub_key`: no echo, no chain of the parse
-            # failure, the raise being outside the handler
-            with contextlib.suppress(ValueError):
-                self._chain = Libsecp256k1PubkeyTweakChain(sec)
-            if self._chain is None:
-                raise EccValueError("not a public key")
-        else:
-            self._point = point_from_octets_var(sec, ec)
-
-    @property
-    def ec(self) -> Curve:
-        """The curve the key belongs to."""
-        return self._ec
-
-    def tweak_add_var(self, t: Integer) -> bytes:
-        """Return the key plus t*G, compressed, and step the chain to it.
-
-        The tweak is refused outside 0..n-1, as `prv_key_tweak_add`
-        refuses it, and a refused tweak leaves the chain where it was.
-        """
-        tweak = _scalar_from_tweak(t, self.ec)
-        if self._ended:
-            raise EccValueError("the chain ended at the point at infinity")
-
-        if self._chain is not None:
-            sec = None
-            with contextlib.suppress(ValueError):
-                sec = self._chain.tweak_add(tweak, True)
-            if sec is not None:
-                return sec
-        else:
-            point = self.ec.add_var(self._point, mult(tweak, self.ec.G, self.ec))
-            # y == 0 is how an affine point spells infinity
-            if point[1]:
-                self._point = point
-                prefix = b"\x03" if point[1] & 1 else b"\x02"
-                return prefix + point[0].to_bytes(self.ec.p_size, "big")
-
-        self._ended = True
-        raise EccValueError("the sum is the point at infinity")
-
-
 def bytes_from_point(Q: Point, ec: Curve = secp256k1, compressed: bool = True) -> bytes:
     """Return a point as compressed/uncompressed octet sequence.
 
@@ -552,3 +469,86 @@ def mult_pub_key(m: Integer, pub_key: PubKey, ec: Curve = secp256k1) -> Point:
     _assert_valid_ec(ec)
     scalar = int_from_integer(m) % ec.n
     return _mult_sec(_sec_from_pub_key(pub_key, ec), scalar, ec)
+
+
+class PubKeyTweakChain:
+    """A public key and the tweaks added to it one after the other.
+
+    Each step adds t*G to the key the previous step returned, and returns
+    the new key as compressed SEC octets. That is BIP32's public
+    derivation: each child is the next parent, and the next tweak is
+    hashed from the child's compressed key. `TweakChain` answers a
+    different question, many tweaks of one fixed point, each measured
+    from that point.
+
+    Where the bindings serve, the chain is `keys.PubkeyTweakChain`: the
+    key is parsed once, held on the C side, and no Python point is
+    built. Elsewhere the key is parsed with `point_from_octets_var`, and
+    each step is `ec.add_var(P, mult(t, ec.G, ec))`. The choice is made
+    once, when the chain is built.
+
+    A step whose sum is the point at infinity raises, and ends the chain:
+    libsecp256k1 leaves the key it holds invalid after such a step, so
+    every later step raises too. BIP32 refuses that child as well.
+
+    Args:
+        pub_key: the compressed SEC octets of the starting key.
+        ec: the curve the key belongs to.
+
+    Raises:
+        EccTypeError: if the curve is not a Curve, or the key not octets.
+        EccValueError: if the octets are not a compressed key of a point
+            of the curve.
+    """
+
+    def __init__(self, pub_key: Octets, ec: Curve = secp256k1) -> None:
+        _assert_valid_ec(ec)
+        sec = bytes_from_octets(pub_key, ec.p_size + 1)
+        if sec[0] not in {0x02, 0x03}:
+            # never echo the octets: a 0x00 prefix is an xprv's private key
+            raise EccValueError(f"not a compressed key: prefix 0x{sec[:1].hex()}")
+        self._ec = ec
+        self._ended = False
+        self._chain: Libsecp256k1PubkeyTweakChain | None = None
+        self._point: Point = (0, 0)
+        if _libsecp256k1_serves(ec, None):
+            # as in `point_from_pub_key`: no echo, no chain of the parse
+            # failure, the raise being outside the handler
+            with contextlib.suppress(ValueError):
+                self._chain = Libsecp256k1PubkeyTweakChain(sec)
+            if self._chain is None:
+                raise EccValueError("not a public key")
+        else:
+            self._point = point_from_octets_var(sec, ec)
+
+    @property
+    def ec(self) -> Curve:
+        """The curve the key belongs to."""
+        return self._ec
+
+    def tweak_add_var(self, t: Integer) -> bytes:
+        """Return the key plus t*G, compressed, and step the chain to it.
+
+        The tweak is refused outside 0..n-1, as `prv_key_tweak_add`
+        refuses it, and a refused tweak leaves the chain where it was.
+        """
+        tweak = _scalar_from_tweak(t, self.ec)
+        if self._ended:
+            raise EccValueError("the chain ended at the point at infinity")
+
+        if self._chain is not None:
+            sec = None
+            with contextlib.suppress(ValueError):
+                sec = self._chain.tweak_add(tweak, True)
+            if sec is not None:
+                return sec
+        else:
+            point = self.ec.add_var(self._point, mult(tweak, self.ec.G, self.ec))
+            # y == 0 is how an affine point spells infinity
+            if point[1]:
+                self._point = point
+                prefix = b"\x03" if point[1] & 1 else b"\x02"
+                return prefix + point[0].to_bytes(self.ec.p_size, "big")
+
+        self._ended = True
+        raise EccValueError("the sum is the point at infinity")

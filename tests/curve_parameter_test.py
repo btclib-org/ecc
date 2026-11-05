@@ -84,6 +84,7 @@ from ecc.curves.curve import (
 )
 from ecc.curves.curve_group_f import find_all_points, find_subgroup_points
 from ecc.curves.sec_point import (
+    PubKeyTweakChain,
     bytes_from_point,
     bytes_from_prv_key_int,
     mult_pub_key,
@@ -241,6 +242,11 @@ _CASES = (
     _Case(
         "ecc.curves.sec_point.point_from_octets_var",
         point_from_octets_var,
+        {"pub_key": _SEC},
+    ),
+    _Case(
+        "ecc.curves.sec_point.PubKeyTweakChain.__init__",
+        PubKeyTweakChain,
         {"pub_key": _SEC},
     ),
     _Case(

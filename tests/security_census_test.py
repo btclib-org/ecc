@@ -43,6 +43,7 @@ _PUBLIC_VALUES = {
     "ecc.curves.curve.set_libsecp256k1_serving": "a switch, and no key",
     "ecc.curves.curve.TweakChain.__init__": "a public base point",
     "ecc.curves.curve.TweakChain.point": "a public tweak of that point",
+    "ecc.curves.sec_point.PubKeyTweakChain.__init__": "a public key",
     "ecc.ecc.dsa.recover_pub_key_": "a signature and a message hash",
     "ecc.ecc.dsa.recover_pub_keys_": "a signature and a message hash",
     "ecc.ecc.dsa.recover_sec_": "a signature and a message hash",

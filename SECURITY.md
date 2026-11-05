@@ -323,7 +323,7 @@ package is used to teach and to prototype as much as to build:
     `sec = libsecp256k1_shared_point(`
     (`src/ecc/ecc/dh.py:123`) and `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m, False)`
-    (`src/ecc/curves/sec_point.py:439`), under
+    (`src/ecc/curves/sec_point.py:443`), under
     `sec_point.mult_pub_key` and `ecies.derive_keys`, make the same call
     on the octets they already hold.
     `double_mult_var` and `multi_mult_var`, and `ssa.batch_verify`, are
