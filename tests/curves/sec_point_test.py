@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
-from hypothesis import given
+from hypothesis import example, given
 from hypothesis import strategies as st
 
 from ecc._libsecp256k1 import keys as libsecp256k1_keys
@@ -768,23 +768,34 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
 
 
 @needs_bindings
+@example(q=1, tweaks=[secp256k1.n - 1, 1])
 @given(
     q=st.integers(min_value=1, max_value=secp256k1.n - 1),
     tweaks=st.lists(st.integers(min_value=0, max_value=secp256k1.n - 1), max_size=4),
 )
 def test_pub_key_tweak_chain_arms_agree(q: int, tweaks: list[int]) -> None:
-    """Both arms return the same octets, step after step."""
+    """Both arms return the same octets, step after step.
+
+    A step onto infinity is refused on both, and is the last step walked.
+    """
     key = bytes_from_prv_key_int(q)
-    chain = PubKeyTweakChain(key)
-    on_bindings = [chain.tweak_add_var(t) for t in tweaks]
+    on_bindings = PubKeyTweakChain(key)
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(curve, "_libsecp256k1_available", False)
-        chain = PubKeyTweakChain(key)
-        on_python = [chain.tweak_add_var(t) for t in tweaks]
-    assert on_bindings == on_python
-    for t, sec in zip(tweaks, on_bindings, strict=True):
+        on_python = PubKeyTweakChain(key)
+    for t in tweaks:
         q = (q + t) % secp256k1.n
-        assert sec == bytes_from_prv_key_int(q)
+        chains = (on_bindings, on_python)
+        if q == 0:
+            for chain in chains:
+                with pytest.raises(EccValueError, match="point at infinity"):
+                    chain.tweak_add_var(t)
+            break
+        expected = bytes_from_prv_key_int(q)
+        assert on_bindings.tweak_add_var(t) == expected
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(curve, "_libsecp256k1_available", False)
+            assert on_python.tweak_add_var(t) == expected
 
 
 @both_arms
