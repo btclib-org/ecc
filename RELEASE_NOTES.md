@@ -9,6 +9,45 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.11.5
+
+- **Empty sequences answer what their BIPs answer**
+  (closes #447, closes #448, closes #449).
+    - `ssa.batch_verify` and `batch_verify_` answer `True` for an empty
+      batch, and `assert_batch_as_valid` and `assert_batch_as_valid_`
+      return, as BIP340's BatchVerify does. All four raised
+      `EccValueError`.
+    - `ssa_halfagg.verify` answers `True`, and `assert_as_valid` returns,
+      for 32 zero bytes and no pairs, the aggregate of no signature, as
+      BIP458's verify vector 0 expects. Both raised `EccValueError`.
+    - `musig2.nonce_agg_var` and `frost.nonce_agg_var` raise
+      `EccValueError` for an empty list, where BIP327 and BIP445 fail.
+      Both returned 66 zero bytes.
+    - `musig2.key_agg_var` raises an `EccValueError` that names the empty
+      list, where its message was "not a multi_mult_var".
+      `key_agg_and_tweak_var`, and `session_values` on a session with no
+      public keys, raise it too.
+    - `musig2.partial_sig_agg` and `partial_sig_agg_adaptor` raise
+      `EccValueError` for a `psigs` list whose length differs from the
+      session's public keys. With none, they returned a signature, or a
+      pre-signature, whose s was the tweak term alone.
+
+  Act on it if you relied on the refusal to catch an empty batch or
+  aggregate built by mistake: check the length before verifying.
+
+  Act on it if you pass musig2 or frost an empty list of keys or nonces,
+  or `musig2.partial_sig_agg` a `psigs` list of another length: expect
+  `EccValueError`. If you match "not a multi_mult_var", match the new
+  message.
+- **The `secp256k1` extra asks for `btclib-secp256k1` at 0.8.0.14 or
+  later** (closes #383). Its `dsa` refuses a signature whose r or s is
+  outside 1..n-1.
+
+  Act on it if you pin `btclib-secp256k1` below 0.8.0.14: drop the pin and
+  install `ecc[secp256k1]`.
+
+`CHANGELOG.md`'s own `v2026.11.5` section has the rest.
+
 ## v2026.11.2
 
 No breaking changes. `CHANGELOG.md`'s own `v2026.11.2` section has what the

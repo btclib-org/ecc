@@ -23,6 +23,58 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.11.5
+
+### Empty sequences answer what their BIPs answer
+
+The empty batch of `ssa` and the empty aggregate of `ssa_halfagg` are
+valid; musig2 and frost refuse the empty lists BIP327 and BIP445 fail
+(closes #447, closes #448, closes #449).
+
+### BIP458's vectors are vendored at the merged text
+
+bitcoin/bips `2d439430`, where they were the draft on fjahr/bips
+`684923c` (closes #339).
+
+### SECURITY.md names the Python around each secret's crossing into libsecp256k1
+
+`tests/security_census_test.py` fails on a crossing it finds that the list
+does not name (closes #408).
+
+### The `secp256k1` extra asks for `btclib-secp256k1` 0.8.0.14
+
+Its `dsa` refuses a signature whose r or s is outside 1..n-1 (closes #383).
+
+### The homepage is <https://btclib.org/ecc/>
+
+(closes #423)
+
+### The calls of btclib-org/.github name the commit of its tag `v2026.11.2`
+
+`public-api` and `api-break` also run `api_gaps.py`, and `docs` runs
+`check_included_links.py` (issue btclib-org/.github#1988).
+
+### macOS runs on arm64 alone
+
+(issue btclib-org/.github#1982)
+
+### The pre-commit hooks move
+
+ruff 0.17.3, pydoclint 0.12.0, uv-pre-commit 0.13.6, and btclib-org/.github's
+hooks from v2026.10.26 to v2026.11.2 (#436).
+
+### CONTRIBUTING.md, REVIEWING.md and `.coderabbit.yaml` follow btclib-org/.github
+
+(#426, issue btclib-org/.github#2004, issue btclib-org/.github#1998)
+
+### RELEASING.md names the lint jobs a release run skips
+
+(issue btclib-org/.github#1989)
+
+### `check_vendored_vectors.py` names functional-tests
+
+(closes #429, issue #417)
+
 ## v2026.11.2
 
 ### `ecc.ecc.dahlias`, BIP459 DahLIAS fully aggregated signatures
