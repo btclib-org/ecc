@@ -37,9 +37,9 @@ from hashlib import sha256
 from typing import Any
 
 from ecc._utils import assert_type, bytes_from_octets, is_octets
-from ecc.alias import Octets
+from ecc.alias import INF, Octets
 from ecc.curves import secp256k1
-from ecc.curves.curve import INF, _multi_mult_x_only_var, mult
+from ecc.curves.curve import _multi_mult_x_only_var, mult
 from ecc.ecc.ssa import challenge_
 from ecc.exceptions import EccRuntimeError, EccTypeError, EccValueError
 
