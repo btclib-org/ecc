@@ -384,16 +384,8 @@ the line, and it is there because a measurement put it there rather than
 because the rule reaches it: its own wycheproof vectors ask that question
 over profiles built for it, and answer False.
 
-**An empty sequence answers what its BIP answers**: the identity or a
-vacuous truth where the BIP defines one, a refusal where the BIP fails.
-So `ssa.batch_verify` answers True for an empty batch, as BIP340 does,
-and `ssa_halfagg.verify` for the aggregate of no signature, as BIP458
-does. A caller that knows how many signatures to expect is the one to
-guard against an empty list (btclib-org/ecc#222, btclib-org/ecc#371,
-btclib-org/ecc#447).
-
-A verification also raises where the caller asked to be refused instead of
-served by the Python arithmetic: under
+Outside the carve-out, a verification also raises where the caller asked
+to be refused instead of served by the Python arithmetic: under
 `set_libsecp256k1_serving(serving=True, required=True)`, a verification the
 bindings decline for something the caller chose — an `hf`, a MuSig2 adaptor
 — raises `EccRuntimeError` and does not answer False, since False
@@ -405,6 +397,14 @@ happens to derive from: those two coincide only by accident
 (btclib-org/btclib#745). The `assert_*` twin beside each of these is the
 spelling that says *why* a value was refused, and the two are how a
 caller chooses between an answer and a reason.
+
+**An empty sequence answers what its BIP answers**: the identity or a
+vacuous truth where the BIP defines one, a refusal where the BIP fails.
+So `ssa.batch_verify` answers True for an empty batch, as BIP340 does,
+and `ssa_halfagg.verify` for the aggregate of no signature, as BIP458
+does. A caller that knows how many signatures to expect is the one to
+guard against an empty list (btclib-org/ecc#222, btclib-org/ecc#371,
+btclib-org/ecc#447).
 
 **A tuple of the wrong arity is a wrong value**, though mypy refuses it: run
 time cannot tell `tuple[int]` from `tuple[int, int]`. `is_on_curve` and the

@@ -207,10 +207,9 @@ def _assert_as_valid_(rpms: list[bytes], s: int) -> None:
         x_coords += [x_R, x_P]
 
     # an r or a key that is no x-coordinate is refused by the lift inside
-    # the multiplication, as an EccValueError
-
-    # with no pair the sum is empty, the point at infinity, and the
-    # multiplication refuses an empty sum on both arms
+    # the multiplication, as an EccValueError. With no pair the sum is
+    # empty, the point at infinity, and the multiplication refuses an
+    # empty sum on both arms
     total = _multi_mult_x_only_var(scalars, x_coords, secp256k1) if rpms else INF
     if mult(s) != total:
         raise EccRuntimeError("aggregate signature verification failed")

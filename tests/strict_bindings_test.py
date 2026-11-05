@@ -169,6 +169,22 @@ def test_a_served_call_is_unaffected_when_required() -> None:
     dsa.recover_pub_keys(_MSG_HASH, sig)
 
 
+def test_an_empty_batch_answers_when_required() -> None:
+    """An empty batch checks nothing, so a declined `hf` does not raise.
+
+    The same `hf` raises for a batch of one signature.
+    """
+    set_libsecp256k1_serving(serving=True, required=True)
+    assert ssa.batch_verify([], [], [], hf=sha512)
+    assert ssa.batch_verify_([], [], [], hf=sha512)
+    ssa.assert_batch_as_valid([], [], [], hf=sha512)
+    ssa.assert_batch_as_valid_([], [], [], hf=sha512)
+    with pytest.raises(EccRuntimeError, match="libsecp256k1 was required"):
+        ssa.batch_verify([b"strict"], [_SSA_PUB_KEY], [_SSA_SIG], hf=sha512)
+    with pytest.raises(EccRuntimeError, match="libsecp256k1 was required"):
+        ssa.batch_verify_([_MSG_HASH], [_SSA_PUB_KEY], [_SSA_SIG], hf=sha512)
+
+
 def test_what_the_bindings_never_serve_runs_when_required() -> None:
     """Another curve and an input the bindings cannot take are no choice."""
     set_libsecp256k1_serving(serving=True, required=True)

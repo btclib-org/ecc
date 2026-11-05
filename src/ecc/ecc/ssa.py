@@ -1707,10 +1707,14 @@ def batch_verify_(
 
     Messages enter prepared, as in ``assert_batch_as_valid_``.
 
-    Raises where a public key is structurally invalid -- spelled in a
-    way BIP340 has no reading for. It answers False otherwise: a
-    failed verification and a well-formed key or scalar that is merely
-    not authentic are both False, see `_assert_structurally_valid_`.
+    An empty batch answers True: a caller that expects some number of
+    signatures checks the count itself.
+
+    False means an invalid batch: a failed verification and a
+    well-formed key or scalar that is merely not authentic are both
+    False, see `_assert_structurally_valid_`. Raises where a public key
+    is structurally invalid -- spelled in a way BIP340 has no reading
+    for.
 
     Where the bindings are required (`curves.set_libsecp256k1_serving` with
     `required=True`) and decline `hf`, a batch that is not empty raises
