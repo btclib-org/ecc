@@ -36,15 +36,16 @@ before upgrading, rather than a digit.
   aggregate built by mistake: check the length before verifying.
 
   Act on it if you pass musig2 or frost an empty list of keys or nonces,
-  or `musig2.partial_sig_agg` a `psigs` list of another length: expect
-  `EccValueError`. If you match "not a multi_mult_var", match the new
-  message.
+  or `musig2.partial_sig_agg` or `partial_sig_agg_adaptor` a `psigs` list
+  of another length: expect `EccValueError`. If you match
+  "not a multi_mult_var", match the new message.
 - **The `secp256k1` extra asks for `btclib-secp256k1` at 0.8.0.14 or
   later** (closes #383). Its `dsa` refuses a signature whose r or s is
   outside 1..n-1.
 
   Act on it if you pin `btclib-secp256k1` below 0.8.0.14: drop the pin and
-  install `ecc[secp256k1]`.
+  upgrade, as `pip install --upgrade 'ecc[secp256k1]'` does. A plain
+  `pip install` leaves an installed `ecc` and its bindings where they are.
 
 `CHANGELOG.md`'s own `v2026.11.5` section has the rest.
 
