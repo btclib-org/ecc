@@ -2,20 +2,21 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the diff and the reporting halves of the weekly py-arm sentinel.
+"""Tests for the weekly py-arm sentinel: measuring, the diff and the reporting.
 
 `measure()` is what actually runs the suite under coverage, module by
-module -- exactly what this repository collects no coverage from, the
-reason `.github/scripts` sits outside `tool.coverage.run`'s `source` in
-the first place. `compare()` takes none of that: a
-`dict[str, frozenset[str]]` in, the three-way STALE/UNDERSTATED/NEW
-AUTHORITY diff against `_AUTHORITY` and `_WITHOUT_AN_AUTHORITY` out, no
-subprocess or coverage run needed to exercise it. `_AUTHORITY` and
-`_WITHOUT_AN_AUTHORITY` are monkeypatched to small synthetic tables here
-rather than read from `tests/py_arm_authority_test.py`, so a change
-to the real table cannot make this test pass or fail by accident.
+module, which takes minutes. Its tests here stand in for each run:
+`measure()`'s replace `_run_coverage`, and `_run_coverage`'s replace
+`subprocess.run` with one writing the report a real run would.
+`compare()` takes none of that: a `dict[str, frozenset[str]]` in, the
+three-way STALE/UNDERSTATED/NEW AUTHORITY diff against `_AUTHORITY` and
+`_WITHOUT_AN_AUTHORITY` out, no subprocess or coverage run needed to
+exercise it. `_AUTHORITY` and `_WITHOUT_AN_AUTHORITY` are monkeypatched
+to small synthetic tables here rather than read from
+`tests/py_arm_authority_test.py`, so a change to the real table cannot
+make this test pass or fail by accident.
 
-`report()` is the other half, and its only external dependency is `gh`.
+`report()` is the last part, and its only external dependency is `gh`.
 `FakeGh` answers each of `gh issue list`, `create`, `edit` and `close`
 the way a real one would rather than reaching GitHub, and records every
 call, so a test can assert what was asked for as well as what came
@@ -30,6 +31,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import runpy
 import subprocess
 import sys
 from pathlib import Path
@@ -340,3 +342,131 @@ def test_main_dry_run_prints_but_never_calls_issue(
 
     assert "1 disagreement(s) with a fresh measurement." in capsys.readouterr().out
     assert fake_gh.calls == []
+
+
+def test_run_coverage_runs_one_module_and_reads_its_report(
+    checker: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One module's pytest run, its JSON report read back as lines by file."""
+    report = tmp_path / "0.json"
+    calls: list[list[str]] = []
+
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(list(argv))
+        assert kwargs == {"cwd": checker._ROOT, "check": True}
+        files = {"src/ecc/a.py": {"executed_lines": [1, 3]}}
+        report.write_text(json.dumps({"files": files}), encoding="utf-8")
+        return subprocess.CompletedProcess(argv, 0)
+
+    monkeypatch.setattr(checker.subprocess, "run", fake_run)
+
+    assert checker._run_coverage("a_test.py", report) == {"src/ecc/a.py": {1, 3}}
+    assert calls == [
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/a_test.py",
+            "--cov=ecc",
+            f"--cov-report=json:{report}",
+            "--cov-fail-under=0",
+        ]
+    ]
+
+
+def test_reached_names_the_arms_a_line_of_whose_body_ran(
+    checker: ModuleType,
+) -> None:
+    """A run reaches an arm where it ran a line of its body, and no other."""
+    root = checker._ROOT
+    locations = {
+        "ran": (root / "src" / "ecc" / "a.py", 10, 12),
+        "missed": (root / "src" / "ecc" / "a.py", 20, 22),
+        "unrun_file": (root / "src" / "ecc" / "b.py", 10, 12),
+    }
+    executed = {str(Path("src", "ecc", "a.py")): {12, 19, 23}}
+
+    assert checker._reached(executed, locations) == {"ran"}
+
+
+def test_measuring_is_refused_where_the_bindings_are_installed(
+    checker: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Installed bindings stop the run before any module is measured."""
+    monkeypatch.setattr(checker, "INSTALLED", True)
+
+    with pytest.raises(SystemExit, match="btclib_secp256k1 is installed"):
+        checker._assert_bindings_absent()
+
+
+def test_measuring_goes_ahead_where_the_bindings_are_absent(
+    checker: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """No bindings installed is the environment `_AUTHORITY` is measured in."""
+    monkeypatch.setattr(checker, "INSTALLED", False)
+
+    assert checker._assert_bindings_absent() is None
+
+
+def test_measure_refuses_first_then_runs_each_module_on_its_own_report(
+    checker: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """One run per module, in name order, each arm collecting who reached it."""
+    steps: list[object] = []
+    reports: list[Path] = []
+    path = checker._ROOT / "src" / "ecc" / "a.py"
+    rel = str(Path("src", "ecc", "a.py"))
+    executed = {"a_test.py": {rel: {1}}, "b_test.py": {rel: {1, 5}}}
+
+    def run_coverage(module: str, report_path: Path) -> dict[str, set[int]]:
+        steps.append(module)
+        reports.append(report_path)
+        return executed[module]
+
+    monkeypatch.setattr(checker, "_assert_bindings_absent", lambda: steps.append(0))
+    monkeypatch.setattr(
+        checker, "_arm_locations", lambda: {"one": (path, 1, 2), "two": (path, 5, 6)}
+    )
+    monkeypatch.setattr(
+        checker, "_THIRD_PARTY_VECTORS", {"b_test.py": (), "a_test.py": ()}
+    )
+    monkeypatch.setattr(checker, "_run_coverage", run_coverage)
+
+    assert checker.measure() == {
+        "one": frozenset({"a_test.py", "b_test.py"}),
+        "two": frozenset({"b_test.py"}),
+    }
+    assert steps == [0, "a_test.py", "b_test.py"]
+    assert [report.name for report in reports] == ["0.json", "1.json"]
+    assert reports[0].parent == reports[1].parent
+    assert capsys.readouterr().out == (
+        "measuring a_test.py ...\nmeasuring b_test.py ...\n"
+    )
+
+
+def test_the_main_guard_runs_the_script_as___main__(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Cover `if __name__ == "__main__":` without a subprocess.
+
+    This project collects no coverage from a child interpreter, so a real
+    subprocess would leave the guard uncovered. `runpy.run_path` executes
+    the file fresh with `__name__` set to `"__main__"` in this one. With
+    no title, `main` answers with its usage before it measures anything,
+    as the usage test above shows.
+    """
+    # the script puts the repository root on sys.path when it runs
+    monkeypatch.setattr(sys, "path", list(sys.path))
+    monkeypatch.setattr(sys, "argv", ["prog"])
+
+    with pytest.raises(SystemExit) as excinfo:
+        runpy.run_path(str(_SCRIPT), run_name="__main__")
+
+    assert excinfo.value.code == 2
+    # runpy sets argv[0] to the file it runs, so its name is what the
+    # usage line names
+    assert capsys.readouterr().err == (
+        f"usage: {_SCRIPT.name} <issue title> [--dry-run]\n"
+    )

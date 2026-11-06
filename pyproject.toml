@@ -220,6 +220,7 @@ source-exclude = [
     # decision.
     # tests/source_exclude_test.py checks that every test its reader finds
     # reaching .github or fuzz/ is named here
+    "/tests/assert_bindings_serving_test.py",
     "/tests/check_py_arm_authority_test.py",
     "/tests/check_vendored_vectors_test.py",
     "/tests/fuzz_corpus_test.py",
@@ -376,8 +377,10 @@ extend-ignore-re = ['`[^`]*`']
 
 [tool.coverage.run]
 # what the ratchet measures, named here rather than on the command line:
-# unnamed, `--cov` measures every file the run imports
-source = ["ecc", "tests"]
+# unnamed, `--cov` measures every file the run imports. .github/scripts
+# is not an importable package, and coverage measures it by path all the
+# same
+source = ["ecc", "tests", ".github/scripts"]
 # tests/integration is omitted because a test there skips itself without
 # the switch that asks for it: its body would be an uncovered line of
 # tests/ at every ordinary run, which is the ratchet reporting the switch
