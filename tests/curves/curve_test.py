@@ -1738,11 +1738,11 @@ def test_add_refuses_alike_on_both_arms(
 ) -> None:
     """`add` refuses what is no point with the same exception on either arm.
 
-    On the bindings arm the parse refuses a finite point off the curve, and
-    `_sec_from_point` a y it cannot write in 32 octets; `require_on_curve`
-    then raises what it raises on the Python arm. The form of a point --
-    a pair of integers, x in 0..p-1 -- is checked in Python on both arms,
-    infinity's x included, which no parse reads.
+    On the bindings arm a point is refused where the comment in `add` says,
+    and `require_on_curve` then raises what it raises on the Python arm.
+    The cases hold both ways of refusing a finite point. The form of a
+    point -- a pair of integers, x in 0..p-1 -- is checked in Python on
+    both arms, infinity's x included, which no parse reads.
     """
     if not bindings:
         no_bindings(monkeypatch)

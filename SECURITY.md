@@ -342,7 +342,7 @@ package is used to teach and to prototype as much as to build:
     (`src/ecc/ecc/pedersen.py:384`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/ecc/curves/curve.py:1447`):
+    (`src/ecc/curves/curve.py:1445`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at
@@ -418,10 +418,9 @@ package is used to teach and to prototype as much as to build:
     - `curve.add` checks the form of both points, a pair of integers whose
         x is in 0..p-1, and leaves the rest of the proof that a finite one
         is on the curve to the parse of the call: `require_on_curve` runs
-        only once the octets cannot be written or the parse has refused.
-        `curve._add` under it tests each point for infinity to choose the
-        stand-in, writes the points to octets for the call, and reads the
-        sum back
+        only on the path that refuses. `curve._add` under it tests each
+        point for infinity to choose the stand-in, writes the points to
+        octets for the call, and reads the sum back
     - `pedersen.commit` refuses an r that is 0 mod n, and its commitment is a
         `curve.mult` of each scalar and a `curve._add` of the products, with
         their steps. `pedersen.generator_from_seed` is the map of its seed,

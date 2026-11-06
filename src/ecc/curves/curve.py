@@ -1329,9 +1329,8 @@ def _libsecp256k1_sum(points: Sequence[Point]) -> Point:
     The bindings arm `_sum_var` and `_add` share: one `keys.pubkey_sum`,
     which is `secp256k1_ec_pubkey_combine`. Every point is required to
     be a point of secp256k1, which `_sum_var` establishes before this.
-    `_add` may hand over a finite point `add` has not proved, which
-    `_sec_from_point` refuses with an OverflowError where y does not fit
-    in 32 octets, and the parse otherwise with a ValueError.
+    `_add` may hand over a finite point `add` has not proved: `add` says
+    what refuses one.
     """
     # infinity is the identity and libsecp256k1 has no public key for
     # it, so a term at infinity is dropped rather than handed over.
@@ -1425,9 +1424,8 @@ def _add(P: Point, Q: Point, ec: Curve) -> Point:
     the one inverse `aff_from_jac_var` then makes is of a Z nobody can
     predict, as the one `mult` makes is. Both points are required to be
     points of the curve, as a product `mult` returns is, except on the
-    bindings arm, where `add` hands over a finite point it has not proved,
-    which `_sec_from_point` refuses with an OverflowError where y does not
-    fit in 32 octets, and the parse otherwise with a ValueError.
+    bindings arm, where `add` hands over a finite point it has not proved
+    and says what refuses one.
 
     A blinded asset generator is the same shape: `pedersen.generator_from_seed`
     adds the two points a secret seed maps to, and then blind*G for a
@@ -1474,10 +1472,9 @@ def add(P: Point, Q: Point, ec: Curve = secp256k1) -> Point:
 
     Where the bindings serve, the Python checks only the form of each
     point, and the parse of `secp256k1_ec_pubkey_combine` proves a finite
-    one is on the curve: `require_on_curve` runs only once the octets
-    cannot be written or the parse has refused, to raise what it raises on
-    the other arm. `_mult_sec` makes the same trade for a key handed over
-    as octets.
+    one is on the curve: `require_on_curve` runs only on the path that
+    refuses, to raise what it raises on the other arm. `_mult_sec` makes
+    the same trade for a key handed over as octets.
     """
     _assert_valid_ec(ec)
     if _libsecp256k1_serves(ec, None):
