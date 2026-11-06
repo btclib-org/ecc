@@ -703,17 +703,23 @@ class CurveGroup:
         if not self.is_on_curve(Q):
             raise EccValueError("point not on curve")
 
-    def is_on_curve(self, Q: Point) -> bool:
-        """Return True if the point is on the curve."""
+    def _require_form(self, Q: Point) -> None:
+        """Require Q to have the form of a point: what `is_on_curve` asks first.
+
+        A pair of integers whose x is in 0..p-1, refused with the
+        exceptions `is_on_curve` raises. Neither y's range nor the curve
+        equation is asked: `curve.add` leaves both to the bindings' parse
+        where they serve.
+        """
         # the type before the length: `len` of what is not sized is a
         # TypeError about a builtin, where a Point is what this asks for
         assert_type(Q, tuple, "point")
         if len(Q) != 2:
             raise EccValueError("point must be a tuple[int, int]")
-        # the type before the y==0 infinity check below: `False == 0`
-        # would read any x paired with a bool y as infinity, and
-        # `is_integer` is where this library says a bool is not a number
-        # (issue btclib-org/btclib#1249)
+        # the type before the y==0 infinity check: `False == 0` would read
+        # any x paired with a bool y as infinity, and `is_integer` is
+        # where this library says a bool is not a number (issue
+        # btclib-org/btclib#1249)
         if not is_integer(Q[0]):
             raise EccTypeError(f"non-integer x-coordinate: {type(Q[0]).__name__}")
         if not is_integer(Q[1]):
@@ -724,6 +730,10 @@ class CurveGroup:
         # btclib-org/ecc#7)
         if not 0 <= Q[0] < self.p:
             raise EccValueError("x-coordinate not in 0..p-1")
+
+    def is_on_curve(self, Q: Point) -> bool:
+        """Return True if the point is on the curve."""
+        self._require_form(Q)
         if Q[1] == 0:  # Infinity point in affine coordinates
             # true of every point this class enumerates on its own --
             # find_all_points walks a bare CurveGroup with no G and no n,

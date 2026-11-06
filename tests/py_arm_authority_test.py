@@ -216,6 +216,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/ssa_tweak_test.py",
         "schemes/wycheproof_test.py",
     ),
+    "curves.curve.add": ("curves/curve_test.py",),
     "curves.curve.double_mult_var": (
         "curves/curve_test.py",
         "schemes/dlc_oracle_test.py",
@@ -232,6 +233,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/ssa_test.py",
     ),
     "curves.sec_point._mult_sec": (),
+    "curves.sec_point._mult_sec_compressed": (),
     "curves.sec_point.PubKeyTweakChain.__init__": (
         "curves/bip32_public_derivation_test.py",
     ),
@@ -287,9 +289,10 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 # is a line deleted here rather than a number nobody re-derives, and what
 # would close each:
 #
-# - `curves.sec_point._mult_sec`, a point multiplied from its SEC octets.
-#   No vendored vector here hands the package octets to multiply; a set
-#   that does, an ECDH one taking the peer's key as octets, would.
+# - `curves.sec_point._mult_sec` and `curves.sec_point._mult_sec_compressed`,
+#   a point multiplied from its SEC octets. No vendored vector here hands
+#   the package octets to multiply; a set that does, an ECDH one taking the
+#   peer's key as octets, would.
 # - `ecc.dsa.Signer.__init__` and `ecc.dsa.Signer.sign_`, `Signer`'s
 #   constructor and signing. Every third-party vector
 #   reaches `dsa.sign_` or `dsa.assert_as_valid_` through the free
@@ -304,6 +307,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",
+        "curves.sec_point._mult_sec_compressed",
         "ecc.dsa.Signer.__init__",
         "ecc.dsa.Signer.sign_",
         "ecc.dsa.sign_recoverable_",

@@ -319,13 +319,15 @@ package is used to teach and to prototype as much as to build:
     that arm and infinity is not delegated at all --
     `curve._libsecp256k1_mult` at
     `libsecp256k1_shared_point(_sec_from_point(Q), m, False)`
-    (`src/ecc/curves/curve.py:975`). `dh.diffie_hellman` at
+    (`src/ecc/curves/curve.py:976`). `dh.diffie_hellman` at
     `sec = libsecp256k1_shared_point(`
-    (`src/ecc/ecc/dh.py:123`) and `sec_point._mult_sec` at
-    `libsecp256k1_shared_point(sec, m, False)`
-    (`src/ecc/curves/sec_point.py:443`), under
-    `sec_point.mult_pub_key` and `ecies.derive_keys`, make the same call
-    on the octets they already hold.
+    (`src/ecc/ecc/dh.py:123`), `sec_point._mult_sec` at
+    `libsecp256k1_shared_point(sec, m or 1, False)`
+    (`src/ecc/curves/sec_point.py:444`), under
+    `sec_point.mult_pub_key`, and `sec_point._mult_sec_compressed` at
+    `libsecp256k1_shared_point(sec, m, True)`
+    (`src/ecc/curves/sec_point.py:466`), under `ecies.derive_keys`, make
+    the same call on the octets they already hold.
     `double_mult_var` and `multi_mult_var`, and `ssa.batch_verify`, are
     the other call: `keys.pubkey_tweak_mul_sum`, one
     `secp256k1_ec_pubkey_tweak_mul` per term, which runs
@@ -340,7 +342,7 @@ package is used to teach and to prototype as much as to build:
     (`src/ecc/ecc/pedersen.py:384`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/ecc/curves/curve.py:1439`):
+    (`src/ecc/curves/curve.py:1447`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at
@@ -398,8 +400,9 @@ package is used to teach and to prototype as much as to build:
     call. After the call, its `ecdh._shared_point_`, under every
     `secp256k1_ecdh` this package makes, assembles the octets it answers in
     Python: it copies the coordinates out and, where the call asks for the
-    compressed form, as `dh.diffie_hellman`'s does, sets the prefix from the
-    parity of the product's y, `_EVEN_Y | (coordinates[63] & 1)`.
+    compressed form, as `dh.diffie_hellman`'s and `ecies.derive_keys`'s do,
+    sets the prefix from the parity of the product's y,
+    `_EVEN_Y | (coordinates[63] & 1)`.
 
     - `curve.mult` and `curve.PreparedPoint.mult` reduce the scalar mod n
         and test it for zero before the call, `stand_in = m or 1`, and
@@ -407,12 +410,18 @@ package is used to teach and to prototype as much as to build:
         the generator, and read the product back from octets. A point
         other than the generator they test for infinity and write to
         octets for the call, and `curve.mult` runs `require_on_curve` on
-        it first
-    - `curve.add` runs `require_on_curve` on both points, which for a
-        point at infinity skips the range check of y and its square, work
-        any other point costs. `curve._add` under it tests each point for
-        infinity to choose the stand-in, writes the points to octets for
-        the call, and reads the sum back
+        it first. Handing the zero to the call and answering infinity
+        where the bindings refuse it would not remove the test: their
+        Python makes it on the call's result, raises, and skips the
+        serialization a product costs, so a zero would return sooner
+        (issue btclib-org/ecc#439)
+    - `curve.add` checks the form of both points, a pair of integers whose
+        x is in 0..p-1, and leaves the rest of the proof that a finite one
+        is on the curve to the parse of the call: `require_on_curve` runs
+        only once the octets cannot be written or the parse has refused.
+        `curve._add` under it tests each point for infinity to choose the
+        stand-in, writes the points to octets for the call, and reads the
+        sum back
     - `pedersen.commit` refuses an r that is 0 mod n, and its commitment is a
         `curve.mult` of each scalar and a `curve._add` of the products, with
         their steps. `pedersen.generator_from_seed` is the map of its seed,
@@ -423,14 +432,11 @@ package is used to teach and to prototype as much as to build:
         `pedersen._commit`, and `rewind` compares the commitment it rebuilds
         with the one it was handed
     - `sec_point.mult_pub_key` reduces its scalar mod n, and
-        `sec_point._mult_sec` under it sends a zero to `curve.mult`
-        through a parse of the key, `point_from_octets_var`, which for a
-        compressed key is a call more than any other scalar makes.
-        `ecies.derive_keys` takes its key through `scalar_from_prv_key`,
-        so no zero reaches that branch. It reads the shared point back
-        from octets and writes it to octets again with `bytes_from_point`,
-        which runs `require_on_curve` on it and picks the prefix from its
-        y, before hashing it with sha512
+        `sec_point._mult_sec` under it tests it for zero before the call
+        and after it, as `curve.mult` does, and reads the product back
+        from octets. `ecies.derive_keys` takes its key through
+        `scalar_from_prv_key`, and hashes with sha512 the compressed
+        octets the bindings answer
     - `sec_point.bytes_from_prv_key_int` reduces its scalar mod n and
         sends a zero to `curve.mult`, whose answer at infinity it refuses
     - `sec_point.prv_key_tweak_add` and `ssa.prv_key_tweak_add` refuse a

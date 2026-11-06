@@ -1701,6 +1701,70 @@ def test_add_crosses_with_a_term_at_infinity(monkeypatch: pytest.MonkeyPatch) ->
     assert calls == [2, 2, 2, 2]
 
 
+@needs_bindings
+def test_add_leaves_a_finite_point_to_the_parse(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Where the bindings serve, `add` runs no curve equation in Python.
+
+    The points are secret, and `secp256k1_ec_pubkey_combine` parses each
+    finite one, which proves it on the curve: `is_on_curve` is patched to
+    raise, and a sum that is accepted never asks it.
+    `test_add_refuses_alike_on_both_arms` checks the refusals.
+    """
+    H = second_generator(secp256k1)
+    P = mult(3)
+    pairs = ((P, H), (P, INF), (INF, H), (INF, INF), (P, secp256k1.negate(P)))
+    sums = [secp256k1.add_var(A, B) for A, B in pairs]
+
+    def refuse(*_: object, **__: object) -> bool:
+        raise AssertionError(  # pragma: no cover -- runs only on a defect
+            "the curve equation ran in Python"
+        )
+
+    monkeypatch.setattr(Curve, "is_on_curve", refuse)
+    assert [add(A, B) for A, B in pairs] == sums
+
+
+@pytest.mark.parametrize(
+    "bindings",
+    [
+        pytest.param(True, marks=needs_bindings, id="bindings"),
+        pytest.param(False, id="python"),
+    ],
+)
+def test_add_refuses_alike_on_both_arms(
+    bindings: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`add` refuses what is no point with the same exception on either arm.
+
+    On the bindings arm the parse refuses a finite point off the curve, and
+    `_sec_from_point` a y it cannot write in 32 octets; `require_on_curve`
+    then raises what it raises on the Python arm. The form of a point --
+    a pair of integers, x in 0..p-1 -- is checked in Python on both arms,
+    infinity's x included, which no parse reads.
+    """
+    if not bindings:
+        no_bindings(monkeypatch)
+
+    ec = secp256k1
+    x, y = ec.G
+    P = mult(3)
+    for bad, error, message in (
+        ((x, y + 1), EccValueError, "point not on curve"),
+        ((x, ec.p), EccValueError, "y-coordinate not in 1..p-1"),
+        ((x, -y), EccValueError, "y-coordinate not in 1..p-1"),
+        ((x, 2**256 + y), EccValueError, "y-coordinate not in 1..p-1"),
+        ((ec.p, y), EccValueError, "x-coordinate not in 0..p-1"),
+        ((ec.p + 1, 0), EccValueError, "x-coordinate not in 0..p-1"),
+        ((x, True), EccTypeError, "non-integer y-coordinate"),
+        ((x, y, 1), EccValueError, "point must be a tuple"),
+    ):
+        for A, B in ((bad, P), (P, bad), (bad, INF), (INF, bad)):
+            with pytest.raises(error, match=message):
+                add(A, B)  # type: ignore[arg-type]
+
+
 @pytest.mark.parametrize(
     "bindings",
     [

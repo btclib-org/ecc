@@ -87,7 +87,7 @@ from ecc.curves import (
     scalar_from_prv_key,
     secp256k1,
 )
-from ecc.curves.sec_point import _mult_sec, _sec_from_pub_key
+from ecc.curves.sec_point import _mult_sec_compressed, _sec_from_pub_key
 from ecc.exceptions import (
     EccRuntimeError,
     EccValueError,
@@ -136,13 +136,14 @@ def derive_keys(prv_key: Integer, pub_key: PubKey) -> tuple[bytes, bytes, bytes]
     """
     q = scalar_from_prv_key(prv_key)
     # the public key stays octets: no coordinate of it is read here, and
-    # `_mult_sec` is the multiplication without the point in between.
+    # `_mult_sec_compressed` is the multiplication without a point on
+    # either side of it where the bindings serve.
     # `_sec_from_pub_key` hands them over unproven -- the multiplication
     # below is the proof, its own parse refusing what is not a point of
     # the curve, the same trade `ecc.ecc.dsa` makes for its own delegated
     # calls (issue btclib-org/btclib#887)
     sec = _sec_from_pub_key(pub_key, secp256k1)
-    shared_point_bytes = bytes_from_point(_mult_sec(sec, q, secp256k1), compressed=True)
+    shared_point_bytes = _mult_sec_compressed(sec, q, secp256k1)
     digest = sha512(shared_point_bytes).digest()
     return digest[:16], digest[16:32], digest[32:]
 

@@ -807,7 +807,8 @@ def _sec_from_point(Q: Point) -> bytes:
     """Return a point of secp256k1 as the octets the bindings parse.
 
     Neither on-curve nor infinity is checked here: this is the inside of
-    the dispatches below, past their require_on_curve, and sec_point's
+    the dispatches below, past their require_on_curve or, for `add`,
+    before the parse that proves its points, and sec_point's
     bytes_from_point is unreachable from this module anyway -- that one
     is built on this one.
 
@@ -1042,7 +1043,8 @@ def _mult_checked(m: int, Q: Point | None, ec: Curve, *, prepared: bool) -> Poin
         # other scalar makes -- a Pedersen commitment's value is a secret,
         # and zero is one of its values. The Python here still tests m for
         # zero, before the call and after it: SECURITY.md's limitations
-        # name both steps
+        # name both steps, and why the bindings' refusal is not answered
+        # instead
         stand_in = m or 1
         # the generator is ec_pubkey_create, with no point to parse first
         if Q is None or Q == ec.G:
@@ -1326,7 +1328,10 @@ def _libsecp256k1_sum(points: Sequence[Point]) -> Point:
 
     The bindings arm `_sum_var` and `_add` share: one `keys.pubkey_sum`,
     which is `secp256k1_ec_pubkey_combine`. Every point is required to
-    be a point of secp256k1, which both callers establish before this.
+    be a point of secp256k1, which `_sum_var` establishes before this.
+    `_add` may hand over a finite point `add` has not proved, which
+    `_sec_from_point` refuses with an OverflowError where y does not fit
+    in 32 octets, and the parse otherwise with a ValueError.
     """
     # infinity is the identity and libsecp256k1 has no public key for
     # it, so a term at infinity is dropped rather than handed over.
@@ -1419,7 +1424,10 @@ def _add(P: Point, Q: Point, ec: Curve) -> Point:
     `add_jac`, on the two points each rescaled by `_blinded_jac`, so that
     the one inverse `aff_from_jac_var` then makes is of a Z nobody can
     predict, as the one `mult` makes is. Both points are required to be
-    points of the curve, as a product `mult` returns is.
+    points of the curve, as a product `mult` returns is, except on the
+    bindings arm, where `add` hands over a finite point it has not proved,
+    which `_sec_from_point` refuses with an OverflowError where y does not
+    fit in 32 octets, and the parse otherwise with a ValueError.
 
     A blinded asset generator is the same shape: `pedersen.generator_from_seed`
     adds the two points a secret seed maps to, and then blind*G for a
@@ -1452,7 +1460,8 @@ def add(P: Point, Q: Point, ec: Curve = secp256k1) -> Point:
     """Return P + Q, for two points that may be secret.
 
     `_add` behind a check of its arguments: the curve, and both points on
-    the curve. `sum_var` is the sum of points that are public.
+    the curve, which on the bindings arm the parse inside `_add`
+    completes. `sum_var` is the sum of points that are public.
 
     The contract differs by arm. Where the libsecp256k1 bindings serve,
     which is for secp256k1 while `is_libsecp256k1_serving()` is True, the
@@ -1462,8 +1471,24 @@ def add(P: Point, Q: Point, ec: Curve = secp256k1) -> Point:
     which is not constant time. SECURITY.md's *Limitations, not
     vulnerabilities* says which Python steps those are, and what each
     arm leaves.
+
+    Where the bindings serve, the Python checks only the form of each
+    point, and the parse of `secp256k1_ec_pubkey_combine` proves a finite
+    one is on the curve: `require_on_curve` runs only once the octets
+    cannot be written or the parse has refused, to raise what it raises on
+    the other arm. `_mult_sec` makes the same trade for a key handed over
+    as octets.
     """
     _assert_valid_ec(ec)
+    if _libsecp256k1_serves(ec, None):
+        ec._require_form(P)
+        ec._require_form(Q)
+        # OverflowError is a y outside 32 octets, which `_sec_from_point`
+        # cannot write, and ValueError is the parse refusing a point: both
+        # fall through to the checks below, which raise for them
+        with contextlib.suppress(OverflowError, ValueError):
+            return _add(P, Q, ec)
+
     ec.require_on_curve(P)
     ec.require_on_curve(Q)
     return _add(P, Q, ec)

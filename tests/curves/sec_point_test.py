@@ -12,6 +12,7 @@ from hypothesis import example, given
 from hypothesis import strategies as st
 
 from ecc._libsecp256k1 import keys as libsecp256k1_keys
+from ecc._libsecp256k1 import shared_point as libsecp256k1_shared_point
 from ecc.alias import INF, Point
 from ecc.curves import (
     Curve,
@@ -33,7 +34,7 @@ from ecc.curves import (
     tweak_add_var,
 )
 from ecc.curves.curve import CURVES
-from ecc.curves.sec_point import _mult_sec, mult_pub_key
+from ecc.curves.sec_point import _mult_sec, _mult_sec_compressed, mult_pub_key
 from ecc.exceptions import (
     EccException,
     EccTypeError,
@@ -623,6 +624,112 @@ def test_a_hybrid_key_is_refused_on_both_arms(
     for m in (0, 5):
         with pytest.raises(EccValueError, match="not a point: prefix "):
             _mult_sec(hybrid, m, ec)
+    with pytest.raises(EccValueError, match="not a point: prefix "):
+        _mult_sec_compressed(hybrid, 5, ec)
+
+
+@needs_bindings
+def test_a_zero_scalar_makes_the_call_of_any_other(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`mult_pub_key` multiplies one where the scalar is zero.
+
+    The scalar is a secret, so a zero makes the `secp256k1_ecdh` call any
+    other scalar makes, with one in its place, and infinity is answered,
+    as `test_a_zero_scalar_is_multiplied_as_one` checks of `mult`. The
+    parse and the multiplication of the Python arm are patched to raise,
+    so a zero that took them would fail here. The Python around the call
+    still tests the zero, as SECURITY.md's limitations say.
+    """
+
+    def refuse(*_: object, **__: object) -> Any:
+        raise AssertionError(  # pragma: no cover -- runs only on a defect
+            "a zero scalar left the call"
+        )
+
+    monkeypatch.setattr(sec_point, "point_from_octets_var", refuse)
+    monkeypatch.setattr(sec_point, "mult", refuse)
+
+    calls: list[int] = []
+
+    def recorded(sec: bytes, m: int, compressed: bool) -> bytes:
+        calls.append(m)
+        return libsecp256k1_shared_point(sec, m, compressed)
+
+    monkeypatch.setattr(sec_point, "libsecp256k1_shared_point", recorded)
+
+    Q = mult(7)
+    for pub_key in (bytes_from_point(Q), bytes_from_point(Q, compressed=False)):
+        for zero in (0, secp256k1.n):
+            calls.clear()
+            assert mult_pub_key(zero, pub_key) == INF
+            assert calls == [1]
+            calls.clear()
+            assert mult_pub_key(zero + 5, pub_key) == mult(5, Q)
+            assert calls == [5]
+
+
+@pytest.mark.parametrize(
+    "bindings",
+    [
+        pytest.param(True, marks=needs_bindings, id="bindings"),
+        pytest.param(False, id="python"),
+    ],
+)
+def test_mult_sec_compressed(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The compressed octets of m*P, from the octets of P, on every curve.
+
+    The answer is `bytes_from_point` of `_mult_sec`'s, for both forms of
+    the octets, and octets that are no point are the lift's refusal on
+    either arm.
+    """
+    if not bindings:
+        monkeypatch.setattr(curve, "_libsecp256k1_available", False)
+
+    for ec in all_curves.values():
+        for Q in (ec.G, mult(2, ec.G, ec), mult(3, ec.G, ec)):
+            for compressed in (True, False):
+                sec = bytes_from_point(Q, ec, compressed)
+                for m in (1, 2, ec.n - 1):
+                    expected = bytes_from_point(_mult_sec(sec, m, ec), ec, True)
+                    assert _mult_sec_compressed(sec, m, ec) == expected
+
+    ec = CURVES["secp256k1"]
+    x_Q = 0xEEFDEA4CDB677750A420FEE807EACF21EB9898AE79B9768766E4FAA04A2D4A34
+    with pytest.raises(EccValueError, match="invalid x-coordinate$"):
+        _mult_sec_compressed(b"\x02" + x_Q.to_bytes(ec.p_size, "big"), 2, ec)
+
+
+@needs_bindings
+def test_mult_sec_compressed_builds_no_point(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Where the bindings serve, they write the compressed octets.
+
+    The shared point of `ecies.derive_keys` is a secret: this package's
+    parse, multiplication and serialization are patched to raise, so a
+    product read into a `Point` or written out here would fail.
+    """
+
+    def refuse(*_: object, **__: object) -> Any:
+        raise AssertionError(  # pragma: no cover -- runs only on a defect
+            "a Python point was built"
+        )
+
+    for name in ("point_from_octets_var", "mult", "bytes_from_point"):
+        monkeypatch.setattr(sec_point, name, refuse)
+
+    compressed_asked: list[bool] = []
+
+    def recorded(sec: bytes, m: int, compressed: bool) -> bytes:
+        compressed_asked.append(compressed)
+        return libsecp256k1_shared_point(sec, m, compressed)
+
+    monkeypatch.setattr(sec_point, "libsecp256k1_shared_point", recorded)
+
+    sec = libsecp256k1_keys.pubkey_from_prvkey(7, False)
+    assert _mult_sec_compressed(sec, 3, secp256k1) == (
+        libsecp256k1_keys.pubkey_from_prvkey(21, True)
+    )
+    assert compressed_asked == [True]
 
 
 def test_a_scalar_is_an_int_or_its_octets_and_nothing_else() -> None:

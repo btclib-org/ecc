@@ -241,9 +241,9 @@ def test_the_walk_finds_the_entries_it_is_written_for() -> None:
     """The walk reaches a dispatch through a private twin and through a class.
 
     `curves.mult` reaches `_mult_checked`, `ecies.derive_keys` reaches
-    `sec_point._mult_sec` across modules, and `dsa.Signer.sign_` reaches
-    its dispatch through `self`. A walk that found none of them would make
-    the census test above pass on an empty set. And a name the bullet
+    `sec_point._mult_sec_compressed` across modules, and `dsa.Signer.sign_`
+    reaches its dispatch through `self`. A walk that found none of them would
+    make the census test above pass on an empty set. And a name the bullet
     spells only above its items, an example or a shared helper, is not
     read as listed, or such a function would pass the census unlisted.
     """
