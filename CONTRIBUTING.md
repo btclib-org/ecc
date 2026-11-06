@@ -713,14 +713,13 @@ one of a function that keeps its plain name over variable-time work on it,
 such as the `r` and `s` of `dsa._assert_as_valid_` or `TweakChain.point`'s
 `t`. A function whose variable-time call is one step among other work
 declares the value at that call, as `frost.sign` does with `signer_id`,
-and the curve's parameters are not operands. The mypy hook runs strict
-over `src/ecc`, `tests` and `.github/scripts`, and refuses a plain `int`
-there, so the caller writes `Public(x)`, and that call is where `x` is
-declared public, as `secp256k1_declassify` marks memory no longer secret
-in libsecp256k1's constant-time analysis. A reviewer reads the declaration
-at the call site rather than tracing where the value came from. A blinded
-value is declared the same way: `mod_inv` hands `mod_inv_var`
-`Public(a * b % m)`.
+and the curve's parameters are not operands. The strict mypy hook in
+`.pre-commit-config.yaml` refuses a plain `int` there, so the caller
+writes `Public(x)`, and that call is where `x` is declared public, as
+`secp256k1_declassify` marks memory no longer secret in libsecp256k1's
+constant-time analysis. A reviewer reads the declaration at the call site
+rather than tracing where the value came from. A blinded value is declared
+the same way: `mod_inv` hands `mod_inv_var` `Public(a * b % m)`.
 
 `tests/public_parameter_test.py` holds every integer parameter of a `_var`
 function to the type, or to the reason it names why it is not `Public`. A

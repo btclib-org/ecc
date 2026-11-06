@@ -177,7 +177,8 @@ def _xswiftec_inv_var(x: Public, u: Public, case: int, ec: Curve) -> int | None:
             return None
         v: int = x
         num = -(pow(u, 3, p) + b) % p
-        den = (u * u + u * v + v * v) % p
+        # products, as this file writes its other squares
+        den = (u * u + u * v + v * v) % p  # sourcery skip: square-identity
         # s = num/den is a square exactly when num*den is, and den is not
         # zero: x being an x-coordinate and -x-u not one rules it out.
         # The test comes before the inverse, which a failing case does
