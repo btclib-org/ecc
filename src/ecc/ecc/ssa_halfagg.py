@@ -37,7 +37,7 @@ from hashlib import sha256
 from typing import Any
 
 from ecc._utils import assert_type, bytes_from_octets, is_octets
-from ecc.alias import INF, Octets
+from ecc.alias import INF, Octets, Public
 from ecc.curves import secp256k1
 from ecc.curves.curve import _multi_mult_x_only_var, mult
 from ecc.ecc.ssa import challenge_
@@ -197,14 +197,14 @@ def _assert_as_valid_(rpms: list[bytes], s: int) -> None:
     if s >= secp256k1.n:
         raise EccValueError("aggregate s not in 0..n-1")
 
-    scalars: list[int] = []
-    x_coords: list[int] = []
+    scalars: list[Public] = []
+    x_coords: list[Public] = []
     for z, rpm in zip(_randomizers(rpms), rpms, strict=True):
         x_R = int.from_bytes(rpm[:_SIZE], "big")
         x_P = int.from_bytes(rpm[_SIZE : 2 * _SIZE], "big")
         e = challenge_(rpm[2 * _SIZE :], x_P, x_R, secp256k1, sha256)
-        scalars += [z, z * e % secp256k1.n]
-        x_coords += [x_R, x_P]
+        scalars += [Public(z), Public(z * e % secp256k1.n)]
+        x_coords += [Public(x_R), Public(x_P)]
 
     # an r or a key that is no x-coordinate is refused by the lift inside
     # the multiplication, as an EccValueError. With no pair the sum is

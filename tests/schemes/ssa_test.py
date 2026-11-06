@@ -17,7 +17,7 @@ import pytest
 
 from ecc._libsecp256k1 import ssa as libsecp256k1_ssa
 from ecc._utils import int_from_bits
-from ecc.alias import INF, Octets, Point, String
+from ecc.alias import INF, Octets, Point, Public, String
 from ecc.curves import (
     PreparedPoint,
     bytes_from_point,
@@ -420,7 +420,7 @@ def test_low_cardinality() -> None:
     for ec in test_curves:
         for q in range(1, ec.n // 2):  # all possible private keys
             q_fixed, x_Q = ssa.gen_keys(q, ec)
-            QJ = _jac_from_aff((x_Q, ec.y_even_var(x_Q)))
+            QJ = _jac_from_aff((x_Q, ec.y_even_var(Public(x_Q))))
             sig: ssa.Sig | None = None
             while sig is None:
                 try:
@@ -439,20 +439,28 @@ def test_low_cardinality() -> None:
                             ssa._sign_(e, q_fixed, k_fixed, r, ec)
                         # no public key can be recovered
                         with pytest.raises(EccRuntimeError, match=err_msg):
-                            ssa._recover_pub_key_(e, r, s, ec)
+                            ssa._recover_pub_key_(Public(e), Public(r), Public(s), ec)
 
                         # if e == 0 then the sig is always valid
-                        ssa._assert_as_valid_(e, QJ, r, s, ec, ec._fixed_points)
+                        ssa._assert_as_valid_(
+                            Public(e), QJ, Public(r), Public(s), ec, ec._fixed_points
+                        )
                         #  for all {q, Q}
-                        ssa._assert_as_valid_(e, ec.GJ, r, s, ec, ec._fixed_points)
+                        ssa._assert_as_valid_(
+                            Public(e), ec.GJ, Public(r), Public(s), ec, ec._fixed_points
+                        )
                     else:
                         sig = ssa._sign_(e, q_fixed, k_fixed, r, ec)
                         # recover pub_key
-                        assert x_Q == ssa._recover_pub_key_(e, r, s, ec)
+                        assert x_Q == ssa._recover_pub_key_(
+                            Public(e), Public(r), Public(s), ec
+                        )
 
                         assert ssa.Sig(r, s, ec) == sig
                         # valid signature must validate
-                        ssa._assert_as_valid_(e, QJ, r, s, ec, ec._fixed_points)
+                        ssa._assert_as_valid_(
+                            Public(e), QJ, Public(r), Public(s), ec, ec._fixed_points
+                        )
                         # invalid signature must raise
                         err_msg = r"y_K is odd|INF has no y-coordinate|signature verification failed"
                         with pytest.raises(
@@ -460,7 +468,12 @@ def test_low_cardinality() -> None:
                             match=err_msg,
                         ):
                             ssa._assert_as_valid_(
-                                e, QJ, r, (s - 1) % ec.n, ec, ec._fixed_points
+                                Public(e),
+                                QJ,
+                                Public(r),
+                                Public((s - 1) % ec.n),
+                                ec,
+                                ec._fixed_points,
                             )
 
 
@@ -477,13 +490,15 @@ def test_assert_as_valid_rejects_the_odd_y_twin_of_a_correct_k() -> None:
     """
     ec = secp256k1
     q, x_Q = ssa.gen_keys()
-    QJ = _jac_from_aff((x_Q, ec.y_even_var(x_Q)))
+    QJ = _jac_from_aff((x_Q, ec.y_even_var(Public(x_Q))))
     k, r = ssa.gen_keys()  # k's point has even y, by gen_keys' own normalization
     e = 5
 
     s_prime = (ec.n - k + e * q) % ec.n
     with pytest.raises(EccRuntimeError, match="y_K is odd"):
-        ssa._assert_as_valid_(e, QJ, r, s_prime, ec, ec._fixed_points)
+        ssa._assert_as_valid_(
+            Public(e), QJ, Public(r), Public(s_prime), ec, ec._fixed_points
+        )
 
 
 @needs_bindings
@@ -889,7 +904,7 @@ def test_a_batch_refuses_a_bad_key_in_the_lift_s_words(
         with pytest.raises(EccValueError) as batched:
             ssa.assert_batch_as_valid_(msgs, [Qs[0], x], sigs)
         with pytest.raises(EccValueError) as lifted:
-            ec.y_var(x)
+            ec.y_var(Public(x))
         assert str(batched.value) == str(lifted.value)
 
 
@@ -938,7 +953,7 @@ def test_musig1() -> None:
     Q1 = mult(q1)
     Q2 = mult(q2)
     Q3 = mult(q3)
-    Q = ec.add_var(double_mult_var(a1, Q1, a2, Q2), mult(a3, Q3))
+    Q = ec.add_var(double_mult_var(Public(a1), Q1, Public(a2), Q2), mult(a3, Q3))
     # the parity of the aggregated key is a coin flip on every run, so
     # the negation executes in half of them: the pragmas keep the
     # coverage gate deterministic. Keys pinned offline for an odd
@@ -1074,16 +1089,16 @@ def _deal(
     """
     f = [secret]
     f_prime = [secret_prime]
-    commits = [double_mult_var(secret_prime, H, secret, ec.G)]
+    commits = [double_mult_var(Public(secret_prime), H, Public(secret), ec.G)]
     for _ in range(1, m):
         f.append(ssa.gen_keys()[0])
         f_prime.append(ssa.gen_keys()[0])
-        commits.append(double_mult_var(f_prime[-1], H, f[-1], ec.G))
+        commits.append(double_mult_var(Public(f_prime[-1]), H, Public(f[-1]), ec.G))
 
     shares: list[int] = []
     for x in xs:
         alpha = _share(f, x, ec)
-        t = double_mult_var(_share(f_prime, x, ec), H, alpha, ec.G)
+        t = double_mult_var(Public(_share(f_prime, x, ec)), H, Public(alpha), ec.G)
         assert t == _commitment(commits, x, ec), f"signer {dealer} is cheating"
         shares.append(alpha)
     return f, shares
@@ -1247,8 +1262,8 @@ def test_threshold() -> None:
     assert mult(gamma1) == RHS1, "signer one is cheating"
 
     # PHASE FOUR: aggregating the signature ###
-    omega1 = 3 * mod_inv_var(3 - 1, ec.n) % ec.n
-    omega3 = 1 * mod_inv_var(1 - 3, ec.n) % ec.n
+    omega1 = 3 * mod_inv_var(Public(3 - 1), ec.n) % ec.n
+    omega3 = 1 * mod_inv_var(Public(1 - 3), ec.n) % ec.n
     sigma = (gamma1 * omega1 + gamma3 * omega3) % ec.n
 
     sig = ssa.Sig(K[0], sigma, ec)
@@ -1389,11 +1404,11 @@ def test_recover_infinity_pub_key(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     err_msg = r"invalid \(INF\) key"
     with pytest.raises(EccRuntimeError, match=err_msg):
-        ssa._recover_pub_key_(1, secp256k1.G[0], 1, secp256k1)
+        ssa._recover_pub_key_(Public(1), Public(secp256k1.G[0]), Public(1), secp256k1)
 
     no_bindings(monkeypatch)
     with pytest.raises(EccRuntimeError, match=err_msg):
-        ssa._recover_pub_key_(1, secp256k1.G[0], 1, secp256k1)
+        ssa._recover_pub_key_(Public(1), Public(secp256k1.G[0]), Public(1), secp256k1)
 
 
 @pytest.mark.parametrize("name", list(cofactor_curves))
@@ -1410,12 +1425,12 @@ def test_recovery_answers_only_keys_of_the_subgroup(name: str) -> None:
     answered = 0
     refusals: list[str] = []
     for r in range(ec.p):
-        if not _is_x_coordinate_var(r, ec):
+        if not _is_x_coordinate_var(Public(r), ec):
             continue
         for s in range(1, ec.n):
             for c in range(1, ec.n):
                 try:
-                    x_Q = ssa._recover_pub_key_(c, r, s, ec)
+                    x_Q = ssa._recover_pub_key_(Public(c), Public(r), Public(s), ec)
                 except EccRuntimeError:  # the INF key
                     continue
                 except EccValueError as e:
@@ -1452,10 +1467,13 @@ def test_recovery_multiplies_in_libsecp256k1(
         sig = ssa.sign_(msg_hash, q)
         c = ssa.challenge_(msg_hash, x_Q, sig.r, ec, hf)
 
-        assert ssa._recover_pub_key_(c, sig.r, sig.s, ec) == x_Q
+        assert ssa._recover_pub_key_(Public(c), Public(sig.r), Public(sig.s), ec) == x_Q
         with monkeypatch.context() as patch:
             no_bindings(patch)
-            assert ssa._recover_pub_key_(c, sig.r, sig.s, ec) == x_Q
+            assert (
+                ssa._recover_pub_key_(Public(c), Public(sig.r), Public(sig.s), ec)
+                == x_Q
+            )
 
 
 def test_a_bad_hf_raises_rather_than_answering_about_the_signature() -> None:
@@ -1557,7 +1575,7 @@ def test_a_key_that_is_no_x_coordinate_is_refused_in_the_lift_s_words(
         with pytest.raises(EccValueError) as verified:
             ssa.assert_as_valid_(msg, x, sig)
         with pytest.raises(EccValueError) as lifted:
-            ec.y_var(x)
+            ec.y_var(Public(x))
         assert str(verified.value) == str(lifted.value)
 
 

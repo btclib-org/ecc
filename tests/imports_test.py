@@ -261,7 +261,7 @@ _MAY_IMPORT: dict[str, frozenset[str]] = {
     _EXCEPTIONS: frozenset(),
     _ALIAS: frozenset(),
     _UTILS: frozenset({_ALIAS, _EXCEPTIONS}),
-    _NUMBER_THEORY: frozenset({_UTILS, _EXCEPTIONS}),
+    _NUMBER_THEORY: frozenset({_UTILS, _ALIAS, _EXCEPTIONS}),
     _HASHES: frozenset({_UTILS, _ALIAS, _EXCEPTIONS}),
     _LIBSECP256K1: frozenset({"ecc", _EXCEPTIONS}),
     _KDF: frozenset({_UTILS, _ALIAS, _EXCEPTIONS, _HASHES}),

@@ -178,7 +178,7 @@ from __future__ import annotations
 
 from math import ceil
 
-from ecc.alias import INFJ, JacPoint, Point
+from ecc.alias import INFJ, JacPoint, Point, Public
 
 # the wNAF recoding and the table of odd multiples it indexes live in
 # curve_group, next to _convert_number_to_base_var and for the same reason:
@@ -231,7 +231,9 @@ def _double_and_add_var(
     return R
 
 
-def _mult_sliding_window_var(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoint:
+def _mult_sliding_window_var(
+    m: Public, Q: JacPoint, ec: CurveGroup, w: int
+) -> JacPoint:
     """Scalar multiplication using "sliding window".
 
     It has the benefit that the pre-computation stage is roughly half as
@@ -281,7 +283,7 @@ def _mult_sliding_window_var(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> Jac
     return R
 
 
-def _mult_w_NAF_var(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoint:
+def _mult_w_NAF_var(m: Public, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoint:
     """Scalar multiplication in Jacobian coordinates using wNAF.
 
     The "w-ary non-adjacent form": on a Weierstrass curve -P costs
@@ -328,9 +330,9 @@ def _mult_w_NAF_var(m: int, Q: JacPoint, ec: CurveGroup, w: int) -> JacPoint:
 
 
 def _double_mult_w_NAF_var(
-    u: int,
+    u: Public,
     HJ: JacPoint,
-    v: int,
+    v: Public,
     QJ: JacPoint,
     ec: CurveGroup,
     w: int,
@@ -656,7 +658,7 @@ def _mult_endomorphism_secp256k1(
 
 
 def _mult_endomorphism_secp256k1_var(
-    m: int, Q: JacPoint, ec: CurveGroup, w: int
+    m: Public, Q: JacPoint, ec: CurveGroup, w: int
 ) -> JacPoint:
     """Algorithm 3.77 as it is written: the interleaved wNAFs.
 
@@ -681,13 +683,13 @@ def _mult_endomorphism_secp256k1_var(
         raise EccValueError("negative m")
 
     m1, P, m2, K = _endomorphism_split_secp256k1(m, Q, ec)
-    return _double_mult_w_NAF_var(m1, P, m2, K, ec, w, ec._fixed_points)
+    return _double_mult_w_NAF_var(Public(m1), P, Public(m2), K, ec, w, ec._fixed_points)
 
 
 def _double_mult_endomorphism_secp256k1_var(
-    u: int,
+    u: Public,
     HJ: JacPoint,
-    v: int,
+    v: Public,
     QJ: JacPoint,
     ec: CurveGroup,
     w: int,
@@ -751,4 +753,6 @@ def _double_mult_endomorphism_secp256k1_var(
         fixed = fixed | {U1, U2}
     if QJ in fixed:
         fixed = fixed | {V1, V2}
-    return _multi_mult_w_NAF_var([u1, u2, v1, v2], [U1, U2, V1, V2], ec, w, fixed)
+    return _multi_mult_w_NAF_var(
+        [Public(u1), Public(u2), Public(v1), Public(v2)], [U1, U2, V1, V2], ec, w, fixed
+    )

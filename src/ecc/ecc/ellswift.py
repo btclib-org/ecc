@@ -38,7 +38,7 @@ import secrets
 
 from ecc._libsecp256k1 import ellswift as libsecp256k1_ellswift
 from ecc._utils import assert_type, bytes_from_octets
-from ecc.alias import Integer, Octets, Point
+from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import (
     Curve,
     PubKey,
@@ -85,11 +85,14 @@ def _constants(ec: Curve) -> tuple[int, int]:
         # -3 is a square whenever p == 1 mod 3, which every a == 0 curve
         # fit to carry a key is: the others have p+1 points, x -> x^3
         # being a bijection there, and mod_sqrt_var refuses them by itself
-        _CONSTANTS[ec] = mod_sqrt_var(-3 % ec.p, ec.p), mod_inv_var(2, ec.p)
+        _CONSTANTS[ec] = (
+            mod_sqrt_var(Public(-3 % ec.p), ec.p),
+            mod_inv_var(Public(2), ec.p),
+        )
     return _CONSTANTS[ec]
 
 
-def _is_square_var(a: int, p: int) -> bool:
+def _is_square_var(a: Public, p: int) -> bool:
     """Return True if a is a square mod p, zero included.
 
     Both directions ask it before an inverse or a root they might not
@@ -101,17 +104,17 @@ def _is_square_var(a: int, p: int) -> bool:
     return legendre_symbol_var(a, p) != -1
 
 
-def _is_x_fraction_var(n: int, d: int, b: int, p: int) -> bool:
+def _is_x_fraction_var(n: Public, d: Public, b: int, p: int) -> bool:
     """Return True if n/d is an x-coordinate of y^2 = x^3 + b, for d != 0.
 
     (n/d)^3 + b is a square exactly when d^4 times it is, which is
     d*n^3 + b*d^4 and takes no inverse. It is libsecp256k1's
     secp256k1_ge_x_frac_on_curve_var.
     """
-    return _is_square_var((d * n**3 + b * d**4) % p, p)
+    return _is_square_var(Public((d * n**3 + b * d**4) % p), p)
 
 
-def _xswiftec_var(u: int, t: int, ec: Curve) -> int:
+def _xswiftec_var(u: Public, t: Public, ec: Curve) -> int:
     """Return the x-coordinate the field elements (u, t) map to.
 
     `xswiftec` of BIP324's reference implementation. u and t are taken
@@ -122,11 +125,11 @@ def _xswiftec_var(u: int, t: int, ec: Curve) -> int:
     p = ec.p
     b = ec._b
     minus_3_sqrt, inv2 = _constants(ec)
-    u %= p
-    t %= p
+    u = Public(u % p)
+    t = Public(t % p)
     # zero has no inverse, and either substitution keeps the map total
     if u == 0:
-        u = 1
+        u = Public(1)
     s = t * t % p or 1
     g = (pow(u, 3, p) + b) % p
     # g + s == 0 would make q zero, and q is the denominator of the second
@@ -140,20 +143,20 @@ def _xswiftec_var(u: int, t: int, ec: Curve) -> int:
     # Y^2 = -q^2/(12*s*u^2) and X/Y = sqrt(-3)*u*(g-s)/q.
     d = 3 * s * u * u % p
     n = (3 * s * pow(u, 3, p) - q * q) % p
-    if _is_x_fraction_var(n, d, b, p):
-        return n * mod_inv_var(d, p) % p
+    if _is_x_fraction_var(Public(n), Public(d), b, p):
+        return n * mod_inv_var(Public(d), p) % p
     # the second candidate is u*(c1*s + c2*g)/q, with c1 and c2 the
     # halves of sqrt(-3) - 1 and -sqrt(-3) - 1
     c1 = (minus_3_sqrt - 1) * inv2 % p
     c2 = (-minus_3_sqrt - 1) * inv2 % p
     n = u * (c1 * s + c2 * g) % p
-    if _is_x_fraction_var(n, q, b, p):
-        return n * mod_inv_var(q, p) % p
+    if _is_x_fraction_var(Public(n), Public(q), b, p):
+        return n * mod_inv_var(Public(q), p) % p
     # the third candidate, (X/Y - u)/2, is -(x2 + u)
-    return -(n + u * q) * mod_inv_var(q, p) % p
+    return -(n + u * q) * mod_inv_var(Public(q), p) % p
 
 
-def _xswiftec_inv_var(x: int, u: int, case: int, ec: Curve) -> int | None:  # noqa: PLR0911
+def _xswiftec_inv_var(x: Public, u: Public, case: int, ec: Curve) -> int | None:  # noqa: PLR0911
     """Return a t with _xswiftec_var(u, t) == x, or None if this case has none.
 
     `xswiftec_inv` of BIP324's reference implementation. Up to eight t
@@ -163,40 +166,40 @@ def _xswiftec_inv_var(x: int, u: int, case: int, ec: Curve) -> int | None:  # no
     p = ec.p
     b = ec._b
     minus_3_sqrt, inv2 = _constants(ec)
-    x %= p
-    u %= p
+    x = Public(x % p)
+    u = Public(u % p)
 
     if case & 2 == 0:
         # -x-u being an x-coordinate means the pair would decode through
         # the third candidate of _xswiftec_var, which has priority: the
         # encoding would not round-trip, so this case has no answer
-        if _is_x_coordinate_var((-x - u) % p, ec):
+        if _is_x_coordinate_var(Public((-x - u) % p), ec):
             return None
-        v = x
+        v: int = x
         num = -(pow(u, 3, p) + b) % p
         den = (u * u + u * v + v * v) % p
         # s = num/den is a square exactly when num*den is, and den is not
         # zero: x being an x-coordinate and -x-u not one rules it out.
         # The test comes before the inverse, which a failing case does
         # not pay for
-        if not _is_square_var(num * den % p, p):
+        if not _is_square_var(Public(num * den % p), p):
             return None
-        s = num * mod_inv_var(den, p) % p
+        s = num * mod_inv_var(Public(den), p) % p
     else:
         s = (x - u) % p
-        if s == 0 or not _is_square_var(s, p):
+        if s == 0 or not _is_square_var(Public(s), p):
             return None
         q = -s * (4 * (pow(u, 3, p) + b) + 3 * s * u % p * u) % p
-        if not _is_square_var(q, p):
+        if not _is_square_var(Public(q), p):
             return None
-        r = mod_sqrt_var(q, p)  # a square, so a root exists
+        r = mod_sqrt_var(Public(q), p)  # a square, so a root exists
         # r == 0 makes the two cases that differ by its sign the same t,
         # and only one of them is to return it
         if case & 1 and r == 0:
             return None
-        v = (-u + r * mod_inv_var(s, p)) * inv2 % p
+        v = (-u + r * mod_inv_var(Public(s), p)) * inv2 % p
 
-    w = mod_sqrt_var(s, p)
+    w = mod_sqrt_var(Public(s), p)
 
     # the low and high bits of case pick the signs of the two square
     # roots, which is the encoding the paper's four branches take
@@ -214,7 +217,7 @@ def _x_t_from_ell_var(ell: bytes, ec: Curve) -> tuple[int, int]:
     size = ec.p_size
     u = int.from_bytes(ell[:size], byteorder="big", signed=False) % ec.p
     t = int.from_bytes(ell[size:], byteorder="big", signed=False) % ec.p
-    return _xswiftec_var(u, t, ec), t
+    return _xswiftec_var(Public(u), Public(t), ec), t
 
 
 def _point_from_ell_var(ell: bytes, ec: Curve) -> Point:
@@ -224,7 +227,7 @@ def _point_from_ell_var(ell: bytes, ec: Curve) -> Point:
     # encoding BIP324's own reference implementation leaves out: it maps
     # to an x-coordinate and stops, where libsecp256k1's decode lifts the
     # point with secp256k1_fe_is_odd(t) as the tiebreaker
-    y = _y_even_var(x, ec)
+    y = _y_even_var(Public(x), ec)
     return x, (ec.p - y if t % 2 else y)
 
 
@@ -236,7 +239,7 @@ def _ell_from_point_var(Q: Point, ec: Curve) -> bytes:
         # a nonzero field element and one of the eight cases; most pairs
         # have no t, and a fresh u is what the retry draws
         u = secrets.randbelow(p - 1) + 1
-        t = _xswiftec_inv_var(Q[0], u, secrets.randbelow(8), ec)
+        t = _xswiftec_inv_var(Public(Q[0]), Public(u), secrets.randbelow(8), ec)
         if t is None:
             continue
         # _xswiftec_inv_var pins the x-coordinate alone, so t and p-t encode

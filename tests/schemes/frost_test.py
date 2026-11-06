@@ -28,6 +28,7 @@ from typing import Any
 
 import pytest
 
+from ecc.alias import Public
 from ecc.curves import bytes_from_point, mult, secp256k1
 from ecc.ecc import frost, musig2, ssa
 from ecc.exceptions import (
@@ -695,7 +696,14 @@ def test_det_sign_nonce_differs_for_a_key_and_its_negation() -> None:
     )
     values = frost.session_values(session_ctx)
     g = 1 if values.Q[1] % 2 == 0 else secp256k1.n - 1
-    factor = 2 * values.e * frost._derive_interpolating_value_var(ids, signer_id) * g
+    factor = (
+        2
+        * values.e
+        * frost._derive_interpolating_value_var(
+            [Public(v) for v in ids], Public(signer_id)
+        )
+        * g
+    )
     recovered = (
         (int.from_bytes(psig, "big") - int.from_bytes(negated_psig, "big"))
         * pow(factor, -1, secp256k1.n)

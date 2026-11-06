@@ -23,7 +23,7 @@ from ecc._libsecp256k1 import (
 )
 from ecc._libsecp256k1 import pubkey_sum as libsecp256k1_pubkey_sum
 from ecc._libsecp256k1 import shared_point as libsecp256k1_shared_point
-from ecc.alias import INF, INFJ, Integer, JacPoint, Point
+from ecc.alias import INF, INFJ, Integer, JacPoint, Point, Public
 from ecc.curves import (
     Curve,
     CurveGroup,
@@ -358,7 +358,7 @@ def test_curves_with_n_above_p() -> None:
         ec = low_card_curves[name]
         # every point of the curve, x below n, so nothing to reduce
         for q in range(1, ec.n):
-            x_K = ec.x_aff_from_jac_var(_mult_jac_var(q, ec.GJ, ec))
+            x_K = ec.x_aff_from_jac_var(_mult_jac_var(Public(q), ec.GJ, ec))
             assert x_K < ec.n
             assert x_K % ec.n == x_K
 
@@ -434,8 +434,8 @@ def test_catalogued_curves() -> None:
         for name, (p, a, b, G, n, cofactor) in params2.items():
             rebuilt = Curve(p, a, b, G, n, cofactor, name=name)
             assert rebuilt == CURVES[name]
-            assert _is_prime_var(CURVES[name].p)
-            assert _is_prime_var(CURVES[name].n)
+            assert _is_prime_var(Public(CURVES[name].p))
+            assert _is_prime_var(Public(CURVES[name].n))
             checked.add(name)
     assert checked == set(CURVES)
 
@@ -540,9 +540,9 @@ def _textbook_add(ec: CurveGroup, P: Point | None, Q: Point | None) -> Point | N
     if P[0] == Q[0] and (P[1] + Q[1]) % ec.p == 0:
         return None
     if P == Q:
-        lam = (3 * P[0] * P[0] + ec._a) * mod_inv_var(2 * P[1], ec.p) % ec.p
+        lam = (3 * P[0] * P[0] + ec._a) * mod_inv_var(Public(2 * P[1]), ec.p) % ec.p
     else:
-        lam = (Q[1] - P[1]) * mod_inv_var(Q[0] - P[0], ec.p) % ec.p
+        lam = (Q[1] - P[1]) * mod_inv_var(Public(Q[0] - P[0]), ec.p) % ec.p
     x = (lam * lam - P[0] - Q[0]) % ec.p
     return x, (lam * (P[0] - x) - P[1]) % ec.p
 
@@ -635,7 +635,7 @@ def test_assert_in_subgroup_on_a_cofactor_curve(name: str) -> None:
     assert len(points) + 1 == ec.cofactor * ec.n
 
     subgroup = {
-        ec.aff_from_jac_var(_mult_jac_var(i, ec.GJ, ec)) for i in range(1, ec.n)
+        ec.aff_from_jac_var(_mult_jac_var(Public(i), ec.GJ, ec)) for i in range(1, ec.n)
     }
     assert len(subgroup) == ec.n - 1
 
@@ -657,14 +657,14 @@ def test_assert_in_subgroup_on_a_cofactor_curve(name: str) -> None:
     for Q in torsion:
         assert Q in points
         assert Q not in subgroup
-        assert _mult_jac_var(order, _jac_from_aff(Q), ec)[2] == 0
-        assert _mult_jac_var(1, _jac_from_aff(Q), ec)[2] != 0
+        assert _mult_jac_var(Public(order), _jac_from_aff(Q), ec)[2] == 0
+        assert _mult_jac_var(Public(1), _jac_from_aff(Q), ec)[2] != 0
     # and these are all of them: a point killed by the cofactor is of
     # small order, the two-torsion point excepted
     small = {
         Q
         for Q in points
-        if Q[1] and _mult_jac_var(ec.cofactor, _jac_from_aff(Q), ec)[2] == 0
+        if Q[1] and _mult_jac_var(Public(ec.cofactor), _jac_from_aff(Q), ec)[2] == 0
     }
     assert small == set(torsion)
 
@@ -1031,7 +1031,7 @@ def test_is_on_curve() -> None:
             ec.is_on_curve((1, 2, 3))  # type: ignore[arg-type]
 
         with pytest.raises(EccValueError, match="x-coordinate not in 0..p-1$"):
-            ec.y_var(ec.p)
+            ec.y_var(Public(ec.p))
 
         # just a point, not INF
         Q = ec.G
@@ -1074,7 +1074,7 @@ def secp112r2_order_4_point() -> Point:
     T0, with y != 0, so no search over several x is needed to find one.
     """
     ec = CURVES["secp112r2"]
-    p = (2, ec.y_var(2))
+    p = (2, ec.y_var(Public(2)))
     return ec.add_var(mult(ec.n - 1, p, ec), p)  # n*p
 
 
@@ -1087,7 +1087,7 @@ def secp128r2_order_4_point() -> Point:
     with y != 0.
     """
     ec = CURVES["secp128r2"]
-    p = (7, ec.y_var(7))
+    p = (7, ec.y_var(Public(7)))
     return ec.add_var(mult(ec.n - 1, p, ec), p)  # n*p
 
 
@@ -1135,10 +1135,10 @@ def test_order_check_refuses_a_generator_whose_true_order_is_2n() -> None:
     """
     ec = CurveGroup(17, 3, 0)
     G = (12, 9)
-    thirteen_G = _mult_jac_var(13, _jac_from_aff(G), ec)
+    thirteen_G = _mult_jac_var(Public(13), _jac_from_aff(G), ec)
     assert thirteen_G[2] != 0  # a genuine point, not INF
     assert ec.aff_from_jac_var(thirteen_G)[1] == 0  # the real two-torsion point
-    assert _mult_jac_var(26, _jac_from_aff(G), ec)[2] == 0  # G's true order
+    assert _mult_jac_var(Public(26), _jac_from_aff(G), ec)[2] == 0  # G's true order
 
     with pytest.raises(EccValueError, match="n is not the group order: "):
         Curve(17, 3, 0, G, 13, 2, False)
@@ -1164,8 +1164,8 @@ def test_assert_in_subgroup_refuses_a_point_whose_true_order_is_2n() -> None:
     QJ = _jac_from_aff(Q)
 
     assert _mult(13, QJ, ec)[2] == 0  # the bug: misread as INF
-    assert _mult_jac_var(13, QJ, ec)[2] != 0  # the real two-torsion point
-    assert _mult_jac_var(26, QJ, ec)[2] == 0  # Q's true order, 2n
+    assert _mult_jac_var(Public(13), QJ, ec)[2] != 0  # the real two-torsion point
+    assert _mult_jac_var(Public(26), QJ, ec)[2] == 0  # Q's true order, 2n
 
     with pytest.raises(EccValueError, match="point not in the subgroup generated by G"):
         _assert_in_subgroup(Q, ec)
@@ -1206,61 +1206,61 @@ def test_symmetry() -> None:
         Q = ec.G
         x_Q = Q[0]
 
-        assert not ec.y_even_var(x_Q) % 2
-        assert ec.y_low_var(x_Q) <= ec.p // 2
+        assert not ec.y_even_var(Public(x_Q)) % 2
+        assert ec.y_low_var(Public(x_Q)) <= ec.p // 2
 
         # compute all quadratic residues
         hasRoot = {1}
         hasRoot.update(i * i % ec.p for i in range(2, ec.p))
 
         if ec.p % 4 == 3:
-            quad_res = ec.y_quadratic_residue_var(x_Q)
+            quad_res = ec.y_quadratic_residue_var(Public(x_Q))
 
             # in this case only quad_res is a quadratic residue
             assert quad_res in hasRoot
-            root = mod_sqrt_var(quad_res, ec.p)
+            root = mod_sqrt_var(Public(quad_res), ec.p)
             assert quad_res == (root * root) % ec.p
             root = ec.p - root
             assert quad_res == (root * root) % ec.p
 
             assert ec.p - quad_res not in hasRoot
             with pytest.raises(EccValueError, match="no root mod "):
-                mod_sqrt_var(ec.p - quad_res, ec.p)
+                mod_sqrt_var(Public(ec.p - quad_res), ec.p)
         else:
             assert ec.p % 4 == 1
             # cannot use y_quadratic_residue_var in this case
             err_msg = "field prime is not equal to 3 mod 4: "
             with pytest.raises(EccValueError, match=err_msg):
-                ec.y_quadratic_residue_var(x_Q)
+                ec.y_quadratic_residue_var(Public(x_Q))
 
-            y_even_var = ec.y_even_var(x_Q)
+            y_even_var = ec.y_even_var(Public(x_Q))
             y_odd = ec.p - y_even_var
             # in this case neither or both y_Q are quadratic residues
             neither = y_odd not in hasRoot and y_even_var not in hasRoot
             both = y_odd in hasRoot and y_even_var in hasRoot
             assert neither or both
             if y_odd in hasRoot:  # both have roots
-                root = mod_sqrt_var(y_odd, ec.p)
+                root = mod_sqrt_var(Public(y_odd), ec.p)
                 assert y_odd == (root * root) % ec.p
                 root = ec.p - root
                 assert y_odd == (root * root) % ec.p
-                root = mod_sqrt_var(y_even_var, ec.p)
+                root = mod_sqrt_var(Public(y_even_var), ec.p)
                 assert y_even_var == (root * root) % ec.p
                 root = ec.p - root
                 assert y_even_var == (root * root) % ec.p
             else:
                 err_msg = "no root mod "
                 with pytest.raises(EccValueError, match=err_msg):
-                    mod_sqrt_var(y_odd, ec.p)
+                    mod_sqrt_var(Public(y_odd), ec.p)
                 with pytest.raises(EccValueError, match=err_msg):
-                    mod_sqrt_var(y_even_var, ec.p)
+                    mod_sqrt_var(Public(y_even_var), ec.p)
 
     with pytest.raises(EccValueError, match="invalid x-coordinate$"):
-        secp256k1.y_even_var(INF[0])
+        secp256k1.y_even_var(Public(INF[0]))
     with pytest.raises(EccValueError, match="invalid x-coordinate$"):
-        secp256k1.y_low_var(INF[0])
+        secp256k1.y_low_var(Public(INF[0]))
     with pytest.raises(EccValueError, match="invalid x-coordinate$"):
-        secp256k1.y_quadratic_residue_var(INF[0])
+        secp256k1.y_quadratic_residue_var(Public(INF[0]))
 
 
 def test_assorted_mult() -> None:
@@ -1272,18 +1272,18 @@ def test_assorted_mult() -> None:
         for k2 in range(-2, ec.n):
             K2 = mult(k2, H, ec)
 
-            shamir = double_mult_var(k1, ec.G, k2, ec.G, ec)
+            shamir = double_mult_var(Public(k1), ec.G, Public(k2), ec.G, ec)
             assert shamir == mult(k1 + k2, None, ec)
 
-            shamir = double_mult_var(k1, INF, k2, H, ec)
+            shamir = double_mult_var(Public(k1), INF, Public(k2), H, ec)
             assert ec.is_on_curve(shamir)
             assert shamir == K2
 
-            shamir = double_mult_var(k1, ec.G, k2, INF, ec)
+            shamir = double_mult_var(Public(k1), ec.G, Public(k2), INF, ec)
             assert ec.is_on_curve(shamir)
             assert shamir == K1
 
-            shamir = double_mult_var(k1, ec.G, k2, H, ec)
+            shamir = double_mult_var(Public(k1), ec.G, Public(k2), H, ec)
             assert ec.is_on_curve(shamir)
             K1K2 = ec.add_var(K1, K2)
             assert shamir == K1K2
@@ -1292,7 +1292,9 @@ def test_assorted_mult() -> None:
             K3 = mult(k3, ec.G, ec)
             K1K2K3 = ec.add_var(K1K2, K3)
             assert ec.is_on_curve(K1K2K3)
-            boscoster = multi_mult_var([k1, k2, k3], [ec.G, H, ec.G], ec)
+            boscoster = multi_mult_var(
+                [Public(k1), Public(k2), Public(k3)], [ec.G, H, ec.G], ec
+            )
             assert ec.is_on_curve(boscoster)
             assert boscoster == K1K2K3, k3
 
@@ -1301,29 +1303,67 @@ def test_assorted_mult() -> None:
             K1K2K3K4 = ec.add_var(K1K2K3, K4)
             assert ec.is_on_curve(K1K2K3K4)
             points = [ec.G, H, ec.G, H]
-            boscoster = multi_mult_var([k1, k2, k3, k4], points, ec)
+            boscoster = multi_mult_var(
+                [Public(k1), Public(k2), Public(k3), Public(k4)], points, ec
+            )
             assert ec.is_on_curve(boscoster)
             assert boscoster == K1K2K3K4, k4
-            assert multi_mult_var([k1, k2, k3, 0], points, ec) == K1K2K3
-            assert multi_mult_var([k1, k2, 0, 0], points, ec) == K1K2
-            assert multi_mult_var([k1, 0, 0, 0], points, ec) == K1
-            assert multi_mult_var([0, 0, 0, 0], points, ec) == INF
+            assert (
+                multi_mult_var(
+                    [Public(k1), Public(k2), Public(k3), Public(0)], points, ec
+                )
+                == K1K2K3
+            )
+            assert (
+                multi_mult_var(
+                    [Public(k1), Public(k2), Public(0), Public(0)], points, ec
+                )
+                == K1K2
+            )
+            assert (
+                multi_mult_var(
+                    [Public(k1), Public(0), Public(0), Public(0)], points, ec
+                )
+                == K1
+            )
+            assert (
+                multi_mult_var([Public(0), Public(0), Public(0), Public(0)], points, ec)
+                == INF
+            )
 
             err_msg = "mismatch between number of scalars and points: "
             with pytest.raises(EccValueError, match=err_msg):
-                multi_mult_var([k1, k2, k3, k4], [ec.G, H, ec.G], ec)
+                multi_mult_var(
+                    [Public(k1), Public(k2), Public(k3), Public(k4)],
+                    [ec.G, H, ec.G],
+                    ec,
+                )
 
 
 def test_double_mult() -> None:
     """Verify double_mult_var against add and mult over small scalars."""
     H = second_generator(secp256k1)
     G = secp256k1.G
-    assert double_mult_var(0, G, 0, H) == INF
-    assert double_mult_var(1, G, 0, H) == G
-    assert double_mult_var(0, G, 1, H) == H
+    assert double_mult_var(Public(0), G, Public(0), H) == INF
+    assert double_mult_var(Public(1), G, Public(0), H) == G
+    assert double_mult_var(Public(0), G, Public(1), H) == H
     for i, j in itertools.product(range(-1, 3), range(-1, 3)):
         exp = secp256k1.add_var(mult(i), mult(j, H))
-        assert exp == double_mult_var(i, G, j, H)
+        assert exp == double_mult_var(Public(i), G, Public(j), H)
+
+
+@pytest.mark.parametrize("wrong", [None, 1.5, True])
+def test_double_mult_var_refuses_a_wrong_scalar(wrong: object) -> None:
+    """None, a float or a bool is refused as a scalar.
+
+    `Public` has no wrong value that walk could pass, so it does not reach
+    `double_mult_var`: this is the type half of that walk, by hand.
+    """
+    G = secp256k1.G
+    with pytest.raises(EccTypeError):
+        double_mult_var(wrong, G, Public(1), G)  # type: ignore[arg-type]
+    with pytest.raises(EccTypeError):
+        double_mult_var(Public(1), G, wrong, G)  # type: ignore[arg-type]
 
 
 def test_multi_mult() -> None:
@@ -1332,27 +1372,29 @@ def test_multi_mult() -> None:
     btclib-org/btclib#175's pairs are among the cases.
     """
     with pytest.raises(EccValueError, match="not a multi_mult_var"):
-        multi_mult_var([1], [secp256k1.G])
+        multi_mult_var([Public(1)], [secp256k1.G])
 
     H = second_generator(secp256k1)
     G = secp256k1.G
-    assert multi_mult_var([0, 0], [G, H]) == INF
-    assert multi_mult_var([1, 0], [G, H]) == G
-    assert multi_mult_var([0, 1], [G, H]) == H
+    assert multi_mult_var([Public(0), Public(0)], [G, H]) == INF
+    assert multi_mult_var([Public(1), Public(0)], [G, H]) == G
+    assert multi_mult_var([Public(0), Public(1)], [G, H]) == H
 
-    assert multi_mult_var([-1, 0], [G, H]) != INF
-    assert multi_mult_var([0, -1], [G, H]) != INF
+    assert multi_mult_var([Public(-1), Public(0)], [G, H]) != INF
+    assert multi_mult_var([Public(0), Public(-1)], [G, H]) != INF
 
     for i, j in itertools.product(range(-1, 3), range(-1, 3)):
-        exp = double_mult_var(i, G, j, H)
-        assert exp == multi_mult_var([i, j], [G, H])
+        exp = double_mult_var(Public(i), G, Public(j), H)
+        assert exp == multi_mult_var([Public(i), Public(j)], [G, H])
 
     # issue btclib-org/btclib#175: a scalar pair of distant magnitude is what
     # the subtractive Bos-Coster step could not finish, and a mixed sign is
     # merely the worst instance of it -- -1 reduces to n-1, next to 1
     n = secp256k1.n
     for i, j in ((10**6, 1), (1, 10**6), (n - 1, 1), (n - 1, n - 2)):
-        assert double_mult_var(i, G, j, H) == multi_mult_var([i, j], [G, H])
+        assert double_mult_var(Public(i), G, Public(j), H) == multi_mult_var(
+            [Public(i), Public(j)], [G, H]
+        )
 
 
 def no_bindings(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1454,23 +1496,23 @@ def test_tweak_add_var(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
     ec = secp256k1
     points = [mult(k) for k in (1, 2, 3, 7, ec.n - 1)]
     for P, t in itertools.product(points, (0, 1, 2, 7, ec.n // 2, ec.n - 1)):
-        assert _tweak_add_var(P, t, ec) == ec.add_var(P, mult(t, ec.G, ec))
+        assert _tweak_add_var(P, Public(t), ec) == ec.add_var(P, mult(t, ec.G, ec))
 
     # infinity on either side of the sum, and a tweak that is the whole
     # group order, i.e. the zero scalar spelled the other way
-    assert _tweak_add_var(INF, 7, ec) == mult(7)
-    assert _tweak_add_var(mult(7), ec.n, ec) == mult(7)
-    assert _tweak_add_var(mult(7), ec.n - 7, ec) == INF
+    assert _tweak_add_var(INF, Public(7), ec) == mult(7)
+    assert _tweak_add_var(mult(7), Public(ec.n), ec) == mult(7)
+    assert _tweak_add_var(mult(7), Public(ec.n - 7), ec) == INF
 
     # a point that is not on the curve is refused rather than delegated
     with pytest.raises(EccValueError, match="point not on curve"):
-        _tweak_add_var((ec.G[0], ec.G[1] + 1), 7, ec)
+        _tweak_add_var((ec.G[0], ec.G[1] + 1), Public(7), ec)
 
     # and a curve the bindings do not serve takes the same lines
     for other in low_card_curves.values():
         for k, t in itertools.product(range(1, 4), range(other.n)):
             P = mult(k, other.G, other)
-            assert _tweak_add_var(P, t, other) == other.add_var(
+            assert _tweak_add_var(P, Public(t), other) == other.add_var(
                 P, mult(t, other.G, other)
             )
 
@@ -1507,22 +1549,22 @@ def test_tweak_chain(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
         base = mult(k)
         chain = TweakChain(base, ec)
         for t in tweaks:
-            assert chain.point(t) == _tweak_add_var(base, t, ec)
+            assert chain.point(Public(t)) == _tweak_add_var(base, Public(t), ec)
 
     # a base at infinity: every tweak is the tweak's own multiple, and
     # the chain never holds a point
     chain = TweakChain(INF, ec)
     for t in tweaks:
-        assert chain.point(t) == mult(t)
+        assert chain.point(Public(t)) == mult(t)
 
     # a step onto infinity, which is the whole group order away from the
     # base, and the two tweaks around it -- the one before is the last
     # the chain itself answers, the one after is answered without it
     base = mult(7)
     chain = TweakChain(base, ec)
-    assert chain.point(5) == _tweak_add_var(base, 5, ec)
-    assert chain.point(ec.n - 7) == INF
-    assert chain.point(5) == _tweak_add_var(base, 5, ec)
+    assert chain.point(Public(5)) == _tweak_add_var(base, Public(5), ec)
+    assert chain.point(Public(ec.n - 7)) == INF
+    assert chain.point(Public(5)) == _tweak_add_var(base, Public(5), ec)
 
     # a point that is not on the curve is refused where it is handed
     # over, rather than at the first tweak of it
@@ -1536,7 +1578,7 @@ def test_tweak_chain(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> None:
             base = mult(k, other.G, other)
             chain = TweakChain(base, other)
             for t in range(other.n):
-                assert chain.point(t) == _tweak_add_var(base, t, other)
+                assert chain.point(Public(t)) == _tweak_add_var(base, Public(t), other)
 
 
 @pytest.mark.parametrize(
@@ -1791,11 +1833,13 @@ def test_public_spellings_check_what_their_twins_trust(
     ec = secp256k1
     P, Q = mult(7), mult(11)
 
-    assert is_x_coordinate_var(ec.G[0])
-    assert is_x_coordinate_var(ec.G[0], ec) == _is_x_coordinate_var(ec.G[0], ec)
+    assert is_x_coordinate_var(Public(ec.G[0]))
+    assert is_x_coordinate_var(Public(ec.G[0]), ec) == _is_x_coordinate_var(
+        Public(ec.G[0]), ec
+    )
     # no field element, no x-coordinate: an answer and not a refusal
-    assert not is_x_coordinate_var(-1)
-    assert not is_x_coordinate_var(ec.p)
+    assert not is_x_coordinate_var(Public(-1))
+    assert not is_x_coordinate_var(Public(ec.p))
     for x in (1.5, "01", True):
         with pytest.raises(EccTypeError, match="non-integer x-coordinate"):
             is_x_coordinate_var(x)  # type: ignore[arg-type]
@@ -1816,17 +1860,17 @@ def test_public_spellings_check_what_their_twins_trust(
     with pytest.raises(EccValueError, match="point not on curve"):
         sum_var([P, (ec.G[0], ec.G[1] + 1)])
 
-    assert tweak_add_var(P, 5) == _tweak_add_var(P, 5, ec)
-    assert tweak_add_var(P, ec.n + 5) == tweak_add_var(P, 5)
-    assert tweak_add_var(P, "05") == tweak_add_var(P, 5)
+    assert tweak_add_var(P, Public(5)) == _tweak_add_var(P, Public(5), ec)
+    assert tweak_add_var(P, Public(ec.n + 5)) == tweak_add_var(P, Public(5))
+    assert tweak_add_var(P, "05") == tweak_add_var(P, Public(5))  # type: ignore[arg-type]
     with pytest.raises(EccTypeError):
         tweak_add_var(P, 1.5)  # type: ignore[arg-type]
     with pytest.raises(EccTypeError, match="invalid ec type"):
         tweak_add_var(P, 5, None)  # type: ignore[arg-type]
 
     chain = TweakChain(P)
-    assert chain.point(ec.n + 5) == _tweak_add_var(P, 5, ec)
-    assert chain.point("05") == _tweak_add_var(P, 5, ec)
+    assert chain.point(Public(ec.n + 5)) == _tweak_add_var(P, Public(5), ec)
+    assert chain.point("05") == _tweak_add_var(P, Public(5), ec)  # type: ignore[arg-type]
     with pytest.raises(EccTypeError):
         chain.point(1.5)  # type: ignore[arg-type]
     for attribute, value in (("base", Q), ("ec", CURVES["secp256r1"])):
@@ -1834,7 +1878,7 @@ def test_public_spellings_check_what_their_twins_trust(
             setattr(chain, attribute, value)
     assert chain.base == P
     assert chain.ec is ec
-    assert chain.point(5) == _tweak_add_var(P, 5, ec)
+    assert chain.point(Public(5)) == _tweak_add_var(P, Public(5), ec)
 
 
 def test_libsecp256k1_arbitrary_point() -> None:
@@ -1867,18 +1911,23 @@ def test_libsecp256k1_arbitrary_point() -> None:
             assert mult(m, Q) == libsecp256k1_answer
 
     for (u, H), (v, Q) in itertools.product(pairs, repeat=2):
-        libsecp256k1_answer = double_mult_var(u, H, v, Q)
-        assert multi_mult_var([u, v], [H, Q]) == libsecp256k1_answer
+        libsecp256k1_answer = double_mult_var(Public(u), H, Public(v), Q)
+        assert multi_mult_var([Public(u), Public(v)], [H, Q]) == libsecp256k1_answer
         with pytest.MonkeyPatch.context() as patch:
             no_bindings(patch)
-            assert double_mult_var(u, H, v, Q) == libsecp256k1_answer
-            assert multi_mult_var([u, v], [H, Q]) == libsecp256k1_answer
+            assert double_mult_var(Public(u), H, Public(v), Q) == libsecp256k1_answer
+            assert multi_mult_var([Public(u), Public(v)], [H, Q]) == libsecp256k1_answer
 
     # and the many-scalar sum, which is what ssa's batch verification is
-    libsecp256k1_answer = multi_mult_var(scalars, points + points[:2])
+    libsecp256k1_answer = multi_mult_var(
+        [Public(v) for v in scalars], points + points[:2]
+    )
     with pytest.MonkeyPatch.context() as patch:
         no_bindings(patch)
-        assert multi_mult_var(scalars, points + points[:2]) == libsecp256k1_answer
+        assert (
+            multi_mult_var([Public(v) for v in scalars], points + points[:2])
+            == libsecp256k1_answer
+        )
 
 
 @pytest.mark.parametrize(
@@ -1914,30 +1963,35 @@ def test_multiplications_the_bindings_decline(
     assert mult(0, INF) == INF
 
     # both of them again, as one term of a sum
-    assert double_mult_var(0, H, 0, G) == INF
-    assert double_mult_var(0, H, 3, G) == mult(3)
-    assert double_mult_var(3, INF, 5, H) == mult(5, H)
-    assert double_mult_var(3, H, 5, INF) == mult(3, H)
-    assert multi_mult_var([0, 0], [H, G]) == INF
-    assert multi_mult_var([3, 0], [H, G]) == mult(3, H)
-    assert multi_mult_var([3, 5], [INF, H]) == mult(5, H)
+    assert double_mult_var(Public(0), H, Public(0), G) == INF
+    assert double_mult_var(Public(0), H, Public(3), G) == mult(3)
+    assert double_mult_var(Public(3), INF, Public(5), H) == mult(5, H)
+    assert double_mult_var(Public(3), H, Public(5), INF) == mult(3, H)
+    assert multi_mult_var([Public(0), Public(0)], [H, G]) == INF
+    assert multi_mult_var([Public(3), Public(0)], [H, G]) == mult(3, H)
+    assert multi_mult_var([Public(3), Public(5)], [INF, H]) == mult(5, H)
 
     # and the sum that is infinity: v = n - u with the same point, the
     # one-line case, then the same through multi_mult_var
-    assert double_mult_var(5, H, n - 5, H) == INF
-    assert multi_mult_var([5, n - 5], [H, H]) == INF
+    assert double_mult_var(Public(5), H, Public(n - 5), H) == INF
+    assert multi_mult_var([Public(5), Public(n - 5)], [H, H]) == INF
 
     # an intermediate that is infinity and a total that is not: the
     # running total starts again from the term that follows it
-    assert multi_mult_var([5, n - 5, 3], [H, H, H]) == mult(3, H)
+    assert multi_mult_var([Public(5), Public(n - 5), Public(3)], [H, H, H]) == mult(
+        3, H
+    )
 
     # a total that is infinity from three terms of which no two cancel:
     # 5 + (n-3) + 2*(n-1) is 2n
-    assert multi_mult_var([5, n - 3, n - 1], [H, H, mult(2, H)]) == INF
+    assert (
+        multi_mult_var([Public(5), Public(n - 3), Public(n - 1)], [H, H, mult(2, H)])
+        == INF
+    )
 
     # the same point twice is P + P, a doubling and not a cancellation
-    assert multi_mult_var([5, 5], [H, H]) == mult(10, H)
-    assert double_mult_var(5, H, 5, H) == mult(10, H)
+    assert multi_mult_var([Public(5), Public(5)], [H, H]) == mult(10, H)
+    assert double_mult_var(Public(5), H, Public(5), H) == mult(10, H)
 
 
 @needs_bindings
@@ -1954,11 +2008,16 @@ def test_libsecp256k1_multi_mult_var_bytes() -> None:
     assert sec == bytes_from_point(H, compressed=False)
     assert len(sec) == 2 * secp256k1.p_size + 1
 
-    assert _libsecp256k1_multi_mult_var_([5], [sec]) == _sec_from_point(mult(5, H))
-    assert _libsecp256k1_multi_mult_var_([5, 3], [sec, sec]) == _sec_from_point(
-        mult(8, H)
+    assert _libsecp256k1_multi_mult_var_([Public(5)], [sec]) == _sec_from_point(
+        mult(5, H)
     )
-    assert _libsecp256k1_multi_mult_var_([5, secp256k1.n - 5], [sec, sec]) is None
+    assert _libsecp256k1_multi_mult_var_(
+        [Public(5), Public(3)], [sec, sec]
+    ) == _sec_from_point(mult(8, H))
+    assert (
+        _libsecp256k1_multi_mult_var_([Public(5), Public(secp256k1.n - 5)], [sec, sec])
+        is None
+    )
 
 
 def _scalars_of_every_width(n: int) -> list[int]:
@@ -1992,7 +2051,7 @@ def test_libsecp256k1_mult_is_the_variable_time_answer() -> None:
     points = [H, mult(7, H), mult(n - 1), mult(3)]
     for m, Q in itertools.product(_scalars_of_every_width(n), points):
         answer = _libsecp256k1_mult(m, Q)
-        assert answer == _libsecp256k1_multi_mult_var([m], [Q])
+        assert answer == _libsecp256k1_multi_mult_var([Public(m)], [Q])
         assert mult(m, Q) == answer
         with pytest.MonkeyPatch.context() as patch:
             no_bindings(patch)
@@ -2053,33 +2112,33 @@ def test_x_coordinate_lift(bindings: bool, monkeypatch: pytest.MonkeyPatch) -> N
     refused = 0
     for x in range(400):
         try:
-            y_even_var = ec.y_even_var(x)
+            y_even_var = ec.y_even_var(Public(x))
         except EccValueError as e:
             refused += 1
             python_msg = str(e)
-            assert not _is_x_coordinate_var(x, ec)
+            assert not _is_x_coordinate_var(Public(x), ec)
             # the refusal stays curve_group's to phrase rather than the
             # bindings' to raise, and names no value
             with pytest.raises(EccValueError, match="invalid x-coordinate$") as err:
-                _y_even_var(x, ec)
+                _y_even_var(Public(x), ec)
             assert str(err.value) == python_msg
         else:
-            assert _is_x_coordinate_var(x, ec)
-            assert _y_even_var(x, ec) == y_even_var
+            assert _is_x_coordinate_var(Public(x), ec)
+            assert _y_even_var(Public(x), ec) == y_even_var
             assert y_even_var % 2 == 0
             assert ec.is_on_curve((x, y_even_var))
     assert refused == 208
 
     # the x of a point, which is the case every caller has
-    assert _is_x_coordinate_var(ec.G[0], ec)
-    assert _y_even_var(ec.G[0], ec) == ec.G[1]
+    assert _is_x_coordinate_var(Public(ec.G[0]), ec)
+    assert _y_even_var(Public(ec.G[0]), ec) == ec.G[1]
 
     # outside the field, where there is no x-coordinate to have and no
     # p-size serialization to ask the bindings about either
     for x in (-1, ec.p, ec.p + 1, 2**256):
-        assert not _is_x_coordinate_var(x, ec)
+        assert not _is_x_coordinate_var(Public(x), ec)
         with pytest.raises(EccValueError, match="x-coordinate not in 0..p-1"):
-            _y_even_var(x, ec)
+            _y_even_var(Public(x), ec)
 
 
 def test_x_coordinate_lift_of_every_other_curve() -> None:
@@ -2093,14 +2152,14 @@ def test_x_coordinate_lift_of_every_other_curve() -> None:
     for ec in (CURVES["secp256r1"], low_card_curves["ec13_11"]):
         for x in range(min(ec.p, 24)):
             try:
-                y_even_var = ec.y_even_var(x)
+                y_even_var = ec.y_even_var(Public(x))
             except EccValueError:
-                assert not _is_x_coordinate_var(x, ec)
+                assert not _is_x_coordinate_var(Public(x), ec)
                 with pytest.raises(EccValueError, match="x-coordinate"):
-                    _y_even_var(x, ec)
+                    _y_even_var(Public(x), ec)
             else:
-                assert _is_x_coordinate_var(x, ec)
-                assert _y_even_var(x, ec) == y_even_var
+                assert _is_x_coordinate_var(Public(x), ec)
+                assert _y_even_var(Public(x), ec) == y_even_var
 
 
 def test_prepared_point_answers_what_mult_answers() -> None:
@@ -2211,7 +2270,8 @@ def test_a_prepared_point_outside_the_subgroup_answers_what_mult_answers() -> No
     """
     for name, ec in cofactor_curves.items():
         subgroup = {
-            ec.aff_from_jac_var(_mult_jac_var(i, ec.GJ, ec)) for i in range(1, ec.n)
+            ec.aff_from_jac_var(_mult_jac_var(Public(i), ec.GJ, ec))
+            for i in range(1, ec.n)
         }
         points = [
             (x, y)
@@ -2233,8 +2293,8 @@ def test_a_prepared_point_outside_the_subgroup_answers_what_mult_answers() -> No
         964432197919735907550954472026594,
     )
     QJ = _jac_from_aff(Q)
-    assert _mult_jac_var(2, QJ, ec)[2] != 0
-    assert _mult_jac_var(4, QJ, ec)[2] == 0
+    assert _mult_jac_var(Public(2), QJ, ec)[2] != 0
+    assert _mult_jac_var(Public(4), QJ, ec)[2] == 0
     prepared = PreparedPoint(Q, ec)
     assert not prepared._in_subgroup
     for m in (*range(9), ec.n - 1):

@@ -34,6 +34,7 @@ from typing import Any
 import pytest
 
 from ecc import _libsecp256k1
+from ecc.alias import Public
 from ecc.curves import curve_group, mult, secp256k1
 from ecc.curves.curve import PreparedPoint, is_libsecp256k1_serving
 from ecc.curves.sec_point import bytes_from_point
@@ -113,8 +114,16 @@ def test_comb_of_a_prepared_point() -> None:
 def test_fixed_window_tables() -> None:
     """Run the fixed-window ladders, plain and cached."""
     ec, GJ = secp256k1, secp256k1.GJ
-    _same(lambda i: curve_group._mult_fixed_window_var(0xC0FFEE + i, GJ, ec, 4, True))
-    _same(lambda i: curve_group._mult_fixed_window_cached_var(0xC0FFEE + i, GJ, ec, 4))
+    _same(
+        lambda i: curve_group._mult_fixed_window_var(
+            Public(0xC0FFEE + i), GJ, ec, 4, True
+        )
+    )
+    _same(
+        lambda i: curve_group._mult_fixed_window_cached_var(
+            Public(0xC0FFEE + i), GJ, ec, 4
+        )
+    )
 
 
 def test_wnaf_tables_of_the_fixed_points() -> None:

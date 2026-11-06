@@ -136,7 +136,7 @@ from ecc._utils import (
     is_octets,
     read_exactly,
 )
-from ecc.alias import BinaryData, HashF, Integer, Octets, Point
+from ecc.alias import BinaryData, HashF, Integer, Octets, Point, Public
 from ecc.curves import (
     Curve,
     bytes_from_point,
@@ -577,7 +577,7 @@ def _forge_to_ring_end(
         if not 0 < e_i[j] < ec.n:
             err_msg = "implausible signature failure"
             raise BorromeanRingError(err_msg, i, j)
-        t = double_mult_var(-e_i[j], pubk_ring[j], s_i[j], ec.G, ec)
+        t = double_mult_var(Public(-e_i[j]), pubk_ring[j], Public(s_i[j]), ec.G, ec)
         r = _bytes_from_ring_point(t, ec, i, j)
     return r
 
@@ -668,7 +668,11 @@ def sign_(
         for j in range(1, j_star + 1):
             s[i][j - 1] = secrets.randbelow(ec.n)
             t = double_mult_var(
-                -e[i][j - 1], pubk_rings[i][j - 1], s[i][j - 1], ec.G, ec
+                Public(-e[i][j - 1]),
+                pubk_rings[i][j - 1],
+                Public(s[i][j - 1]),
+                ec.G,
+                ec,
             )
             r = _bytes_from_ring_point(t, ec, i, j - 1)
             e[i][j] = int_from_bits(_hash(m, r, i, j, hf), ec.nlen) % ec.n
@@ -886,7 +890,9 @@ def assert_as_valid(
             err_msg = "implausible signature failure"
             raise BorromeanRingError(err_msg, i, 0)
         for j in range(keys_size):
-            t = double_mult_var(-e[i][j], pubk_ring[j], sig.s[i][j], ec.G, ec)
+            t = double_mult_var(
+                Public(-e[i][j]), pubk_ring[j], Public(sig.s[i][j]), ec.G, ec
+            )
             r = _bytes_from_ring_point(t, ec, i, j)
             if j != keys_size - 1:
                 h = _hash(m, r, i, j + 1, hf)

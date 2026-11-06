@@ -61,7 +61,7 @@ from ecc._utils import (
     int_from_bits,
     int_from_integer,
 )
-from ecc.alias import INF, HashF, Integer, Octets, Point
+from ecc.alias import INF, HashF, Integer, Octets, Point, Public
 from ecc.curves import Curve, bytes_from_point, mult, secp256k1
 from ecc.curves.curve import _add, _assert_in_subgroup, _assert_valid_ec
 from ecc.curves.curve_group import HEX_THRESHOLD
@@ -147,7 +147,7 @@ def second_generator(ec: Curve = secp256k1, hf: HashF = sha256) -> Point:
     x_H = int_from_bits(hash_digest, ec.nlen) % ec.n
     while True:
         try:
-            H = x_H, ec.y_even_var(x_H)
+            H = x_H, ec.y_even_var(Public(x_H))
             # a no-op where the cofactor is 1, so H is unchanged there
             _assert_in_subgroup(H, ec)
         except EccValueError:
@@ -173,9 +173,9 @@ _SECOND_GENERATION = b"2nd generation: "
 # square, and `test_the_map_constants_are_derived` holds that root
 # against the literal. `ecc.ecc.ellswift._constants` derives the same root
 # the same way, SwiftEC being written around it too.
-_SQRT_MINUS_3 = mod_sqrt_var(-3 % secp256k1.p, secp256k1.p)
+_SQRT_MINUS_3 = mod_sqrt_var(Public(-3 % secp256k1.p), secp256k1.p)
 _HALF_SQRT_MINUS_3_LESS_1 = (
-    (_SQRT_MINUS_3 - 1) * mod_inv_var(2, secp256k1.p) % secp256k1.p
+    (_SQRT_MINUS_3 - 1) * mod_inv_var(Public(2), secp256k1.p) % secp256k1.p
 )
 
 
@@ -493,11 +493,11 @@ def _bytes_from_point_var(Q: Point, tag: int) -> bytes:
     if Q[1] == 0:  # infinity point in affine coordinates
         raise EccValueError("no bytes representation for infinity point")
 
-    residue = legendre_symbol_var(Q[1], secp256k1.p) == 1
+    residue = legendre_symbol_var(Public(Q[1]), secp256k1.p) == 1
     return bytes([tag ^ int(residue)]) + Q[0].to_bytes(secp256k1.p_size, "big")
 
 
-def _point_from_x_var(x: int, not_square: bool) -> Point:
+def _point_from_x_var(x: Public, not_square: bool) -> Point:
     """Return the point x names, with the y the residuosity bit asks for.
 
     `secp256k1_ge_set_xquad` answers the y that is a square, and the
@@ -528,7 +528,7 @@ def _point_from_octets_var(octets: Octets, tag: int, name: str) -> Point:
         raise EccValueError(f"not a {name}: prefix 0x{prefix:02x}")
 
     x = int.from_bytes(octets[1:], byteorder="big")
-    return _point_from_x_var(x, bool(prefix & 1))
+    return _point_from_x_var(Public(x), bool(prefix & 1))
 
 
 def bytes_from_commitment_var(Q: Point) -> bytes:

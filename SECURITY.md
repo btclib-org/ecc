@@ -150,7 +150,7 @@ package is used to teach and to prototype as much as to build:
     this package no longer holding a private key as a Python `int`, which
     is a change to that representation and not to a call site.
     `dsa.Signer.__init__` at `self._q.to_bytes(32, "big")`
-    (`src/ecc/ecc/dsa.py:1475`) crosses the same boundary the
+    (`src/ecc/ecc/dsa.py:1483`) crosses the same boundary the
     other way, once, at construction: the plain `int`
     `scalar_from_prv_key` already produced becomes a transient `bytes` on
     the way into the owned buffer `wipe` overwrites afterwards. That
@@ -248,9 +248,8 @@ package is used to teach and to prototype as much as to build:
     of a secret in the package is: `mod_inv` draws a random factor, so
     that the extended Euclid's iteration count follows
     the factor rather than the nonce. Unblinded it followed the nonce's
-    bit-length -- roughly twice the cost for a 256-bit scalar as for a
-    128-bit one on secp256k1's order -- which is the correlation the
-    Minerva attack turns into the private key.
+    bit-length, which is the correlation the Minerva attack turns into
+    the private key.
     Whatever the predicate above and a call's own conditions decline
     runs the Python implementation, whose scalar multiplication is a
     double-and-add in Jacobian coordinates: it is validated against the
@@ -342,7 +341,7 @@ package is used to teach and to prototype as much as to build:
     (`src/ecc/ecc/pedersen.py:384`), under `pedersen.commit`,
     `rangeproof.sign` and `rangeproof.rewind`. The sum is `curve._add` at
     `return _libsecp256k1_sum((P, Q))`
-    (`src/ecc/curves/curve.py:1445`):
+    (`src/ecc/curves/curve.py:1450`):
     `secp256k1_ec_pubkey_combine`, whose group law
     `secp256k1_gej_add_ge` and whose inversion `secp256k1_fe_inv` are
     constant time. A commitment to a zero value has a product at
@@ -461,7 +460,7 @@ package is used to teach and to prototype as much as to build:
 - `rangeproof.rewind` on the Python arm takes time that depends on the value
     it recovers: `rangeproof._value_encoding_var` at
     `return position, int.from_bytes(tmp[24:32], "big")`
-    (`src/ecc/ecc/rangeproof.py:1599`) returns early, at a position
+    (`src/ecc/ecc/rangeproof.py:1605`) returns early, at a position
     set by a digit of that value, which its `_var` suffix says
 - a sign-to-contract commitment is the signer's to open, and opening it
     twice over one message is safe only because the committed value

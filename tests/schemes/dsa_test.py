@@ -19,7 +19,7 @@ from ecc._libsecp256k1 import dsa as libsecp256k1_dsa
 from ecc._libsecp256k1 import ffi as libsecp256k1_ffi
 from ecc._libsecp256k1 import recovery as libsecp256k1_recovery
 from ecc._utils import hex_string
-from ecc.alias import INF, JacPoint, Point
+from ecc.alias import INF, JacPoint, Point, Public
 from ecc.curves import (
     Curve,
     PreparedPoint,
@@ -260,7 +260,7 @@ def _step_1_6_1(c: int, r: int, s: int, ec: Curve) -> list[Point | None]:
     Nones is what the enumeration has to answer.
     """
     candidates: list[Point | None] = []
-    r_1 = mod_inv_var(r, ec.n)
+    r_1 = mod_inv_var(Public(r), ec.n)
     for key_id in range(2 * (ec.cofactor + 1)):
         x_K = r + (key_id >> 1) * ec.n
         if ec.cofactor == 1:
@@ -270,7 +270,7 @@ def _step_1_6_1(c: int, r: int, s: int, ec: Curve) -> list[Point | None]:
         else:  # and the reduction where it reduces
             x_K %= ec.p
         try:
-            y = ec.y_even_var(x_K)
+            y = ec.y_even_var(Public(x_K))
         except EccValueError:
             candidates.append(None)
             continue
@@ -284,7 +284,13 @@ def _verifies(c: int, Q: Point, r: int, s: int, ec: Curve) -> bool:
     """Answer whether Q verifies (r, s), which is step 1.6.2 as a boolean."""
     try:
         dsa._assert_as_valid_(
-            c, (Q[0], Q[1], 1), r, s, ec, ec._fixed_points, lower_s=False
+            Public(c),
+            (Q[0], Q[1], 1),
+            Public(r),
+            Public(s),
+            ec,
+            ec._fixed_points,
+            lower_s=False,
         )
     except (EccValueError, EccRuntimeError):
         return False
@@ -301,7 +307,7 @@ def test_low_cardinality(name: str) -> None:
         for k in range(1, ec.n):  # all possible ephemeral keys
             RJ = _mult(k, ec.GJ, ec)
             r = ec.x_aff_from_jac_var(RJ) % ec.n
-            k_inv = mod_inv_var(k, ec.n)
+            k_inv = mod_inv_var(Public(k), ec.n)
             for e in range(ec.n):  # all possible challenges
                 s = k_inv * (e + q * r) % ec.n
                 # bitcoin canonical 'low-s' encoding for ECDSA
@@ -319,10 +325,18 @@ def test_low_cardinality(name: str) -> None:
                     # valid signature must pass verification, and here even
                     # under the strict rule: every s above was normalized
                     dsa._assert_as_valid_(
-                        e, QJ, r, s, ec, ec._fixed_points, lower_s=lower_s
+                        Public(e),
+                        QJ,
+                        Public(r),
+                        Public(s),
+                        ec,
+                        ec._fixed_points,
+                        lower_s=lower_s,
                     )
 
-                    jac_keys = dsa._recover_pub_keys_(e, r, s, ec, lower_s=lower_s)
+                    jac_keys = dsa._recover_pub_keys_(
+                        Public(e), Public(r), Public(s), ec, lower_s=lower_s
+                    )
                     Qs = [ec.aff_from_jac_var(key) for key in jac_keys]
                     assert ec.aff_from_jac_var(QJ) in Qs
                     # every key it answers is a key, and the INF a list
@@ -362,7 +376,7 @@ def test_low_cardinality_with_cofactor(name: str, j_max: int) -> None:
         for k in range(1, ec.n):
             x_K = ec.x_aff_from_jac_var(_mult(k, ec.GJ, ec))
             r = x_K % ec.n
-            k_inv = mod_inv_var(k, ec.n)
+            k_inv = mod_inv_var(Public(k), ec.n)
             for e in range(ec.n):
                 if r == 0 or k_inv * (e + q * r) % ec.n == 0:
                     with pytest.raises(EccRuntimeError, match="failed to sign: "):
@@ -372,22 +386,32 @@ def test_low_cardinality_with_cofactor(name: str, j_max: int) -> None:
                 assert key_id >> 1 == x_K // ec.n
                 j_reached = max(j_reached, key_id >> 1)
                 dsa._assert_as_valid_(
-                    e, QJ, sig.r, sig.s, ec, ec._fixed_points, lower_s=False
+                    Public(e),
+                    QJ,
+                    Public(sig.r),
+                    Public(sig.s),
+                    ec,
+                    ec._fixed_points,
+                    lower_s=False,
                 )
 
                 # the key_id names the signer
                 recovered = dsa._recover_pub_key_(
-                    key_id, e, sig.r, sig.s, ec, lower_s=False
+                    key_id, Public(e), Public(sig.r), Public(sig.s), ec, lower_s=False
                 )
                 assert ec.aff_from_jac_var(recovered) == Q
 
                 # and so does the list, which has no INF in it
-                jac_keys = dsa._recover_pub_keys_(e, sig.r, sig.s, ec, lower_s=False)
+                jac_keys = dsa._recover_pub_keys_(
+                    Public(e), Public(sig.r), Public(sig.s), ec, lower_s=False
+                )
                 Qs = [ec.aff_from_jac_var(key) for key in jac_keys]
                 assert Q in Qs
                 assert INF not in Qs
                 # and every key it answers is a multiple of G
-                assert all(_mult_jac_var(ec.n, key, ec)[2] == 0 for key in jac_keys)
+                assert all(
+                    _mult_jac_var(Public(ec.n), key, ec)[2] == 0 for key in jac_keys
+                )
     assert j_reached == j_max
 
 
@@ -430,7 +454,13 @@ def test_every_key_and_nonce_at_the_byte_boundary(name: str) -> None:
             except EccRuntimeError:  # r == 0 or s == 0
                 continue
             dsa._assert_as_valid_(
-                c, QJ, sig.r, sig.s, ec, ec._fixed_points, lower_s=True
+                Public(c),
+                QJ,
+                Public(sig.r),
+                Public(sig.s),
+                ec,
+                ec._fixed_points,
+                lower_s=True,
             )
 
             compact = dsa._compact(sig)
@@ -613,7 +643,9 @@ def test_step_1_6_1_agrees_above_cofactor_1() -> None:
     q, k, e = 0x10, 153, 42
     QJ = _mult(q, ec.GJ, ec)
     sig = dsa._sign_(e, q, k, False, ec)
-    jac_keys = dsa._recover_pub_keys_(e, sig.r, sig.s, ec, lower_s=False)
+    jac_keys = dsa._recover_pub_keys_(
+        Public(e), Public(sig.r), Public(sig.s), ec, lower_s=False
+    )
     Qs = [ec.aff_from_jac_var(key) for key in jac_keys]
     assert ec.aff_from_jac_var(QJ) in Qs
     candidates = [Q_ for Q_ in _step_1_6_1(e, sig.r, sig.s, ec) if Q_]
@@ -623,7 +655,7 @@ def test_step_1_6_1_agrees_above_cofactor_1() -> None:
     assert Qs == candidates
     # and these two are multiples of G, which the step 1.4 test of
     # `_recover_pub_key_` leaves them
-    assert all(_mult_jac_var(ec.n, key, ec)[2] == 0 for key in jac_keys)
+    assert all(_mult_jac_var(Public(ec.n), key, ec)[2] == 0 for key in jac_keys)
 
 
 def test_recovery_refuses_a_lift_outside_the_subgroup() -> None:
@@ -643,13 +675,19 @@ def test_recovery_refuses_a_lift_outside_the_subgroup() -> None:
     refused = "K is not in the subgroup generated by G"
     for key_id in (0, 1, 6, 7):
         with pytest.raises(EccValueError, match=refused):
-            dsa._recover_pub_key_(key_id, e, sig.r, sig.s, ec, lower_s=False)
+            dsa._recover_pub_key_(
+                key_id, Public(e), Public(sig.r), Public(sig.s), ec, lower_s=False
+            )
     # and x_K = 2 + 13 is no x-coordinate
     for key_id in (2, 3):
         with pytest.raises(EccValueError, match="invalid x-coordinate"):
-            dsa._recover_pub_key_(key_id, e, sig.r, sig.s, ec, lower_s=False)
+            dsa._recover_pub_key_(
+                key_id, Public(e), Public(sig.r), Public(sig.s), ec, lower_s=False
+            )
 
-    jac_keys = dsa._recover_pub_keys_(e, sig.r, sig.s, ec, lower_s=False)
+    jac_keys = dsa._recover_pub_keys_(
+        Public(e), Public(sig.r), Public(sig.s), ec, lower_s=False
+    )
     Qs = [ec.aff_from_jac_var(key) for key in jac_keys]
     assert Qs == [(11, 15), (27, 16)]
     assert Qs[0] == mult(q, ec.G, ec)
@@ -705,7 +743,7 @@ def test_key_id_is_j_above_the_parity_bit() -> None:
                 if not ec.n < x_K < ec.p:  # else x_K is r itself
                     continue
                 r = x_K % ec.n
-                k_inv = mod_inv_var(k, ec.n)
+                k_inv = mod_inv_var(Public(k), ec.n)
                 for e in range(ec.n):
                     s = k_inv * (e + q * r) % ec.n
                     if r == 0 or s == 0:
@@ -716,7 +754,12 @@ def test_key_id_is_j_above_the_parity_bit() -> None:
                         # does not verify, is "not this key_id"
                         try:
                             QJ = dsa._recover_pub_key_(
-                                key_id, e, r, s, ec, lower_s=False
+                                key_id,
+                                Public(e),
+                                Public(r),
+                                Public(s),
+                                ec,
+                                lower_s=False,
                             )
                         except (EccValueError, EccRuntimeError):
                             continue
@@ -728,7 +771,9 @@ def test_key_id_is_j_above_the_parity_bit() -> None:
                     assert all(key_id >> 1 == 1 for key_id in key_ids)
 
                     # and the plural is that range, less what dropped out
-                    jac_keys = dsa._recover_pub_keys_(e, r, s, ec, lower_s=False)
+                    jac_keys = dsa._recover_pub_keys_(
+                        Public(e), Public(r), Public(s), ec, lower_s=False
+                    )
                     assert [ec.aff_from_jac_var(QJ) for QJ in jac_keys] == [
                         Q_ for _, Q_ in recovered
                     ]
@@ -764,7 +809,7 @@ def test_key_id_is_the_j_zero_pair_when_n_is_above_p() -> None:
             # possibility this curve has, and a swapped curve would have
             # skipped silently where this says so
             assert r
-            k_inv = mod_inv_var(k, ec.n)
+            k_inv = mod_inv_var(Public(k), ec.n)
             for e in range(ec.n):
                 s = k_inv * (e + q * r) % ec.n
                 if s == 0:
@@ -772,7 +817,9 @@ def test_key_id_is_the_j_zero_pair_when_n_is_above_p() -> None:
                 key_ids = []
                 for key_id in range(2 * (ec.cofactor + 1)):
                     try:
-                        QJ = dsa._recover_pub_key_(key_id, e, r, s, ec, lower_s=False)
+                        QJ = dsa._recover_pub_key_(
+                            key_id, Public(e), Public(r), Public(s), ec, lower_s=False
+                        )
                     except (EccValueError, EccRuntimeError):
                         continue
                     if ec.aff_from_jac_var(QJ) == Q:
@@ -835,24 +882,40 @@ def test_forge_hash_sig() -> None:
     # pick u1 and u2 at will
     u1 = 1
     u2 = 2
-    R = double_mult_var(u2, Q, u1, ec.G, ec)
+    R = double_mult_var(Public(u2), Q, Public(u1), ec.G, ec)
     r = R[0] % ec.n
-    u2inv = mod_inv_var(u2, ec.n)
+    u2inv = mod_inv_var(Public(u2), ec.n)
     s = r * u2inv % ec.n
     s = ec.n - s if s > ec.n / 2 else s
     e = s * u1 % ec.n
-    dsa._assert_as_valid_(e, (Q[0], Q[1], 1), r, s, ec, ec._fixed_points, lower_s=True)
+    dsa._assert_as_valid_(
+        Public(e),
+        (Q[0], Q[1], 1),
+        Public(r),
+        Public(s),
+        ec,
+        ec._fixed_points,
+        lower_s=True,
+    )
 
     # pick u1 and u2 at will
     u1 = 1234567890
     u2 = 987654321
-    R = double_mult_var(u2, Q, u1, ec.G, ec)
+    R = double_mult_var(Public(u2), Q, Public(u1), ec.G, ec)
     r = R[0] % ec.n
-    u2inv = mod_inv_var(u2, ec.n)
+    u2inv = mod_inv_var(Public(u2), ec.n)
     s = r * u2inv % ec.n
     s = ec.n - s if s > ec.n / 2 else s
     e = s * u1 % ec.n
-    dsa._assert_as_valid_(e, (Q[0], Q[1], 1), r, s, ec, ec._fixed_points, lower_s=True)
+    dsa._assert_as_valid_(
+        Public(e),
+        (Q[0], Q[1], 1),
+        Public(r),
+        Public(s),
+        ec,
+        ec._fixed_points,
+        lower_s=True,
+    )
 
 
 def test_sign_input_type() -> None:
@@ -1403,10 +1466,10 @@ def test_the_low_s_rule_is_asked_for_and_not_assumed(
     # and every private spelling refuses it when told to
     with pytest.raises(EccValueError, match=err_msg):
         dsa._assert_as_valid_(
-            c,
+            Public(c),
             QJ,
-            malleated.r,
-            malleated.s,
+            Public(malleated.r),
+            Public(malleated.s),
             secp256k1,
             secp256k1._fixed_points,
             lower_s=True,
@@ -1415,13 +1478,20 @@ def test_the_low_s_rule_is_asked_for_and_not_assumed(
         dsa._libsecp256k1_recover_point_(key_id ^ 1, msg_hash, malleated, lower_s=True)
     with pytest.raises(EccValueError, match=err_msg):
         dsa._recover_pub_key_(
-            key_id ^ 1, c, malleated.r, malleated.s, secp256k1, lower_s=True
+            key_id ^ 1,
+            Public(c),
+            Public(malleated.r),
+            Public(malleated.s),
+            secp256k1,
+            lower_s=True,
         )
     # the enumeration drops a candidate that fails rather than report it,
     # so there the same refusal is an empty list: every one of the four
     # fails the one rule at once
     assert (
-        dsa._recover_pub_keys_(c, malleated.r, malleated.s, secp256k1, lower_s=True)
+        dsa._recover_pub_keys_(
+            Public(c), Public(malleated.r), Public(malleated.s), secp256k1, lower_s=True
+        )
         == []
     )
 
@@ -1429,7 +1499,13 @@ def test_the_low_s_rule_is_asked_for_and_not_assumed(
     # is what says the refusals above are about the malleation and not
     # about the arguments being threaded wrongly
     dsa._assert_as_valid_(
-        c, QJ, sig.r, sig.s, secp256k1, secp256k1._fixed_points, lower_s=True
+        Public(c),
+        QJ,
+        Public(sig.r),
+        Public(sig.s),
+        secp256k1,
+        secp256k1._fixed_points,
+        lower_s=True,
     )
     assert dsa._libsecp256k1_recover_point_(key_id, msg_hash, sig, lower_s=True) == Q
     with monkeypatch.context() as no_bindings:
@@ -1811,7 +1887,12 @@ def test_the_key_id_names_j_where_j_is_reachable() -> None:
                         except EccRuntimeError:  # r == 0 or s == 0
                             continue
                         QJ = dsa._recover_pub_key_(
-                            key_id, c, sig.r, sig.s, ec, lower_s=lower_s
+                            key_id,
+                            Public(c),
+                            Public(sig.r),
+                            Public(sig.s),
+                            ec,
+                            lower_s=lower_s,
                         )
                         assert ec.aff_from_jac_var(QJ) == Q
                         cases += 1
@@ -1891,7 +1972,13 @@ def test_verify_infinity_point() -> None:
     err_msg = r"invalid \(INF\) key"
     with pytest.raises(EccRuntimeError, match=err_msg):
         dsa._assert_as_valid_(
-            ec.n - 1, ec.GJ, 1, 1, ec, ec._fixed_points, lower_s=False
+            Public(ec.n - 1),
+            ec.GJ,
+            Public(1),
+            Public(1),
+            ec,
+            ec._fixed_points,
+            lower_s=False,
         )
 
 
@@ -1959,7 +2046,13 @@ def test_verify_with_another_hash_function_on_both_arithmetics(
         # K = u*G + v*Q is INF for Q = G, r = s = 1 and c = n-1
         with pytest.raises(EccRuntimeError, match=r"invalid \(INF\) key"):
             dsa._assert_as_valid_(
-                ec.n - 1, ec.GJ, 1, 1, ec, ec._fixed_points, lower_s=False
+                Public(ec.n - 1),
+                ec.GJ,
+                Public(1),
+                Public(1),
+                ec,
+                ec._fixed_points,
+                lower_s=False,
             )
 
     checks()

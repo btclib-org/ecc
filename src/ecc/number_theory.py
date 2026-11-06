@@ -25,6 +25,7 @@ from math import isqrt
 from typing import cast
 
 from ecc._utils import hex_string, is_integer
+from ecc.alias import Public
 from ecc.exceptions import EccTypeError, EccValueError
 
 # the `gmpy2` extra, which a plain install does not have. A gmpy2 that is
@@ -112,7 +113,7 @@ def _assert_valid_modulus(m: int) -> None:
 # would
 
 
-def xgcd_var(a: int, b: int) -> tuple[int, int, int]:
+def xgcd_var(a: Public, b: Public) -> tuple[int, int, int]:
     """Return (g, x, y) such that a*x + b*y = g = gcd(x, y).
 
     based on Extended Euclidean Algorithm, see
@@ -121,11 +122,13 @@ def xgcd_var(a: int, b: int) -> tuple[int, int, int]:
     _assert_valid_operand(a)
     _assert_valid_operand(b)
     x0, x1, y0, y1 = 0, 1, 1, 0
-    while a != 0:
-        q, b, a = b // a, a, b % a
+    r0: int = b
+    r1: int = a
+    while r1 != 0:
+        q, r0, r1 = r0 // r1, r1, r0 % r1
         y0, y1 = y1, y0 - q * y1
         x0, x1 = x1, x0 - q * x1
-    return b, x0, y0
+    return r0, x0, y0
 
 
 def _no_inverse(m: int) -> EccValueError:
@@ -149,7 +152,7 @@ def _blinding_factor(m: int) -> int:
     return 1 + secrets.randbelow(m - 1) if m > 1 else 1
 
 
-def mod_inv_var(a: int, m: int) -> int:
+def mod_inv_var(a: Public, m: int) -> int:
     """Return the inverse of a (mod m).
 
     m does not have to be a prime.
@@ -163,7 +166,7 @@ def mod_inv_var(a: int, m: int) -> int:
     publishes the Python path as variable-time.
 
     Its duration follows the operand, so a secret one goes to
-    `mod_inv` instead: what that duration carries is measured
+    `mod_inv` instead: what that duration carries is described
     there, and it is enough to recover a private key from a signature.
 
     What `pow` does not carry is this module's contract, so the checks
@@ -186,25 +189,24 @@ def mod_inv(a: int, m: int) -> int:
     that is secret. The extended Euclid under that one takes the
     iterations its input asks for, and for an operand drawn uniformly
     below m what its duration carries is the operand's bit-length: on
-    secp256k1's order a 256-bit scalar takes about twice what a 128-bit
-    one does, falling at every step between them. That correlation is
+    secp256k1's order a 256-bit scalar takes longer than a 128-bit one,
+    falling at every step between them. That correlation is
     what the Minerva attack collects -- an ECDSA nonce is
     such a scalar, and a few thousand signing times sorted by it are a
     lattice away from the private key.
 
     (b*a)^-1 * b is a^-1 for every b invertible mod m, so drawing b at
     random leaves an inverse whose iteration count follows b and tells an
-    observer nothing about a: 1.02x across the same range of operands,
-    where `mod_inv_var` is 2.06x. What it adds is two multiplications,
-    two reductions and a draw from `secrets`. Fermat's
-    `pow(a, m - 2, m)` is the alternative and is flat for a different
-    reason, its ladder running on the fixed exponent rather than on a
-    random operand; it is not the one chosen, at 8.38x.
+    observer nothing about a. What it adds is two multiplications, two
+    reductions and a draw from `secrets`. Fermat's `pow(a, m - 2, m)` is
+    the alternative and is flat for a different reason, its ladder
+    running on the fixed exponent rather than on a random operand; it is
+    not the one chosen.
 
-    The draw is what costs, so a small modulus pays proportionally more
-    -- 4.8x on an order of 11, where the Euclid is a few iterations and
-    `secrets` is the same syscall. Nothing signs with such an order
-    outside the test suite.
+    The draw is what costs, so a small modulus pays proportionally more:
+    on an order of 11 the Euclid is a few iterations and `secrets` is the
+    same syscall. Nothing signs with such an order outside the test
+    suite.
 
     Not a constant-time inverse, and no more claiming to be one than
     `curve_group._blinded_jac` does: the duration is still an extended
@@ -226,7 +228,7 @@ def mod_inv(a: int, m: int) -> int:
     while True:
         b = _blinding_factor(m)
         try:
-            return mod_inv_var(a * b % m, m) * b % m
+            return mod_inv_var(Public(a * b % m), m) * b % m
         except EccValueError:
             # the product has no inverse: b is a zero divisor, which only
             # a composite m has, or a has none. In the first case redraw;
@@ -253,16 +255,11 @@ def mod_inv_batch(a: Sequence[int], m: int) -> list[int]:
     products are made of.
 
     So it costs `n` draws from `secrets` and 2n multiplications on top of
-    the trick, and the draws are the whole of it: measured on secp256k1's
-    `p` over 16 random elements, best of nine alternating rounds, 2.1x
-    `mod_inv_batch_var`, and the difference is what those draws cost.
+    the trick.
 
     It is still the trick, which is the point of it being a batch at all:
-    over the same 16 elements, blinding the batch is 3.6x cheaper than
-    blinding one at a time, where the unblinded batch is 6.3x cheaper
-    than the unblinded singles. The saving shrinks as the draws grow
-    with n and the one Euclid does not; the trick still wins at every
-    size worth batching.
+    one extended Euclid for the whole sequence, where `mod_inv` on each
+    element spends one each.
 
     On a composite modulus a factor can be a zero divisor, and an element
     can have no inverse: either fails the batch, which is then answered
@@ -281,7 +278,7 @@ def mod_inv_batch(a: Sequence[int], m: int) -> list[int]:
 
     # a factor each, as `mod_inv` draws its one
     factors = [_blinding_factor(m) for _ in a]
-    blinded = [x * b % m for x, b in zip(a, factors, strict=True)]
+    blinded = [Public(x * b % m) for x, b in zip(a, factors, strict=True)]
     try:
         inverses = mod_inv_batch_var(blinded, m)
     except EccValueError:
@@ -295,7 +292,7 @@ def mod_inv_batch(a: Sequence[int], m: int) -> list[int]:
     return [i * b % m for i, b in zip(inverses, factors, strict=True)]
 
 
-def mod_inv_batch_var(a: Sequence[int], m: int) -> list[int]:
+def mod_inv_batch_var(a: Sequence[Public], m: int) -> list[int]:
     """Return the inverse of every element of a (mod m), in its order.
 
     m does not have to be a prime, and every element has to be invertible
@@ -346,7 +343,7 @@ def mod_inv_batch_var(a: Sequence[int], m: int) -> list[int]:
     return inverses
 
 
-def legendre_symbol_var(a: int, p: int) -> int:
+def legendre_symbol_var(a: Public, p: int) -> int:
     """Compute the Legendre symbol a|p, as a binary Jacobi symbol.
 
     p is a prime, a is relatively prime to p (if p divides a, then a|p =
@@ -356,8 +353,7 @@ def legendre_symbol_var(a: int, p: int) -> int:
 
     By the reciprocity recursion rather than by Euler's criterion, which
     is `pow(a, (p - 1) // 2, p)` -- an exponentiation the size of the
-    square root the caller is asking about, where this is a gcd, several
-    times cheaper on secp256k1's p over 3000 calls, best of seven. The
+    square root the caller is asking about, where this is a gcd. The
     factors of two come out all at once, `a & -a` being the lowest set
     bit, which is libsecp256k1's `secp256k1_ctz64_var`; asking a gcd
     rather than an exponent is what its `secp256k1_fe_is_square_var`
@@ -380,20 +376,20 @@ def legendre_symbol_var(a: int, p: int) -> int:
     _assert_valid_operand(a)
     _assert_valid_modulus(p)
 
-    a %= p
+    x = a % p
     result = 1
-    while a:
+    while x:
         # every factor of two at once, and the symbol 2|p is -1 for a p
         # of 3 or 5 mod 8, so only an odd count of them turns the sign
-        twos = (a & -a).bit_length() - 1
-        a >>= twos
+        twos = (x & -x).bit_length() - 1
+        x >>= twos
         if twos & 1 and p & 7 in {3, 5}:
             result = -result
         # quadratic reciprocity: the operands swap, and the sign turns
         # when both of them are 3 mod 4
-        if a & 3 == 3 and p & 3 == 3:
+        if x & 3 == 3 and p & 3 == 3:
             result = -result
-        a, p = p % a, a
+        x, p = p % x, x
     # what is left is the gcd, and a symbol is zero when it is not one:
     # for a prime p that is a multiple of p, which has no square root
     # and is not a non-residue either
@@ -436,7 +432,7 @@ def _sqrt_candidate_secp256k1(a: int) -> int:
     return sq(t, 2)
 
 
-def mod_sqrt_var(a: int, p: int) -> int:
+def mod_sqrt_var(a: Public, p: int) -> int:
     """Return a quadratic residue (mod p) of a; p must be a prime.
 
     Solve the equation:
@@ -451,24 +447,24 @@ def mod_sqrt_var(a: int, p: int) -> int:
     """
     _assert_valid_operand(a)
     _assert_valid_modulus(p)
-    a %= p
+    a_p = a % p
 
     if p == _SECP256K1_P:
-        r = _sqrt_candidate_secp256k1(a)
+        r = _sqrt_candidate_secp256k1(a_p)
     elif p % 4 == 3:
         # inverse candidate is pow(a, (p + 1) // 4, p)
-        r = pow(a, (p >> 2) + 1, p)
+        r = pow(a_p, (p >> 2) + 1, p)
     elif p % 8 == 5:
         # inverse candidate is pow(a, (p + 3) // 8, p)
-        r = pow(a, (p >> 3) + 1, p)
-        if r * r % p == a:
+        r = pow(a_p, (p >> 3) + 1, p)
+        if r * r % p == a_p:
             return r
         # another inverse candidate
         r = r * pow(2, p >> 2, p) % p
     else:
-        return tonelli_var(a, p)
+        return tonelli_var(Public(a_p), p)
 
-    if r * r % p != a:
+    if r * r % p != a_p:
         err_msg = "no root mod "
         # int(): p may be gmpy2's mpz, which hex_string refuses
         err_msg += (
@@ -478,7 +474,7 @@ def mod_sqrt_var(a: int, p: int) -> int:
     return r
 
 
-def tonelli_var(a: int, p: int) -> int:
+def tonelli_var(a: Public, p: int) -> int:
     """Return a quadratic residue (mod p) of a; p must be a prime.
 
     The Tonelli-Shanks algorithm is used.
@@ -487,12 +483,12 @@ def tonelli_var(a: int, p: int) -> int:
     """
     _assert_valid_operand(a)
     _assert_valid_modulus(p)
-    a %= p
-    if a == 0 or p == 2:
-        return a
+    a_p = a % p
+    if a_p == 0 or p == 2:
+        return a_p
 
     # Check solution existence for an odd prime p
-    if legendre_symbol_var(a, p) != 1:
+    if legendre_symbol_var(Public(a_p), p) != 1:
         err_msg = "no root mod "
         # int(): p may be gmpy2's mpz, which hex_string refuses
         err_msg += (
@@ -506,7 +502,7 @@ def tonelli_var(a: int, p: int) -> int:
         s += 1
         q >>= 1
     if s == 1:
-        return pow(a, (p + 1) // 4, p)
+        return pow(a_p, (p + 1) // 4, p)
 
     # Select a z which is a quadratic non residue modulo p, from the
     # first value that can be one: 1 is a square modulo every prime, so
@@ -517,7 +513,7 @@ def tonelli_var(a: int, p: int) -> int:
     # is what a p that is a perfect square does, its Jacobi symbol never
     # being -1.
     z = 2
-    while legendre_symbol_var(z, p) != -1:
+    while legendre_symbol_var(Public(z), p) != -1:
         z += 1
         if z == p:
             err_msg = "p is not prime: "
@@ -527,8 +523,8 @@ def tonelli_var(a: int, p: int) -> int:
             )  # sourcery skip: remove-unnecessary-cast
             raise EccValueError(err_msg)
     c = pow(z, q, p)
-    r = pow(a, (q + 1) // 2, p)
-    t = pow(a, q, p)
+    r = pow(a_p, (q + 1) // 2, p)
+    t = pow(a_p, q, p)
     while t != 1:
         # Find the lowest i such that t^(2^i) = 1
         t2i = t
@@ -563,23 +559,23 @@ def tonelli_var(a: int, p: int) -> int:
     return r
 
 
-def _jacobi_var(a: int, n: int) -> int:
+def _jacobi_var(a: Public, n: int) -> int:
     """Return the Jacobi symbol (a/n), for n odd and positive."""
-    a %= n
+    x = a % n
     result = 1
-    while a:
-        while a % 2 == 0:
-            a //= 2
+    while x:
+        while x % 2 == 0:
+            x //= 2
             if n % 8 in (3, 5):
                 result = -result
-        a, n = n, a
-        if a % 4 == 3 and n % 4 == 3:
+        x, n = n, x
+        if x % 4 == 3 and n % 4 == 3:
             result = -result
-        a %= n
+        x %= n
     return result if n == 1 else 0
 
 
-def _is_strong_probable_prime_base_2_var(n: int) -> bool:
+def _is_strong_probable_prime_base_2_var(n: Public) -> bool:
     """Return True if the odd n > 2 is a strong probable prime to base 2."""
     d = n - 1
     s = (d & -d).bit_length() - 1
@@ -594,7 +590,7 @@ def _is_strong_probable_prime_base_2_var(n: int) -> bool:
     return False
 
 
-def _is_strong_lucas_probable_prime_var(n: int) -> bool:
+def _is_strong_lucas_probable_prime_var(n: Public) -> bool:
     """Return True if the odd n > 2 is a strong Lucas probable prime.
 
     Selfridge's method A picks the parameters: D is the first of 5, -7, 9,
@@ -603,7 +599,7 @@ def _is_strong_lucas_probable_prime_var(n: int) -> bool:
     if isqrt(n) ** 2 == n:
         return False
     D = 5
-    while (j := _jacobi_var(D, n)) == 1:
+    while (j := _jacobi_var(Public(D), n)) == 1:
         D = -D - 2 if D > 0 else -D + 2
     if j == 0:
         # D has a factor in common with n: n is composite, |D| being < n
@@ -635,7 +631,7 @@ def _is_strong_lucas_probable_prime_var(n: int) -> bool:
     return False
 
 
-def _is_prime_var(x: int) -> bool:
+def _is_prime_var(x: Public) -> bool:
     """Return True if x is an odd prime, by the Baillie-PSW test.
 
     Trial division by the primes up to 37, then a strong probable prime test

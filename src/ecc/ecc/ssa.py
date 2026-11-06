@@ -83,7 +83,7 @@ from ecc._utils import (
     is_integer,
     is_octets,
 )
-from ecc.alias import BinaryData, HashF, Integer, JacPoint, Octets, Point
+from ecc.alias import BinaryData, HashF, Integer, JacPoint, Octets, Point, Public
 from ecc.curves import (
     Curve,
     PreparedPoint,
@@ -213,7 +213,7 @@ class Sig:
         # of the two fields is wrong. dsa.Sig phrases its own for the
         # same reason, with the congruence this one has no use for -- r
         # is a field element here, not a scalar reduced mod n
-        if not _is_x_coordinate_var(self.r, self.ec):
+        if not _is_x_coordinate_var(Public(self.r), self.ec):
             err_msg = "r is not a valid x-coordinate: "
             err_msg += f"'{hex_string(self.r)}'" if self.r > 0xFFFFFFFF else f"{self.r}"
             raise EccValueError(err_msg)
@@ -345,7 +345,7 @@ def _x_from_bip340pub_key(x_Q: BIP340PubKey, ec: Curve) -> int:
     raise EccTypeError("not a BIP340 public key")
 
 
-def _y_even_in_subgroup_var(x: int, ec: Curve) -> int:
+def _y_even_in_subgroup_var(x: Public, ec: Curve) -> int:
     """Return the even y of an x, refusing a point outside <G>.
 
     `_y_even_var` and nothing more where the cofactor is 1. Where it is
@@ -382,7 +382,7 @@ def point_from_bip340pub_key_var(x_Q: BIP340PubKey, ec: Curve = secp256k1) -> Po
     # a fraction of the modular square root it replaces, and the Python
     # one for every other curve
     x = _x_from_bip340pub_key(x_Q, ec)
-    return x, _y_even_in_subgroup_var(x, ec)
+    return x, _y_even_in_subgroup_var(Public(x), ec)
 
 
 def gen_keys(prv_key: Integer | None = None, ec: Curve = secp256k1) -> tuple[int, int]:
@@ -403,7 +403,7 @@ def gen_keys(prv_key: Integer | None = None, ec: Curve = secp256k1) -> tuple[int
 
 
 def pub_key_tweak_add_var(
-    x_Q: BIP340PubKey, t: Integer, ec: Curve = secp256k1
+    x_Q: BIP340PubKey, t: Public, ec: Curve = secp256k1
 ) -> tuple[int, int]:
     """Return the x-only key P + t*G, P the point of x_Q, and its y parity.
 
@@ -429,7 +429,7 @@ def pub_key_tweak_add_var(
             )
             return int.from_bytes(x_bytes, "big", signed=False), parity
 
-    Q = _tweak_add_var((x, _y_even_in_subgroup_var(x, ec)), tweak, ec)
+    Q = _tweak_add_var((x, _y_even_in_subgroup_var(Public(x), ec)), Public(tweak), ec)
     if Q[1] == 0:
         raise EccValueError("tweaked public key at infinity")
     return Q[0], Q[1] & 1
@@ -535,7 +535,9 @@ def _sign_(c: int, q: int, nonce: int, r: int, ec: Curve) -> Sig:
     return Sig(r, s, ec)
 
 
-def _checked_sign_(c: int, signature: Sig, x_Q: int, ec: Curve, verify: bool) -> Sig:
+def _checked_sign_(
+    c: Public, signature: Sig, x_Q: Public, ec: Curve, verify: bool
+) -> Sig:
     # the same contract as the single call into the bindings above,
     # the same default and the same refusal: a fallback answering
     # differently from the arm it stands in for is two libraries
@@ -551,7 +553,14 @@ def _checked_sign_(c: int, signature: Sig, x_Q: int, ec: Curve, verify: bool) ->
         return signature
     QJ = x_Q, _y_even_var(x_Q, ec), 1
     try:
-        _assert_as_valid_(c, QJ, signature.r, signature.s, ec, ec._fixed_points)
+        _assert_as_valid_(
+            c,
+            QJ,
+            Public(signature.r),
+            Public(signature.s),
+            ec,
+            ec._fixed_points,
+        )
     except (ValueError, EccRuntimeError) as e:
         # its words are a verifier's -- `y_K is odd`, `signature
         # verification failed`, `INF has no y-coordinate` -- and are
@@ -591,7 +600,7 @@ def _sign_python_(
     # k is the nonce: an integer in the range 1..n-1.
     k, x_K, q, x_Q = _nonce_with_pub_key_(msg, prv_key, aux, ec, hf, pub_key)
     c = challenge_(msg, x_Q, x_K, ec, hf)
-    return _checked_sign_(c, _sign_(c, q, k, x_K, ec), x_Q, ec, verify)
+    return _checked_sign_(Public(c), _sign_(c, q, k, x_K, ec), Public(x_Q), ec, verify)
 
 
 def _sign_commit_(
@@ -630,7 +639,7 @@ def _sign_commit_(
     # the signature is checked and the receipt is not: what opens the
     # commitment is `commit_point_var_` under the same r, which the caller
     # verifies with commit_hash and receipt in hand
-    sig = _checked_sign_(c, _sign_(c, q, k, x_K, ec), x_Q, ec, verify)
+    sig = _checked_sign_(Public(c), _sign_(c, q, k, x_K, ec), Public(x_Q), ec, verify)
     return sig, receipt
 
 
@@ -1025,7 +1034,7 @@ class Signer:
 
 
 def _assert_as_valid_(
-    c: int, QJ: JacPoint, r: int, s: int, ec: Curve, fixed: frozenset[JacPoint]
+    c: Public, QJ: JacPoint, r: Public, s: Public, ec: Curve, fixed: frozenset[JacPoint]
 ) -> None:
     # Private function for test/dev purposes
     # `fixed` is dsa._assert_as_valid_'s: the points whose wNAF tables
@@ -1045,7 +1054,7 @@ def _assert_as_valid_(
     # under the Python arithmetic. The whole verification follows it,
     # the two lifts around it -- the r of the signature and the x-only
     # key -- being theirs as well
-    KJ = _jac_double_mult_var(ec.n - c, QJ, s, ec.GJ, ec, fixed)
+    KJ = _jac_double_mult_var(Public(ec.n - c), QJ, s, ec.GJ, ec, fixed)
 
     # The following check is prescribed by BIP340 but it is useless:
     # if moved after 'Fail if x_K ≠ r' it would never be executed
@@ -1187,7 +1196,7 @@ def assert_as_valid_(
 
     # the lift the branch above does not need, and the validation of x_Q
     # with it: `_x_from_bip340pub_key` reads the key and proves nothing
-    y_Q = _y_even_in_subgroup_var(x_Q, sig.ec)
+    y_Q = _y_even_in_subgroup_var(Public(x_Q), sig.ec)
     # the key's own memoized tables where the caller prepared it, as in
     # `dsa.assert_as_valid_`, which is a fifth off a verification under
     # one key. The negation is in that set too, which is what makes it
@@ -1196,7 +1205,9 @@ def assert_as_valid_(
     fixed = Q.fixed if isinstance(Q, PreparedPoint) else sig.ec._fixed_points
     # Let c = int(hf(bytes(r) || bytes(Q) || msg)) mod n.
     c = challenge_(msg, x_Q, sig.r, sig.ec, hf)
-    _assert_as_valid_(c, (x_Q, y_Q, 1), sig.r, sig.s, sig.ec, fixed)
+    _assert_as_valid_(
+        Public(c), (x_Q, y_Q, 1), Public(sig.r), Public(sig.s), sig.ec, fixed
+    )
 
 
 def assert_as_valid(
@@ -1403,7 +1414,7 @@ def anti_exfil_signer_commit(
     """
     aux = bytes_from_octets(host_commitment, hf().digest_size)
     _, x_K, _, _ = bip340_nonce_(msg, prv_key, aux, ec, hf)
-    return x_K, _y_even_var(x_K, ec)
+    return x_K, _y_even_var(Public(x_K), ec)
 
 
 def anti_exfil_sign(
@@ -1464,7 +1475,7 @@ def anti_exfil_host_verify(
     return verify_(msg, Q, sig, hf, commit_hash=rho, receipt=receipt)
 
 
-def _recover_pub_key_(c: int, r: int, s: int, ec: Curve) -> int:
+def _recover_pub_key_(c: Public, r: Public, s: Public, ec: Curve) -> int:
     # Private function provided for testing purposes only.
     if c == 0:
         raise EccRuntimeError("invalid zero challenge")
@@ -1482,7 +1493,9 @@ def _recover_pub_key_(c: int, r: int, s: int, ec: Curve) -> int:
     # this stays private, with no public spelling above it: BIP340 has
     # no recovery flag to carry the
     # candidate, x-only keys leaving nothing for one to disambiguate
-    QJ = _jac_double_mult_var(ec.n - e1, KJ, e1 * s, ec.GJ, ec, ec._fixed_points)
+    QJ = _jac_double_mult_var(
+        Public(ec.n - e1), KJ, Public(e1 * s), ec.GJ, ec, ec._fixed_points
+    )
     # QJ = e1*(s*G - K) is INF whenever r is the x of s*G, y even, and
     # that answer comes back from the bindings too: a libsecp256k1 pubkey
     # is never the identity, so the sum is recognized from the coordinates
@@ -1619,8 +1632,8 @@ def assert_batch_as_valid_(
     for sig in sigs:
         sig.assert_valid()
     t = 0
-    scalars: list[int] = []
-    x_coords: list[int] = []
+    scalars: list[Public] = []
+    x_coords: list[Public] = []
     for i, (msg, Q, sig) in enumerate(zip(msgs, Qs, sigs, strict=True)):
         # any size, as in sign_ and assert_as_valid_
         msg = bytes_from_octets(msg)  # noqa: PLW2901
@@ -1640,8 +1653,8 @@ def assert_batch_as_valid_(
         # of 0 mod the cofactor would annihilate while the single
         # verification refuses it. Nothing is asked on secp256k1
         if ec.cofactor > 1:
-            _y_even_in_subgroup_var(x_Q, ec)
-            _y_even_in_subgroup_var(sig.r, ec)
+            _y_even_in_subgroup_var(Public(x_Q), ec)
+            _y_even_in_subgroup_var(Public(sig.r), ec)
 
         c = challenge_(msg, x_Q, sig.r, ec, hf)
 
@@ -1651,10 +1664,10 @@ def assert_batch_as_valid_(
         # algorithm, or randomly generated independently for each
         # run of the batch verification algorithm
         rand = 1 if i == 0 else 1 + secrets.randbelow(ec.n - 1)
-        scalars.append(rand)
-        x_coords.append(sig.r)
-        scalars.append(rand * c % ec.n)
-        x_coords.append(x_Q)
+        scalars.append(Public(rand))
+        x_coords.append(Public(sig.r))
+        scalars.append(Public(rand * c % ec.n))
+        x_coords.append(Public(x_Q))
         t += rand * sig.s
 
     if mult(t, ec=ec) != _multi_mult_x_only_var(scalars, x_coords, ec):

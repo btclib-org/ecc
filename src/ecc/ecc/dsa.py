@@ -53,7 +53,7 @@ from ecc._utils import (
     hex_string,
     is_integer,
 )
-from ecc.alias import BinaryData, HashF, Integer, JacPoint, Octets, Point
+from ecc.alias import BinaryData, HashF, Integer, JacPoint, Octets, Point, Public
 from ecc.curves import (
     Curve,
     PreparedPoint,
@@ -379,7 +379,7 @@ class Sig:
         r = self.r
         congruence_not_found = True
         while congruence_not_found and r < self.ec.p:
-            if _is_x_coordinate_var(r, self.ec):
+            if _is_x_coordinate_var(Public(r), self.ec):
                 congruence_not_found = False
             else:
                 r += self.ec.n
@@ -722,7 +722,7 @@ def _python_key(key: PubKey, ec: Curve) -> tuple[Point, frozenset[JacPoint]]:
 
 
 def _python_verified(
-    c: int, sig: Sig, ec: Curve, key: tuple[Point, frozenset[JacPoint]]
+    c: Public, sig: Sig, ec: Curve, key: tuple[Point, frozenset[JacPoint]]
 ) -> bool:
     # the boolean `_abort_unless_checked` asks for, on the arm where the
     # verification is this package's own arithmetic. lower_s=False for
@@ -732,7 +732,15 @@ def _python_verified(
     # `lower_s=False` was explicitly allowed to produce
     Q, fixed = key
     try:
-        _assert_as_valid_(c, (Q[0], Q[1], 1), sig.r, sig.s, ec, fixed, lower_s=False)
+        _assert_as_valid_(
+            c,
+            (Q[0], Q[1], 1),
+            Public(sig.r),
+            Public(sig.s),
+            ec,
+            fixed,
+            lower_s=False,
+        )
     except (ValueError, EccRuntimeError):
         return False
     return True
@@ -1089,7 +1097,7 @@ def sign_(
         # existing rather than for a second default
         if verify:
             _abort_unless_checked(
-                lambda key: _python_verified(c, signature, ec, key),
+                lambda key: _python_verified(Public(c), signature, ec, key),
                 lambda: (mult(q, ec.G, ec), ec._fixed_points),
                 parsed,
             )
@@ -1575,7 +1583,7 @@ class Signer:
             # still carries the rule for the one key there is
             if verify:
                 _abort_unless_checked(
-                    lambda key: _python_verified(c, signature, self._ec, key),
+                    lambda key: _python_verified(Public(c), signature, self._ec, key),
                     lambda: self._python_key,
                     None,
                 )
@@ -1602,10 +1610,10 @@ class Signer:
 
 
 def _assert_as_valid_(
-    c: int,
+    c: Public,
     QJ: JacPoint,
-    r: int,
-    s: int,
+    r: Public,
+    s: Public,
     ec: Curve,
     fixed: frozenset[JacPoint],
     *,
@@ -1636,7 +1644,7 @@ def _assert_as_valid_(
     # and a commitment, `Signer` nothing, its arm settled at
     # construction -- and `_recover_pub_key_` reaches step 1.6.2 only on
     # a curve of cofactor above 1, which the predicate declines outright
-    KJ = _jac_double_mult_var(v, QJ, u, ec.GJ, ec, fixed)  # 5
+    KJ = _jac_double_mult_var(Public(v), QJ, Public(u), ec.GJ, ec, fixed)  # 5
 
     # Fail if infinite(K).
     # K = w*(c + r*q)*G is INF whenever c == -r*q (mod n)
@@ -1659,7 +1667,7 @@ def _assert_as_valid_(
     # the bindings hand back a point whose Z is 1, so the inversion this
     # path pays is of one, and where the multiplication is Python's it
     # is under a percent of the verification
-    x_K = (KJ[0] * mod_inv_var(KJ[2] * KJ[2], ec.p)) % ec.p
+    x_K = (KJ[0] * mod_inv_var(Public(KJ[2] * KJ[2]), ec.p)) % ec.p
     # Fail if r ≠ x_K %n.
     if r != x_K % ec.n:  # 6, 7, 8
         raise EccRuntimeError("signature verification failed")
@@ -1796,7 +1804,9 @@ def assert_as_valid_(
     # one key, and `curves.PreparedPoint` is where the trade is written
     fixed = key.fixed if isinstance(key, PreparedPoint) else sig.ec._fixed_points
     # second part delegated to helper function
-    _assert_as_valid_(c, QJ, sig.r, sig.s, sig.ec, fixed, lower_s=False)
+    _assert_as_valid_(
+        Public(c), QJ, Public(sig.r), Public(sig.s), sig.ec, fixed, lower_s=False
+    )
 
 
 def assert_as_valid(
@@ -2139,7 +2149,7 @@ def anti_exfil_host_verify(
 
 
 def _recover_pub_keys_(
-    c: int, r: int, s: int, ec: Curve, *, lower_s: bool
+    c: Public, r: Public, s: Public, ec: Curve, *, lower_s: bool
 ) -> list[JacPoint]:
     # Private function provided for testing purposes only.
 
@@ -2229,7 +2239,9 @@ def recover_pub_keys_(
 
     c = challenge_(msg_hash, sig.ec, hf)  # 1.5
 
-    QJs = _recover_pub_keys_(c, sig.r, sig.s, sig.ec, lower_s=False)
+    QJs = _recover_pub_keys_(
+        Public(c), Public(sig.r), Public(sig.s), sig.ec, lower_s=False
+    )
     # the candidates converted together: one extended Euclid for the list
     # where one per candidate is what the loop above would have paid
     return sig.ec.aff_from_jac_batch_var(QJs)
@@ -2247,7 +2259,7 @@ def recover_pub_keys(msg: Octets, sig: Sig | Octets, hf: HashF = sha256) -> list
 
 
 def _recover_pub_key_(
-    key_id: int, c: int, r: int, s: int, ec: Curve, *, lower_s: bool
+    key_id: int, c: Public, r: Public, s: Public, ec: Curve, *, lower_s: bool
 ) -> JacPoint:
     # Private function provided for testing purposes only: r and s are
     # assumed in 1..n-1, which is what every caller's Sig validation
@@ -2324,10 +2336,10 @@ def _recover_pub_key_(
     # path of recovery, but the root it takes to turn a candidate x_K into
     # a point is libsecp256k1's for secp256k1 all the same -- reached with
     # a key_id above 3, which the dispatch does not hand over
-    y = _y_even_var(x_K, ec)
+    y = _y_even_var(Public(x_K), ec)
     y_K = ec.p - y if i else y
     KJ = x_K, y_K, 1  # 1.2 and 1.3
-    if not prime_order and _mult_jac_var(ec.n, KJ, ec)[2] != 0:  # 1.4
+    if not prime_order and _mult_jac_var(Public(ec.n), KJ, ec)[2] != 0:  # 1.4
         # n*K = INF is what puts K in <G>; cofactor 1 has no point outside it.
         # The multiple is taken on the Jacobian point itself with
         # _mult_jac_var rather than through _assert_in_subgroup on its affine
@@ -2353,7 +2365,9 @@ def _recover_pub_key_(
     # back is _jac_from_aff, i.e. z == 1, where the wNAF answered whatever
     # representative its ladder reached. Every caller converts with
     # aff_from_jac_var, which is what a Jacobian coordinate is for
-    QJ = _jac_double_mult_var(r1s, KJ, r1e, ec.GJ, ec, ec._fixed_points)  # 1.6.1
+    QJ = _jac_double_mult_var(
+        Public(r1s), KJ, Public(r1e), ec.GJ, ec, ec._fixed_points
+    )  # 1.6.1
 
     # INF is no public key, and step 1.6.2 does not refuse it: with Q at
     # infinity the K' that verification recomputes is the lift itself, so
@@ -2511,7 +2525,9 @@ def recover_pub_key_(
 
     c = challenge_(msg_hash, sig.ec, hf)  # 1.5
 
-    QJ = _recover_pub_key_(key_id, c, sig.r, sig.s, sig.ec, lower_s=False)
+    QJ = _recover_pub_key_(
+        key_id, Public(c), Public(sig.r), Public(sig.s), sig.ec, lower_s=False
+    )
     return sig.ec.aff_from_jac_var(QJ)
 
 
@@ -2556,7 +2572,9 @@ def recover_sec_(
         )
 
     c = challenge_(msg_hash, sig.ec, hf)
-    QJ = _recover_pub_key_(key_id, c, sig.r, sig.s, sig.ec, lower_s=False)
+    QJ = _recover_pub_key_(
+        key_id, Public(c), Public(sig.r), Public(sig.s), sig.ec, lower_s=False
+    )
     return bytes_from_point(sig.ec.aff_from_jac_var(QJ), sig.ec, compressed)
 
 
@@ -2610,8 +2628,8 @@ def crack_prv_key_var_(
     c_1 = challenge_(msg_hash1, ec, hf)
     c_2 = challenge_(msg_hash2, ec, hf)
 
-    nonce = (c_1 - c_2) * mod_inv_var(sig1.s - sig2.s, ec.n) % ec.n
-    q = (sig2.s * nonce - c_2) * mod_inv_var(sig1.r, ec.n) % ec.n
+    nonce = (c_1 - c_2) * mod_inv_var(Public(sig1.s - sig2.s), ec.n) % ec.n
+    q = (sig2.s * nonce - c_2) * mod_inv_var(Public(sig1.r), ec.n) % ec.n
     return q, nonce
 
 

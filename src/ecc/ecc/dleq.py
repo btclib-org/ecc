@@ -45,7 +45,7 @@ from __future__ import annotations
 import secrets
 
 from ecc._utils import bytes_from_octets
-from ecc.alias import Integer, Octets, Point
+from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import (
     PubKey,
     bytes_from_point,
@@ -210,10 +210,10 @@ def assert_proof_as_valid(
     if s >= secp256k1.n:
         raise EccValueError("s not in 0..n-1")
 
-    R1 = double_mult_var(s, G_point, -e, A_point)
+    R1 = double_mult_var(Public(s), G_point, Public(-e), A_point)
     if R1[1] == 0:
         raise EccValueError("invalid (INF) R1")
-    R2 = double_mult_var(s, B_point, -e, C_point)
+    R2 = double_mult_var(Public(s), B_point, Public(-e), C_point)
     if R2[1] == 0:
         raise EccValueError("invalid (INF) R2")
 

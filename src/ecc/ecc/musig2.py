@@ -128,7 +128,7 @@ from typing import TYPE_CHECKING
 
 from ecc._libsecp256k1 import musig as libsecp256k1_musig
 from ecc._utils import assert_type, bytes_from_octets, is_octets
-from ecc.alias import INF, Integer, Octets, Point
+from ecc.alias import INF, Integer, Octets, Point, Public
 from ecc.curves import mult, multi_mult_var, scalar_from_prv_key, secp256k1
 from ecc.curves.curve import _libsecp256k1_serves, _sum_var, _tweak_add_var
 from ecc.curves.sec_point import (
@@ -385,13 +385,13 @@ def key_agg_var(pub_keys: Sequence[Octets]) -> KeyAggContext:
     # is what `multi_mult_var` is, and on secp256k1 every term stays
     # serialized inside the bindings from the first to the last
     points: list[Point] = []
-    coefficients: list[int] = []
+    coefficients: list[Public] = []
     for i, pk in enumerate(pks):
         try:
             points.append(_cpoint_var(pk))
         except EccValueError as e:
             raise InvalidContributionError(i, "pubkey") from e
-        coefficients.append(_key_agg_coeff_(L, second, pk))
+        coefficients.append(Public(_key_agg_coeff_(L, second, pk)))
     # a group of one signer is a sum of one term, which `multi_mult_var`
     # refuses as not being a multi-mult at all: it is a multiplication,
     # and `mult` is the spelling of one
@@ -435,7 +435,7 @@ def apply_tweak_var(
     # g is 1 or n-1, so g*Q is Q or its negation and there is no scalar
     # multiplication to make of it: what is left is Q + t*G, which is
     # `_tweak_add_var`'s one call
-    Q = _tweak_add_var(Q if g == 1 else secp256k1.negate(Q), t, secp256k1)
+    Q = _tweak_add_var(Q if g == 1 else secp256k1.negate(Q), Public(t), secp256k1)
     if Q[1] == 0:
         # t*G cancelling g*Q exactly: unreachable for a tweak nobody
         # chose to do it, reachable for one that did, and a key of

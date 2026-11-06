@@ -47,7 +47,7 @@ import hashlib
 import secrets
 
 from ecc._utils import bytes_from_octets
-from ecc.alias import Integer, Octets, Point
+from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import (
     PubKey,
     bytes_from_point,
@@ -231,17 +231,17 @@ def assert_as_valid(
     Y = point_from_pub_key(enc_key)
 
     # DLEQ_verify((R_a, Y, R), proof): A_G = s*G - e*R_a, A_Y = s*Y - e*R
-    A_G = double_mult_var(s, secp256k1.G, -e, Ra)
-    A_Y = double_mult_var(s, Y, -e, R)
+    A_G = double_mult_var(Public(s), secp256k1.G, Public(-e), Ra)
+    A_Y = double_mult_var(Public(s), Y, Public(-e), R)
     if A_G[1] == 0 or A_Y[1] == 0:
         raise EccValueError("invalid proof: infinity commitment")
     if e != _challenge(Ra, Y, R, A_G, A_Y):
         raise EccValueError("invalid proof: challenge mismatch")
 
     # the equation: R_a is s_a^-1 times (m*G + r*X)
-    s_a_inv = mod_inv_var(s_a, secp256k1.n)
+    s_a_inv = mod_inv_var(Public(s_a), secp256k1.n)
     r = R[0] % secp256k1.n
-    if double_mult_var(s_a_inv * m, secp256k1.G, s_a_inv * r, X) != Ra:
+    if double_mult_var(Public(s_a_inv * m), secp256k1.G, Public(s_a_inv * r), X) != Ra:
         raise EccValueError("adaptor signature does not match")
 
 
@@ -309,7 +309,7 @@ def recover(adaptor_sig: Octets, sig: Sig | Octets, enc_key: PubKey) -> int:
         raise EccValueError("r does not match the adaptor signature")
     sig.assert_valid()
 
-    y = mod_inv_var(sig.s, secp256k1.n) * s_a % secp256k1.n
+    y = mod_inv_var(Public(sig.s), secp256k1.n) * s_a % secp256k1.n
     implied = mult(y)
     if implied == Y:
         return y

@@ -20,6 +20,7 @@ from typing import Any
 
 import pytest
 
+from ecc.alias import Public
 from ecc.curves import PubKeyTweakChain
 from ecc.exceptions import EccValueError
 from tests import b58decode, both_arms, load
@@ -42,7 +43,7 @@ def test_public_derivation(vector: dict[str, Any]) -> None:
     for index, child in zip(vector["indexes"], vector["children"], strict=True):
         data = key + index.to_bytes(4, "big")
         digest = hmac.new(chain_code, data, hashlib.sha512).digest()
-        key = chain.tweak_add_var(digest[:32])
+        key = chain.tweak_add_var(Public(int.from_bytes(digest[:32], "big")))
         chain_code = digest[32:]
         assert (chain_code, key) == _chain_code_and_key(child)
 

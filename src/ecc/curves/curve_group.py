@@ -22,7 +22,7 @@ from math import ceil
 from typing_extensions import override
 
 from ecc._utils import assert_type, hex_string, int_from_integer, is_integer
-from ecc.alias import INF, INFJ, Integer, JacPoint, Point
+from ecc.alias import INF, INFJ, Integer, JacPoint, Point, Public
 from ecc.exceptions import EccTypeError, EccValueError
 from ecc.number_theory import (
     _field_element,
@@ -130,7 +130,7 @@ class CurveGroup:
         b = int_from_integer(b)
 
         # 1) check that p is a prime
-        if not self._primes_are_trusted and not _is_prime_var(p):
+        if not self._primes_are_trusted and not _is_prime_var(Public(p)):
             err_msg = "p is not prime: "
             err_msg += f"'{hex_string(p)}'" if p > HEX_THRESHOLD else f"{p}"
             raise EccValueError(err_msg)
@@ -307,7 +307,9 @@ class CurveGroup:
         if Q[2] == 0:  # Infinity point in Jacobian coordinates
             return INF
 
-        return _int_point(self._aff_from_z_inv(Q, mod_inv_var(Q[2], self._modulus)))
+        return _int_point(
+            self._aff_from_z_inv(Q, mod_inv_var(Public(Q[2]), self._modulus))
+        )
 
     def aff_from_jac_batch_var(self, Qs: Sequence[JacPoint]) -> list[Point]:
         """Return the affine points: one modular inversion for all of them.
@@ -326,7 +328,9 @@ class CurveGroup:
     def _aff_from_jac_batch_var(self, Qs: Sequence[JacPoint]) -> list[Point]:
         # in the type of self._modulus: the tables of the multiplications
         # are built here, and stay in the type their arithmetic runs on
-        inverses = iter(mod_inv_batch_var([Q[2] for Q in Qs if Q[2]], self._modulus))
+        inverses = iter(
+            mod_inv_batch_var([Public(Q[2]) for Q in Qs if Q[2]], self._modulus)
+        )
         return [
             INF if Q[2] == 0 else self._aff_from_z_inv(Q, next(inverses)) for Q in Qs
         ]
@@ -355,7 +359,7 @@ class CurveGroup:
 
         p = self._modulus
         Z2 = Q[2] * Q[2]
-        return int(Q[0] * mod_inv_var(Z2, p) % p)
+        return int(Q[0] * mod_inv_var(Public(Z2), p) % p)
 
     def y_aff_from_jac_var(self, Q: JacPoint) -> int:
         """Return the affine y alone, without the product x costs.
@@ -370,7 +374,7 @@ class CurveGroup:
 
         p = self._modulus
         Z2 = Q[2] * Q[2]
-        return int(Q[1] * mod_inv_var(Z2 * Q[2], p) % p)
+        return int(Q[1] * mod_inv_var(Public(Z2 * Q[2]), p) % p)
 
     def is_jac_equal(self, QJ: JacPoint, PJ: JacPoint) -> bool:
         """Return True if Jacobian points are equal in affine coordinates.
@@ -661,7 +665,7 @@ class CurveGroup:
         # is worth 6% of _mult_aff_var rather than a factor of two:
         # mod_inv_var is what affine coordinates cost, and is why the
         # ladders are not
-        lam = (R[1] - Q[1]) * mod_inv_var(R[0] - Q[0], p) % p
+        lam = (R[1] - Q[1]) * mod_inv_var(Public(R[0] - Q[0]), p) % p
         x = (lam * lam - Q[0] - R[0]) % p
         y = (lam * (Q[0] - x) - Q[1]) % p
         return x, y
@@ -672,7 +676,7 @@ class CurveGroup:
             return INF
 
         p = self.p
-        lam = (3 * Q[0] * Q[0] + self._a) * mod_inv_var(2 * Q[1], p) % p
+        lam = (3 * Q[0] * Q[0] + self._a) * mod_inv_var(Public(2 * Q[1]), p) % p
         x = (lam * lam - Q[0] - Q[0]) % p
         y = (lam * (Q[0] - x) - Q[1]) % p
         return x, y
@@ -683,12 +687,12 @@ class CurveGroup:
         # This is a good reason to keep this method private
         return ((x**2 + self._a) * x + self._b) % self.p
 
-    def y_var(self, x: int) -> int:
+    def y_var(self, x: Public) -> int:
         """Return the y coordinate from x, as in (x, y)."""
         if not 0 <= x < self.p:
             raise EccValueError("x-coordinate not in 0..p-1")
         try:
-            return mod_sqrt_var(self._y2(x), self.p)
+            return mod_sqrt_var(Public(self._y2(x)), self.p)
         except EccValueError:
             pass
         # raised outside the handler, so that neither __cause__ nor __context__
@@ -750,18 +754,18 @@ class CurveGroup:
 
     #  y-symmetry tiebreaker criteria: even/odd, low/high, or quadratic residue
 
-    def y_even_var(self, x: int) -> int:
+    def y_even_var(self, x: Public) -> int:
         """Return the odd/even affine y-coordinate associated to x."""
         root = self.y_var(x)
         # switch even/odd root as needed (XORing the conditions)
         return self.p - root if root % 2 else root
 
-    def y_low_var(self, x: int) -> int:
+    def y_low_var(self, x: Public) -> int:
         """Return the low/high affine y-coordinate associated to x."""
         root = self.y_var(x)
         return root if root <= self.p // 2 else self.p - root
 
-    def y_quadratic_residue_var(self, x: int) -> int:
+    def y_quadratic_residue_var(self, x: Public) -> int:
         """Return the quadratic residue affine y-coordinate."""
         if not self.p_is_3_mod_4:
             err_msg = "field prime is not equal to 3 mod 4: "
@@ -796,7 +800,7 @@ def _assert_valid_ec(ec: CurveGroup) -> None:
     assert_type(ec, CurveGroup, "ec")
 
 
-def _mult_recursive_aff_var(m: int, Q: Point, ec: CurveGroup) -> Point:
+def _mult_recursive_aff_var(m: Public, Q: Point, ec: CurveGroup) -> Point:
     """Scalar multiplication of a curve point in affine coordinates.
 
     This implementation uses a recursive version of 'double & add',
@@ -813,12 +817,12 @@ def _mult_recursive_aff_var(m: int, Q: Point, ec: CurveGroup) -> Point:
         return INF
 
     if m % 2 == 1:
-        return ec.add_aff_var(Q, _mult_recursive_aff_var((m - 1), Q, ec))
+        return ec.add_aff_var(Q, _mult_recursive_aff_var(Public(m - 1), Q, ec))
 
-    return _mult_recursive_aff_var((m // 2), ec.double_aff_var(Q), ec)
+    return _mult_recursive_aff_var(Public(m // 2), ec.double_aff_var(Q), ec)
 
 
-def _mult_recursive_jac_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
+def _mult_recursive_jac_var(m: Public, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     """Scalar multiplication of a curve point in affine coordinates.
 
     This implementation uses a recursive version of 'double & add',
@@ -835,12 +839,12 @@ def _mult_recursive_jac_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
         return INFJ
 
     if m % 2 == 1:
-        return ec._add_jac(Q, _mult_recursive_jac_var((m - 1), Q, ec))
+        return ec._add_jac(Q, _mult_recursive_jac_var(Public(m - 1), Q, ec))
 
-    return _mult_recursive_jac_var((m // 2), ec._double_jac(Q), ec)
+    return _mult_recursive_jac_var(Public(m // 2), ec._double_jac(Q), ec)
 
 
-def _mult_aff_var(m: int, Q: Point, ec: CurveGroup) -> Point:
+def _mult_aff_var(m: Public, Q: Point, ec: CurveGroup) -> Point:
     """Scalar multiplication of a curve point in affine coordinates.
 
     This implementation uses 'double & add' algorithm, 'right-to-left'
@@ -858,8 +862,8 @@ def _mult_aff_var(m: int, Q: Point, ec: CurveGroup) -> Point:
     # if least significant bit of m is 1, then add Q to R[0]
     R[0] = R[m & 1]
     # remove the bit just accounted for
-    m >>= 1
-    while m > 0:
+    k = m >> 1
+    while k > 0:
         # the doubling part of 'double & add'
         Q = ec.double_aff_var(Q)
         # always perform the 'add', even if useless: one addition per bit
@@ -869,12 +873,12 @@ def _mult_aff_var(m: int, Q: Point, ec: CurveGroup) -> Point:
         # readable ones rather than the ones to sign with
         R[1] = ec.add_aff_var(R[0], Q)
         # if least significant bit of m is 1, then add Q to R[0]
-        R[0] = R[m & 1]
-        m >>= 1
+        R[0] = R[k & 1]
+        k >>= 1
     return R[0]
 
 
-def _mult_jac_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
+def _mult_jac_var(m: Public, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     """Scalar multiplication of a curve point in Jacobian coordinates.
 
     This implementation uses 'double & add' algorithm, 'right-to-left'
@@ -892,16 +896,16 @@ def _mult_jac_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     # if least significant bit of m is 1, then add Q to R[0]
     R[not m & 1] = Q
     # remove the bit just accounted for
-    m >>= 1
-    while m > 0:
+    k = m >> 1
+    while k > 0:
         # the doubling part of 'double & add'
         Q = ec._double_jac(Q)
         # always perform the addition, even if useless, but use it as R[0]
         # only if the least significant bit of m is 1: one doubling and
         # one addition per bit, and with a branch-free add_jac under it
         # the loop costs the same for every scalar of a given length
-        R[not m & 1] = ec._add_jac(R[0], Q)
-        m >>= 1
+        R[not k & 1] = ec._add_jac(R[0], Q)
+        k >>= 1
     return R[0]
 
 
@@ -968,16 +972,17 @@ def _cached_multiples_fixwind(
     return T
 
 
-def _convert_number_to_base_var(i: int, base: int) -> list[int]:
+def _convert_number_to_base_var(i: Public, base: int) -> list[int]:
     """Return the digits of an integer in the requested base."""
     digits: list[int] = []
-    while i or not digits:
-        i, idx = divmod(i, base)
+    rest: int = i
+    while rest or not digits:
+        rest, idx = divmod(rest, base)
         digits.append(idx)
     return digits[::-1]
 
 
-def _wNAF_of_m_var(m: int, w: int) -> list[int]:
+def _wNAF_of_m_var(m: Public, w: int) -> list[int]:
     """WNAF (width-w Non-adjacent form) of number m.
 
     Given an integer m, wNAF is a method of representation
@@ -999,21 +1004,22 @@ def _wNAF_of_m_var(m: int, w: int) -> list[int]:
     """
     w2 = 1 << w
     M: list[int] = []
-    while m > 0:
+    k: int = m
+    while k > 0:
         # a run of zero bits goes in one shift, not one bit at a time
-        if zeros := (m & -m).bit_length() - 1:
+        if zeros := (k & -k).bit_length() - 1:
             M.extend([0] * zeros)
-            m >>= zeros
+            k >>= zeros
         if w == 1:
             # Computing binary NAF of m
-            d = 2 - (m & 3)
+            d = 2 - (k & 3)
         else:
             # Computing wNAF of m
-            d = m & (w2 - 1)
+            d = k & (w2 - 1)
             if d >= w2 >> 1:
                 d -= w2
         M.append(d)
-        m = (m - d) >> 1
+        k = (k - d) >> 1
 
     return M
 
@@ -1300,7 +1306,7 @@ def _mult_fixed_base(
     return ec._add_jac(R, (INFJ, ec.negate_jac(Q))[not m & 1])
 
 
-def _mult_mont_ladder_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
+def _mult_mont_ladder_var(m: Public, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     """Scalar multiplication using 'Montgomery ladder' algorithm.
 
     This implementation uses
@@ -1333,7 +1339,7 @@ def _mult_mont_ladder_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     return R[0]
 
 
-def _mult_base_3_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
+def _mult_base_3_var(m: Public, Q: JacPoint, ec: CurveGroup) -> JacPoint:
     """Scalar multiplication using ternary decomposition of the scalar.
 
     This implementation uses 'triple & add' algorithm, 'left-to-right'
@@ -1362,7 +1368,7 @@ def _mult_base_3_var(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
 
 
 def _mult_fixed_window_var(
-    m: int, Q: JacPoint, ec: CurveGroup, w: int, cached: bool
+    m: Public, Q: JacPoint, ec: CurveGroup, w: int, cached: bool
 ) -> JacPoint:
     """Scalar multiplication using "fixed window".
 
@@ -1398,7 +1404,7 @@ def _mult_fixed_window_var(
 
 
 def _mult_fixed_window_cached_var(
-    m: int, Q: JacPoint, ec: CurveGroup, w: int
+    m: Public, Q: JacPoint, ec: CurveGroup, w: int
 ) -> JacPoint:
     """Scalar multiplication using "fixed window" & cached values.
 
@@ -1533,7 +1539,7 @@ def _mult(m: int, Q: JacPoint, ec: CurveGroup) -> JacPoint:
 
 
 def _double_mult_var(
-    u: int, HJ: JacPoint, v: int, QJ: JacPoint, ec: CurveGroup
+    u: Public, HJ: JacPoint, v: Public, QJ: JacPoint, ec: CurveGroup
 ) -> JacPoint:
     """Double scalar multiplication (u*H + v*Q).
 
@@ -1667,7 +1673,7 @@ def _additions_by_position_var(
 
 
 def _multi_mult_w_NAF_var(
-    scalars: Sequence[int],
+    scalars: Sequence[Public],
     jac_points: Sequence[JacPoint],
     ec: CurveGroup,
     w: int,
@@ -1756,7 +1762,7 @@ def _multi_mult_w_NAF_var(
     pending: list[tuple[int, list[JacPoint]]] = []
     for i, (n, PJ) in enumerate(pairs):
         width = fixed_w if PJ in fixed else w
-        nafs.append(_wNAF_of_m_var(n, width))
+        nafs.append(_wNAF_of_m_var(Public(n), width))
         if PJ in fixed:
             tables.append(_cached_odd_multiples_aff(PJ, ec, width))
         else:
@@ -1791,7 +1797,7 @@ def _multi_mult_w_NAF_var(
 
 
 def _multi_mult_bos_coster_var(
-    scalars: Sequence[int], jac_points: Sequence[JacPoint], ec: CurveGroup
+    scalars: Sequence[Public], jac_points: Sequence[JacPoint], ec: CurveGroup
 ) -> JacPoint:
     """Return the multi scalar multiplication u1*Q1 + ... + un*Qn.
 
@@ -1850,7 +1856,7 @@ def _multi_mult_bos_coster_var(
         # measured, spelling that case out as a branch buys nothing, and
         # subtracting for q up to 4 or up to 16 costs 3% and 11%.
         q, n_1 = divmod(n_1, n_2)
-        p_2 = ec._add_jac(_mult_jac_var(q, p_1, ec), p_2)
+        p_2 = ec._add_jac(_mult_jac_var(Public(q), p_1, ec), p_2)
         if n_1 > 0:
             heapq.heappush(x, (-n_1, p_1))
         heapq.heappush(x, (-n_2, p_2))
@@ -1875,7 +1881,7 @@ BOS_COSTER_THRESHOLD = 56
 
 
 def _multi_mult_var(
-    scalars: Sequence[int], jac_points: Sequence[JacPoint], ec: CurveGroup
+    scalars: Sequence[Public], jac_points: Sequence[JacPoint], ec: CurveGroup
 ) -> JacPoint:
     """Return the multi scalar multiplication u1*Q1 + ... + un*Qn.
 

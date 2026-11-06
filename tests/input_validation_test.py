@@ -81,8 +81,8 @@ automatically for everything else (issue btclib-org/ecc#11).
 
 `int` alone would also reach outside this package's input-validation
 surface and into arithmetic this file has never gated:
-`number_theory.xgcd_var` and its neighbours take a bare `int` operand
-with no invalid value either -- `xgcd_var(-1, -1)` is a legitimate
+`number_theory.xgcd_var` and its neighbours take a `Public` operand, an
+`int`, with no invalid value either -- `xgcd_var(-1, -1)` is a legitimate
 extended Euclid, not a malformed argument.
 `curves.curve_group.signed_odd_digits` refuses a non-integer `m`, `w` or
 `size` of its own accord, driven by hand in `curves/curve_group_test.py`
@@ -320,6 +320,11 @@ def test_the_vocabulary_is_the_libraries_input_types() -> None:
         # the internal coordinates: no public parameter takes them from a
         # caller, `curves` converting to them and back
         "JacPoint",
+        # an int: no value of it is wrong for every function taking one,
+        # `is_x_coordinate_var` answering False where `xgcd_var` answers.
+        # tests/curves/curve_test.py holds `double_mult_var` and
+        # `tweak_add_var` to their refusal of a wrong type by hand
+        "Public",
     }
     assert in_alias_py & annotated <= set(_WRONG_TYPE) | without_a_wrong_value
 

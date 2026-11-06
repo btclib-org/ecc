@@ -11,7 +11,7 @@ never used -- in the rest of the library.
 
 from __future__ import annotations
 
-from ecc.alias import INF, Point
+from ecc.alias import INF, Point, Public
 from ecc.curves.curve_group import CurveGroup, _assert_valid_ec
 from ecc.exceptions import EccValueError
 
@@ -34,7 +34,7 @@ def find_all_points(ec: CurveGroup) -> list[Point]:
     points: list[Point] = [INF]
     for x in range(ec.p):
         try:
-            y = ec.y_var(x)
+            y = ec.y_var(Public(x))
         except EccValueError:
             continue
 

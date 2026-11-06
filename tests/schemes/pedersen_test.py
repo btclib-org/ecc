@@ -44,7 +44,7 @@ from typing import Any
 
 import pytest
 
-from ecc.alias import INF, Point
+from ecc.alias import INF, Point, Public
 from ecc.curves import (
     # the module, not only the names in it: `_libsecp256k1_available` is a
     # module attribute, and clearing it is the whole package's dispatch
@@ -240,10 +240,10 @@ def test_the_map_picks_the_candidate_the_cascade_names() -> None:
         index, x = next(
             (k, x)
             for k, x in enumerate((x_1, x_2, x_3))
-            if curve.is_x_coordinate_var(x, secp256k1)
+            if curve.is_x_coordinate_var(Public(x), secp256k1)
         )
         taken.add(index)
-        y = secp256k1.y_quadratic_residue_var(x)
+        y = secp256k1.y_quadratic_residue_var(Public(x))
         expected = (x, p - y if t % 2 else y)
         assert pedersen._shallue_van_de_woestijne(t) == expected
     assert taken == {0, 1, 2}
@@ -469,7 +469,7 @@ def test_commit_is_the_double_multiplication_at_every_width(
     scalars = [(1 << (w - 1)) | (0x5A5A5A5A5A5A5A5A % (1 << (w - 1))) for w in widths]
     scalars += [0, 2, ec.n - 1]
     for r, v in itertools.product(scalars, repeat=2):
-        expected = double_mult_var(v, _H, r, ec.G, ec)
+        expected = double_mult_var(Public(v), _H, Public(r), ec.G, ec)
         assert pedersen._commit(r, v, _H, ec) == expected
         if r:
             assert pedersen.commit(r, v, _H, ec) == expected
@@ -481,7 +481,7 @@ def test_commit_is_the_double_multiplication_at_every_width(
     # and a curve the bindings never serve, whose products are `_mult`'s
     H = pedersen.second_generator(secp256r1)
     for r, v in ((1, 0), (secp256r1.n - 1, 1), (0xDEADBEEF, 0xBAADCAFE)):
-        expected = double_mult_var(v, H, r, secp256r1.G, secp256r1)
+        expected = double_mult_var(Public(v), H, Public(r), secp256r1.G, secp256r1)
         assert pedersen.commit(r, v, H, secp256r1) == expected
 
 
@@ -493,7 +493,7 @@ def test_the_upstream_fixed_vectors_name_one_point_at_two_tags() -> None:
     report a y that is not one.
     """
     two_g = mult(2, secp256k1.G, secp256k1)
-    assert secp256k1.y_quadratic_residue_var(two_g[0]) == two_g[1]
+    assert secp256k1.y_quadratic_residue_var(Public(two_g[0])) == two_g[1]
     minus_two_g = secp256k1.negate(two_g)
 
     generator = bytes.fromhex(_ZKP_GENERATOR_VECTOR)
@@ -543,7 +543,9 @@ def test_the_leading_octet_is_residuosity_and_not_parity() -> None:
         commitment = pedersen.commitment_from_octets_var(octets)
         assert by_parity[0] == commitment[0]
         agrees = by_parity == commitment
-        assert agrees == (secp256k1.y_quadratic_residue_var(commitment[0]) % 2 == 0)
+        assert agrees == (
+            secp256k1.y_quadratic_residue_var(Public(commitment[0])) % 2 == 0
+        )
         agreements.add(agrees)
     assert agreements == {True, False}
 

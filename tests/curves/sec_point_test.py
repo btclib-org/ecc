@@ -13,7 +13,7 @@ from hypothesis import strategies as st
 
 from ecc._libsecp256k1 import keys as libsecp256k1_keys
 from ecc._libsecp256k1 import shared_point as libsecp256k1_shared_point
-from ecc.alias import INF, Point
+from ecc.alias import INF, Point, Public
 from ecc.curves import (
     Curve,
     PreparedPoint,
@@ -177,7 +177,7 @@ def test_hybrid_prefixes_are_admitted_only_when_asked() -> None:
 _P = secp256k1.p
 _TOP = 2**256 - 1
 _X_Y1 = 0x146D3B65ADD9F54CCCA28533C88E2CBC63F7443E1658783AB41F8EF97C2A10B5
-_Y_X1 = secp256k1.y_even_var(1)
+_Y_X1 = secp256k1.y_even_var(Public(1))
 
 _INVALID_X = "invalid x-coordinate$"
 _X_RANGE = "x-coordinate not in 0..p-1$"
@@ -275,7 +275,7 @@ def test_the_field_edge_table_is_what_it_says() -> None:
     assert _Y_X1 % 2 == 0
     for x in (0, _P - 1):
         with pytest.raises(EccValueError, match=_INVALID_X):
-            secp256k1.y_var(x)
+            secp256k1.y_var(Public(x))
 
 
 @pytest.mark.parametrize(
@@ -826,7 +826,7 @@ def test_prv_key_tweak_add(ec_name: str) -> None:
     for q, t in ((1, 0), (5, 7), (ec.n - 1, 2), (0xC0FFEE, ec.n - 1)):
         tweaked = prv_key_tweak_add(q, t, ec)
         assert tweaked == (q + t) % ec.n
-        assert mult(tweaked, ec=ec) == tweak_add_var(mult(q, ec=ec), t, ec)
+        assert mult(tweaked, ec=ec) == tweak_add_var(mult(q, ec=ec), Public(t), ec)
     # the tweak in its octets, as BIP32 hands it over
     assert prv_key_tweak_add(5, (7).to_bytes(32, "big"), ec) == 12
 
@@ -896,13 +896,13 @@ def test_pub_key_tweak_chain_arms_agree(q: int, tweaks: list[int]) -> None:
         if q == 0:
             for chain in chains:
                 with pytest.raises(EccValueError, match="point at infinity"):
-                    chain.tweak_add_var(t)
+                    chain.tweak_add_var(Public(t))
             break
         expected = bytes_from_prv_key_int(q)
-        assert on_bindings.tweak_add_var(t) == expected
+        assert on_bindings.tweak_add_var(Public(t)) == expected
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(curve, "_libsecp256k1_available", False)
-            assert on_python.tweak_add_var(t) == expected
+            assert on_python.tweak_add_var(Public(t)) == expected
 
 
 @both_arms
@@ -910,15 +910,15 @@ def test_pub_key_tweak_chain_ends_at_infinity() -> None:
     """A step onto infinity raises, and so does every step after it."""
     ec = secp256k1
     chain = PubKeyTweakChain(bytes_from_prv_key_int(7))
-    assert chain.tweak_add_var(0) == bytes_from_prv_key_int(7)
+    assert chain.tweak_add_var(Public(0)) == bytes_from_prv_key_int(7)
     # a tweak outside 0..n-1 is refused and leaves the chain where it was
     with pytest.raises(EccValueError, match="tweak not in 0..n-1"):
-        chain.tweak_add_var(ec.n)
-    assert chain.tweak_add_var(1) == bytes_from_prv_key_int(8)
+        chain.tweak_add_var(Public(ec.n))
+    assert chain.tweak_add_var(Public(1)) == bytes_from_prv_key_int(8)
     with pytest.raises(EccValueError, match="the sum is the point at infinity"):
-        chain.tweak_add_var(ec.n - 8)
+        chain.tweak_add_var(Public(ec.n - 8))
     with pytest.raises(EccValueError, match="the chain ended"):
-        chain.tweak_add_var(1)
+        chain.tweak_add_var(Public(1))
 
 
 @needs_bindings
@@ -948,8 +948,12 @@ def test_pub_key_tweak_chain_builds_no_point(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(libsecp256k1_keys.PubkeyTweakChain, "tweak_add", record)
 
     chain = PubKeyTweakChain(bytes_from_prv_key_int(1))
-    assert chain.tweak_add_var(2) == libsecp256k1_keys.pubkey_from_prvkey(3, True)
-    assert chain.tweak_add_var(3) == libsecp256k1_keys.pubkey_from_prvkey(6, True)
+    assert chain.tweak_add_var(Public(2)) == libsecp256k1_keys.pubkey_from_prvkey(
+        3, True
+    )
+    assert chain.tweak_add_var(Public(3)) == libsecp256k1_keys.pubkey_from_prvkey(
+        6, True
+    )
     assert compressed_asked == [True, True]
 
 
@@ -977,9 +981,9 @@ def test_pub_key_tweak_chain_refusals() -> None:
     chain = PubKeyTweakChain(bytes_from_point(Q))
     assert chain.ec is ec
     with pytest.raises(EccTypeError):
-        chain.tweak_add_var(True)
+        chain.tweak_add_var(True)  # type: ignore[arg-type]
     with pytest.raises(EccValueError, match="tweak not in 0..n-1"):
-        chain.tweak_add_var(-1)
+        chain.tweak_add_var(Public(-1))
 
 
 def test_pub_key_tweak_chain_on_other_curves() -> None:
@@ -991,6 +995,8 @@ def test_pub_key_tweak_chain_on_other_curves() -> None:
             k += t
             if k % ec.n == 0:
                 with pytest.raises(EccValueError, match="point at infinity"):
-                    chain.tweak_add_var(t)
+                    chain.tweak_add_var(Public(t))
                 break
-            assert chain.tweak_add_var(t) == bytes_from_point(mult(k, ec.G, ec), ec)
+            assert chain.tweak_add_var(Public(t)) == bytes_from_point(
+                mult(k, ec.G, ec), ec
+            )

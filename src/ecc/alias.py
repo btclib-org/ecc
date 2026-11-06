@@ -12,18 +12,19 @@ its way in -- bytes_from_octets for Octets, str_from_string for String --
 and it is documented here because that is the only place it can be read
 as one piece.
 
-Making them NewTypes would let mypy separate them, at the cost of every
-caller having to wrap its literals: Octets("deadbeef") instead of
-"deadbeef", throughout a public API whose whole style is to accept
-whatever is convertible. That is a different package, not a fix to this
-one.
+Making Octets and String NewTypes would let mypy separate them, at the
+cost of every caller having to wrap its literals: Octets("deadbeef")
+instead of "deadbeef", throughout a public API whose whole style is to
+accept whatever is convertible. For those two that is a different
+package, not a fix to this one. Public below is a NewType because there
+the wrap is the point: it is where a caller declares a value public.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from io import BytesIO
-from typing import Any, Protocol
+from typing import Any, NewType, Protocol
 
 __all__ = [
     "INF",
@@ -36,6 +37,7 @@ __all__ = [
     "JacPoint",
     "Octets",
     "Point",
+    "Public",
     "String",
 ]
 
@@ -78,6 +80,11 @@ BinaryData = BytesIO | Octets
 # is for, and int("1234") costs the caller nothing -- so the ambiguity is
 # resolved the way every other str in this file resolves it
 Integer = Octets | int
+
+# CONTRIBUTING.md's "A `_var` suffix means the operand decides the work"
+# says which parameters take it and what checks it
+#: An integer the caller declares public, for a variable-time parameter.
+Public = NewType("Public", int)
 
 
 # What a HashF returns: as much of the hashlib object as this package uses,

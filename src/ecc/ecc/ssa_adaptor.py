@@ -48,7 +48,7 @@ import secrets
 from hashlib import sha256
 
 from ecc._utils import bytes_from_octets
-from ecc.alias import Integer, Octets, Point
+from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import (
     PubKey,
     bytes_from_point,
@@ -173,7 +173,7 @@ def extract_var(pre_sig: Octets, msg: Octets, pub_key: ssa.BIP340PubKey) -> Poin
     P = ssa.point_from_bip340pub_key_var(pub_key)
 
     # k*G, up to the sign the parity of R' gave k
-    R = double_mult_var(s, secp256k1.G, -_challenge(R1[0], P[0], m), P)
+    R = double_mult_var(Public(s), secp256k1.G, Public(-_challenge(R1[0], P[0], m)), P)
     if R[1] == 0:
         raise EccValueError("k*G is infinity")
     if R1[1] % 2 == 0:

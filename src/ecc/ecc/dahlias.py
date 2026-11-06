@@ -48,7 +48,7 @@ from dataclasses import dataclass, field
 from hashlib import sha256
 
 from ecc._utils import assert_type, bytes_from_octets, is_integer, is_octets
-from ecc.alias import Integer, Octets, Point
+from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import (
     mult,
     multi_mult_var,
@@ -448,7 +448,7 @@ def assert_as_valid(
     R = _lift_x_var(r)
     Ps = [_lift_x_var(pk) for pk in pks]
     cs = _challenges(pks, ms, r, range(len(pks)))
-    rhs = multi_mult_var([1, *cs], [R, *Ps], secp256k1)
+    rhs = multi_mult_var([Public(c) for c in (1, *cs)], [R, *Ps], secp256k1)
     if mult(s, ec=secp256k1) != rhs:
         raise EccRuntimeError("signature verification failed")
 
@@ -498,7 +498,7 @@ def xonly_tweak(prv_key: Integer, tweak: Octets) -> tuple[int, bytes]:
     return d, _xbytes(mult(d, ec=secp256k1))
 
 
-def _tweaked_pub_key_var(P: Point, t: int) -> bytes:
+def _tweaked_pub_key_var(P: Point, t: Public) -> bytes:
     Q = _tweak_add_var(P, t, secp256k1)
     if Q[1] == 0:
         raise EccValueError("tweaked key at infinity")
@@ -512,7 +512,7 @@ def plain_tweak_pub_key_var(pub_key: Octets, tweak: Octets) -> bytes:
     can be chained; the list of public keys takes the last 32 bytes.
     """
     P = _cpoint_var(pub_key)
-    return _tweaked_pub_key_var(P, _tweak(tweak))
+    return _tweaked_pub_key_var(P, Public(_tweak(tweak)))
 
 
 def xonly_tweak_pub_key_var(pub_key: Octets, tweak: Octets) -> bytes:
@@ -523,4 +523,4 @@ def xonly_tweak_pub_key_var(pub_key: Octets, tweak: Octets) -> bytes:
     bytes.
     """
     P = _lift_x_var(pub_key)
-    return _tweaked_pub_key_var(P, _tweak(tweak))
+    return _tweaked_pub_key_var(P, Public(_tweak(tweak)))

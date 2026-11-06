@@ -13,6 +13,7 @@ from typing import Any
 
 import pytest
 
+from ecc.alias import Public
 from ecc.curves import CURVES, mult, secp256k1
 from ecc.ecc import ssa
 from ecc.exceptions import (
@@ -86,7 +87,7 @@ def test_the_tweaked_key_is_the_key_of_the_tweaked_point() -> None:
     for ec in (secp256k1, CURVES["secp256r1"]):
         for q, t in ((1, 0), (2, 3), (ec.n - 1, ec.n - 2), (0xC0FFEE, 0xBEEF)):
             _, x_Q = ssa.gen_keys(q, ec)
-            x, parity = ssa.pub_key_tweak_add_var(x_Q, t, ec)
+            x, parity = ssa.pub_key_tweak_add_var(x_Q, Public(t), ec)
             tweaked = ssa.prv_key_tweak_add(q, t, ec)
             Q = mult(tweaked, ec=ec)
             assert (Q[0], Q[1] & 1) == (x, parity)
@@ -97,7 +98,7 @@ def test_the_sum_at_infinity_is_refused() -> None:
     """A tweak that is the negated key of the even point has no output key."""
     q, x_Q = ssa.gen_keys(0xC0FFEE)
     with pytest.raises(EccValueError, match="public key at infinity"):
-        ssa.pub_key_tweak_add_var(x_Q, secp256k1.n - q)
+        ssa.pub_key_tweak_add_var(x_Q, Public(secp256k1.n - q))
     with pytest.raises(EccValueError, match="private key is zero") as e:
         ssa.prv_key_tweak_add(q, secp256k1.n - q)
     assert_secret_free(e.value, [f"{q:x}", q.to_bytes(32, "big")])
@@ -109,10 +110,10 @@ def test_refusals() -> None:
     # 5 is the x of no point of secp256k1, as is p, which is no field element
     for x in (5, secp256k1.p, -1):
         with pytest.raises(EccValueError):
-            ssa.pub_key_tweak_add_var(x, 1)
+            ssa.pub_key_tweak_add_var(x, Public(1))
     for t in (-1, secp256k1.n):
         with pytest.raises(EccValueError, match="tweak not in 0..n-1"):
-            ssa.pub_key_tweak_add_var(1, t)
+            ssa.pub_key_tweak_add_var(1, Public(t))
         with pytest.raises(EccValueError, match="tweak not in 0..n-1"):
             ssa.prv_key_tweak_add(1, t)
     with pytest.raises(EccTypeError):

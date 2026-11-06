@@ -138,7 +138,7 @@ from ecc._utils import (
     is_integer,
     read_exactly,
 )
-from ecc.alias import INF, BinaryData, Integer, Octets, Point
+from ecc.alias import INF, BinaryData, Integer, Octets, Point, Public
 from ecc.curves import (
     bytes_from_point,
     double_mult_var,
@@ -862,7 +862,7 @@ class RangeProof:
         secp256k1.require_on_curve(commitment)
 
         stated = [
-            _point_from_x_var(x, sign)
+            _point_from_x_var(Public(x), sign)
             for x, sign in zip(self.ring_commitments, self.signs, strict=True)
         ]
         # zkp's own order: the offset and the stated commitments are
@@ -1126,7 +1126,11 @@ def _borromean_sign(
         r = bytes_from_point(mult(k, secp256k1.G, secp256k1), secp256k1)
         for j in range(j_star + 1, len(ring)):
             t = double_mult_var(
-                _challenge(m, r, i, j), ring[j], s[i][j], secp256k1.G, secp256k1
+                Public(_challenge(m, r, i, j)),
+                ring[j],
+                Public(s[i][j]),
+                secp256k1.G,
+                secp256k1,
             )
             r = bytes_from_point(t, secp256k1)
         e0_preimage += r
@@ -1139,7 +1143,9 @@ def _borromean_sign(
     ):
         e = _challenge(m, e0, i, 0)
         for j in range(j_star):
-            t = double_mult_var(e, ring[j], s[i][j], secp256k1.G, secp256k1)
+            t = double_mult_var(
+                Public(e), ring[j], Public(s[i][j]), secp256k1.G, secp256k1
+            )
             e = _challenge(m, bytes_from_point(t, secp256k1), i, j + 1)
         s[i][j_star] = (k - e * secs[i]) % secp256k1.n
         if s[i][j_star] == 0:
@@ -1353,7 +1359,7 @@ def _borromean_verify(
             # zkp turns down a walk point at infinity too, and here
             # `bytes_from_point` is what does: infinity has no octet
             # encoding, and the next challenge is over one
-            t = double_mult_var(e, Q, s, secp256k1.G, secp256k1)
+            t = double_mult_var(Public(e), Q, Public(s), secp256k1.G, secp256k1)
             r = bytes_from_point(t, secp256k1)
             if j != len(ring) - 1:
                 e = _challenge(m, r, i, j + 1)
@@ -1542,7 +1548,7 @@ def verify(
     return True
 
 
-def _recover_x(k: int, e: int, s: int) -> int:
+def _recover_x(k: int, e: Public, s: int) -> int:
     """Return the scalar a real signature was written under.
 
     `secp256k1_rangeproof_recover_x`. `_borromean_sign` answers `k - e*x`
@@ -1693,7 +1699,7 @@ def rewind(
 
     last = len(rsizes) - 1
     if rsizes == (1,):
-        blind = _recover_x(chain.draws[0][0], ev[0][0], s[0][0])
+        blind = _recover_x(chain.draws[0][0], Public(ev[0][0]), s[0][0])
         value, message = proof.min_value or 0, b""
     else:
         found = _value_encoding_var(rsizes, s[last], chain.draws[last])
@@ -1709,7 +1715,9 @@ def rewind(
             )
         value = v * 10**proof.exp + (proof.min_value or 0)
         blind = (
-            _recover_x(chain.draws[last][skip2], ev[last][skip2], s[last][skip2])
+            _recover_x(
+                chain.draws[last][skip2], Public(ev[last][skip2]), s[last][skip2]
+            )
             - chain.blinding_factors[last]
         ) % secp256k1.n
         message = b"".join(

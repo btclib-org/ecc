@@ -24,6 +24,7 @@ from typing import Any
 import pytest
 
 from ecc import number_theory
+from ecc.alias import Public
 from ecc.curves import (
     Curve,
     PreparedPoint,
@@ -78,15 +79,19 @@ def test_number_theory_admits_an_mpz() -> None:
     p = _SECP256R1.p
     a = 0xABCDEF
     pz, az = mpz(p), mpz(a)
-    assert number_theory.xgcd_var(az, pz) == number_theory.xgcd_var(a, p)
-    assert number_theory.mod_inv_var(az, pz) == number_theory.mod_inv_var(a, p)
-    assert number_theory.mod_inv(az, pz) == number_theory.mod_inv_var(a, p)
-    assert number_theory.mod_inv_batch([az], pz) == [number_theory.mod_inv_var(a, p)]
+    assert number_theory.xgcd_var(az, pz) == number_theory.xgcd_var(
+        Public(a), Public(p)
+    )
+    assert number_theory.mod_inv_var(az, pz) == number_theory.mod_inv_var(Public(a), p)
+    assert number_theory.mod_inv(az, pz) == number_theory.mod_inv_var(Public(a), p)
+    assert number_theory.mod_inv_batch([az], pz) == [
+        number_theory.mod_inv_var(Public(a), p)
+    ]
     assert number_theory.mod_inv_batch_var([az], pz) == [
-        number_theory.mod_inv_var(a, p)
+        number_theory.mod_inv_var(Public(a), p)
     ]
     assert number_theory.legendre_symbol_var(az, pz) == (
-        number_theory.legendre_symbol_var(a, p)
+        number_theory.legendre_symbol_var(Public(a), p)
     )
     square = a**2 % p
     assert number_theory.mod_sqrt_var(mpz(square), pz) in {a, p - a}
@@ -120,7 +125,7 @@ def test_number_theory_admits_an_mpz() -> None:
         non_residue = next(
             x
             for x in range(2, 100)
-            if number_theory.legendre_symbol_var(x, prime) == -1
+            if number_theory.legendre_symbol_var(Public(x), prime) == -1
         )
         with pytest.raises(EccValueError, match="no root mod "):
             root(mpz(non_residue), mpz(prime))
@@ -139,13 +144,15 @@ def test_what_leaves_the_python_arm_is_int(
     assert _is_int(*P)
     assert _is_int(*mult(_M - 1, P, ec))
     assert _is_int(*PreparedPoint(P, ec).mult(_M))
-    assert _is_int(*double_mult_var(_M, P, _M - 1, ec.G, ec))
-    assert _is_int(*multi_mult_var([_M, _M - 1], [P, ec.G], ec))
+    assert _is_int(*double_mult_var(Public(_M), P, Public(_M - 1), ec.G, ec))
+    assert _is_int(*multi_mult_var([Public(_M), Public(_M - 1)], [P, ec.G], ec))
     many = BOS_COSTER_THRESHOLD + 1
-    assert _is_int(*multi_mult_var([_M + i for i in range(many)], [P] * many, ec))
+    assert _is_int(
+        *multi_mult_var([Public(_M + i) for i in range(many)], [P] * many, ec)
+    )
     assert _is_int(*sum_var([P, ec.G], ec))
-    assert _is_int(*tweak_add_var(P, _M, ec))
-    assert _is_int(*TweakChain(P, ec).point(_M))
+    assert _is_int(*tweak_add_var(P, Public(_M), ec))
+    assert _is_int(*TweakChain(P, ec).point(Public(_M)))
 
     # the Jacobian methods, handed what the arithmetic computes in
     QJ = ec._double_jac(ec.GJ)
@@ -249,7 +256,7 @@ def test_the_arm_without_gmpy2_answers_the_same(
         "r1": mult(_M, mult(_M - 1, _SECP256R1.G, _SECP256R1), _SECP256R1),
         "k1 G": mult(_M),
         "r1 G": mult(_M, _SECP256R1.G, _SECP256R1),
-        "double": double_mult_var(_M, mult(3), _M - 1, secp256k1.G),
+        "double": double_mult_var(Public(_M), mult(3), Public(_M - 1), secp256k1.G),
         "dsa": dsa.sign_(_MSG_HASH, _M, ec=_SECP256R1).serialize().hex(),
         "ssa": ssa.sign_(_MSG_HASH, _M, _AUX).serialize().hex(),
     }

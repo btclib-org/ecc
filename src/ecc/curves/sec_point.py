@@ -19,7 +19,7 @@ from ecc._utils import (
     bytes_from_octets,
     int_from_integer,
 )
-from ecc.alias import INF, Integer, Octets, Point
+from ecc.alias import INF, Integer, Octets, Point, Public
 from ecc.curves.curve import (
     Curve,
     PreparedPoint,
@@ -254,7 +254,7 @@ def point_from_octets_var(
             err_msg += f"{bsize} instead of {ec.p_size + 1}"
             raise EccValueError(err_msg)
         x_Q = int.from_bytes(pub_key[1:], byteorder="big")
-        y_Q = _y_even_var(x_Q, ec)  # also check x_Q validity
+        y_Q = _y_even_var(Public(x_Q), ec)  # also check x_Q validity
         Q = x_Q, y_Q if prefix == 0x02 else ec.p - y_Q
         # y_Q == 0 is possible here: x_Q is this curve's real two-torsion
         # x on a curve of cofactor above 1, _y_even_var lifting it to 0
@@ -550,7 +550,7 @@ class PubKeyTweakChain:
         """The curve the key belongs to."""
         return self._ec
 
-    def tweak_add_var(self, t: Integer) -> bytes:
+    def tweak_add_var(self, t: Public) -> bytes:
         """Return the key plus t*G, compressed, and step the chain to it.
 
         The tweak is refused outside 0..n-1, as `prv_key_tweak_add`

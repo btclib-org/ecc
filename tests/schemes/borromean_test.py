@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 
 from ecc._utils import int_from_bits
-from ecc.alias import Point
+from ecc.alias import Point, Public
 from ecc.curves import (
     Curve,
     bytes_from_point,
@@ -787,7 +787,9 @@ def _last_ring_points(
         e %= secp256k1.n
         points = []
         for j, Q in enumerate(pubk_ring):
-            point = double_mult_var(-e, Q, sig.s[i][j], secp256k1.G, secp256k1)
+            point = double_mult_var(
+                Public(-e), Q, Public(sig.s[i][j]), secp256k1.G, secp256k1
+            )
             points.append(bytes_from_point(point, secp256k1))
             if j != len(pubk_ring) - 1:
                 e = int_from_bits(

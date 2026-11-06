@@ -65,7 +65,7 @@ from hashlib import sha256
 
 from ecc._libsecp256k1 import keys as libsecp256k1_keys
 from ecc._utils import _MAX_NONCE_ATTEMPTS, bytes_from_octets, int_from_bits
-from ecc.alias import HashF, Integer, Octets, Point
+from ecc.alias import HashF, Integer, Octets, Point, Public
 from ecc.curves import (
     Curve,
     bytes_from_point,
@@ -190,4 +190,4 @@ def commit_point_var_(
     # curve allows it, and the Python addition where it does not --
     # including the one-in-n sum at infinity, which is answered here
     # rather than raised, as `ec.add` answers it
-    return _tweak_add_var(receipt, tweak, ec)
+    return _tweak_add_var(receipt, Public(tweak), ec)

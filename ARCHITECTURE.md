@@ -7,7 +7,8 @@ converts inputs, and imports only those two.
 
 `number_theory`, `hashes` and `_libsecp256k1` stand on those and do not
 import one another.
-`number_theory` (modular arithmetic) imports `_utils` and `exceptions`.
+`number_theory` (modular arithmetic) imports `_utils`, `alias` and
+`exceptions`.
 `hashes` (hash function checks and the BIP340 tagged hash) imports
 `_utils`, `alias` and `exceptions`. The private `_libsecp256k1` loads the
 optional libsecp256k1 bindings and imports `exceptions` and the root

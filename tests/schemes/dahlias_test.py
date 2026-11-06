@@ -25,6 +25,7 @@ from typing import Any
 
 import pytest
 
+from ecc.alias import Public
 from ecc.curves import bytes_from_point, mult, secp256k1
 from ecc.ecc import dahlias, ssa
 from ecc.exceptions import (
@@ -846,7 +847,9 @@ def test_xonly_tweak_is_bip341_tweaking(prv_key: int) -> None:
     tweaked, pk = dahlias.xonly_tweak(prv_key, _TWEAK)
     d = prv_key if mult(prv_key)[1] % 2 == 0 else _N - prv_key
     assert tweaked == (d + int.from_bytes(_TWEAK, "big")) % _N
-    x, parity = ssa.pub_key_tweak_add_var(_xonly(prv_key), _TWEAK)
+    x, parity = ssa.pub_key_tweak_add_var(
+        _xonly(prv_key), Public(int.from_bytes(_TWEAK, "big"))
+    )
     assert pk == x.to_bytes(32, "big")
     full = dahlias.xonly_tweak_pub_key_var(_xonly(prv_key), _TWEAK)
     assert full == bytes([2 + parity]) + pk

@@ -105,7 +105,7 @@ from hashlib import sha256
 from typing import cast
 
 from ecc._utils import assert_type, bytes_from_octets, is_integer, is_octets
-from ecc.alias import INF, Octets, Point
+from ecc.alias import INF, Octets, Point, Public
 from ecc.curves import mult, multi_mult_var, secp256k1
 from ecc.curves.curve import _sum_var, _tweak_add_var
 from ecc.curves.sec_point import bytes_from_point, point_from_octets_var
@@ -290,7 +290,7 @@ def _serialize_ids(ids: Sequence[int]) -> bytes:
     return b"".join(i.to_bytes(ID_SIZE, "big") for i in sorted(ids))
 
 
-def _derive_interpolating_value_var(ids: Sequence[int], signer_id: int) -> int:
+def _derive_interpolating_value_var(ids: Sequence[Public], signer_id: Public) -> int:
     """Return the Lagrange coefficient of `signer_id` for the secret at x = -1.
 
     Assumes `ids` holds no duplicate, which `_validate_session_params`
@@ -306,11 +306,11 @@ def _derive_interpolating_value_var(ids: Sequence[int], signer_id: int) -> int:
             continue
         num = num * (curr_id + 1) % secp256k1.n
         deno = deno * (curr_id - signer_id) % secp256k1.n
-    return num * mod_inv_var(deno, secp256k1.n) % secp256k1.n
+    return num * mod_inv_var(Public(deno), secp256k1.n) % secp256k1.n
 
 
 def _derive_pubshare_at_var(
-    ids: Sequence[int], pub_shares: Sequence[Point], x: int
+    ids: Sequence[Public], pub_shares: Sequence[Point], x: Public
 ) -> Point:
     """Interpolate the polynomial `pub_shares` sit on, evaluated at `x`.
 
@@ -321,7 +321,7 @@ def _derive_pubshare_at_var(
     point at infinity, which is a value here and a refusal only where a
     caller -- `_derive_thresh_pubkey_var` -- says it must not be.
     """
-    coefficients = []
+    coefficients: list[Public] = []
     for signer_id in ids:
         num = 1
         deno = 1
@@ -330,15 +330,19 @@ def _derive_pubshare_at_var(
                 continue
             num = num * (x - curr_id) % secp256k1.n
             deno = deno * (signer_id - curr_id) % secp256k1.n
-        coefficients.append(num * mod_inv_var(deno, secp256k1.n) % secp256k1.n)
+        coefficients.append(
+            Public(num * mod_inv_var(Public(deno), secp256k1.n) % secp256k1.n)
+        )
     if len(pub_shares) == 1:
         return mult(coefficients[0], pub_shares[0], secp256k1)
     return multi_mult_var(coefficients, pub_shares, secp256k1)
 
 
-def _derive_thresh_pubkey_var(ids: Sequence[int], pub_shares: Sequence[Point]) -> bytes:
+def _derive_thresh_pubkey_var(
+    ids: Sequence[Public], pub_shares: Sequence[Point]
+) -> bytes:
     """Reconstruct the threshold public key `pub_shares` were split from."""
-    Q = _derive_pubshare_at_var(ids, pub_shares, -1)
+    Q = _derive_pubshare_at_var(ids, pub_shares, Public(-1))
     if Q[1] == 0:
         raise EccValueError(_THRESH_PK_INF_ERR)
     return _cbytes(Q)
@@ -434,9 +438,17 @@ def validate_threshold_info(info: ThresholdInfo) -> None:
 
     base_ids, base_points = parsed_ids[:t], parsed_points[:t]
     for i, point in zip(parsed_ids[t:], parsed_points[t:], strict=True):
-        if _derive_pubshare_at_var(base_ids, base_points, i) != point:
+        if (
+            _derive_pubshare_at_var(
+                [Public(v) for v in base_ids], base_points, Public(i)
+            )
+            != point
+        ):
             raise EccValueError(_KEY_MATERIAL_POLY_ERR)
-    if _derive_thresh_pubkey_var(base_ids, base_points) != thresh_pk:
+    if (
+        _derive_thresh_pubkey_var([Public(v) for v in base_ids], base_points)
+        != thresh_pk
+    ):
         raise EccValueError(_KEY_MATERIAL_MATCH_ERR)
 
 
@@ -495,7 +507,7 @@ def apply_tweak_var(
     t = int.from_bytes(tweak, "big")
     if t >= secp256k1.n:
         raise EccValueError(_TWEAK_RANGE_ERR)
-    Q = _tweak_add_var(Q if g == 1 else secp256k1.negate(Q), t, secp256k1)
+    Q = _tweak_add_var(Q if g == 1 else secp256k1.negate(Q), Public(t), secp256k1)
     if Q[1] == 0:
         raise EccValueError(_TWEAK_INF_ERR)
     return TweakContext(Q, g * gacc % secp256k1.n, (t + g * tacc) % secp256k1.n)
@@ -729,7 +741,8 @@ def _validate_session_params(
         raise EccValueError("The ids list contains duplicate elements.")
     if (
         pub_shares is not None
-        and _derive_thresh_pubkey_var(ids, pub_share_points) != thresh_pk
+        and _derive_thresh_pubkey_var([Public(v) for v in ids], pub_share_points)
+        != thresh_pk
     ):
         raise EccValueError(_KEY_MATERIAL_MATCH_ERR)
 
@@ -924,7 +937,9 @@ def sign(
                 "The signer's pubshare does not match its entry in the pubshares list."
             )
 
-    a = _derive_interpolating_value_var(session_ctx.ids, signer_id)
+    a = _derive_interpolating_value_var(
+        [Public(v) for v in session_ctx.ids], Public(signer_id)
+    )
     g = 1 if values.Q[1] % 2 == 0 else secp256k1.n - 1
     d = g * values.gacc * d_ % secp256k1.n
     s = (k_1_ + values.b * k_2_ + values.e * a * d) % secp256k1.n
@@ -1132,7 +1147,9 @@ def partial_sig_verify_(
         and _cbytes(P) != session_ctx.pub_shares[session_ctx.ids.index(signer_id)]
     ):
         return False
-    a = _derive_interpolating_value_var(session_ctx.ids, signer_id)
+    a = _derive_interpolating_value_var(
+        [Public(v) for v in session_ctx.ids], Public(signer_id)
+    )
     g = 1 if values.Q[1] % 2 == 0 else secp256k1.n - 1
     g = g * values.gacc % secp256k1.n
     lhs = mult(s, secp256k1.G, secp256k1)

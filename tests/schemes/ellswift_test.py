@@ -22,6 +22,7 @@ from typing import Any
 import pytest
 
 from ecc._libsecp256k1 import ellswift as libsecp256k1_ellswift
+from ecc.alias import Public
 from ecc.curves import mult, secp256k1
 from ecc.curves.curve import CURVES, Curve
 from ecc.curves.sec_point import bytes_from_point
@@ -82,7 +83,7 @@ def test_ellswift_decode_vectors(row: list[str], arm: str) -> None:
 
     u = int.from_bytes(ell[:32], byteorder="big", signed=False)
     t = int.from_bytes(ell[32:], byteorder="big", signed=False)
-    assert _xswiftec_var(u, t, secp256k1) == x
+    assert _xswiftec_var(Public(u), Public(t), secp256k1) == x
 
     # the whole of decode: the vector pins the x-coordinate, and the parity
     # of t mod p the y. BIP324's reference.py decodes to an x and stops;
@@ -111,14 +112,14 @@ def test_xswiftec_inv_vectors(row: list[str]) -> None:
 
     for case in range(8):
         cell = row[2 + case]
-        t = _xswiftec_inv_var(x, u, case, secp256k1)
+        t = _xswiftec_inv_var(Public(x), Public(u), case, secp256k1)
         if not cell:
             assert t is None, f"case {case} should have no preimage"
         else:
             assert t == int(cell, 16), f"case {case}"
             # every preimage the inverse returns maps back to the x it
             # was asked about, which no cell of the file states
-            assert _xswiftec_var(u, t, secp256k1) == x
+            assert _xswiftec_var(Public(u), Public(t), secp256k1) == x
 
 
 def xdh_vectors() -> list[Any]:
@@ -415,11 +416,11 @@ def test_the_fraction_map_is_the_reference_map(curve_name: str) -> None:
     for u in range(1, 100):
         minus_g = -(pow(u, 3, p) + ec._b) % p
         if pow(minus_g, (p - 1) // 2, p) == 1:
-            t = mod_sqrt_var(minus_g, p)
+            t = mod_sqrt_var(Public(minus_g), p)
             pairs += [(u, t), (u, p - t)]
     assert len(pairs) > 104
     for u, t in pairs:
-        assert _xswiftec_var(u, t, ec) == _spec_xswiftec(u, t, ec)
+        assert _xswiftec_var(Public(u), Public(t), ec) == _spec_xswiftec(u, t, ec)
 
 
 def _spec_xswiftec_inv(x: int, u: int, case: int, ec: Any) -> int | None:
@@ -429,7 +430,7 @@ def _spec_xswiftec_inv(x: int, u: int, case: int, ec: Any) -> int | None:
 
     def sqrt(a: int) -> int | None:
         try:
-            return int(mod_sqrt_var(a, p))
+            return int(mod_sqrt_var(Public(a), p))
         except EccValueError:
             return None
 
@@ -474,7 +475,7 @@ def test_the_inverse_is_the_reference_inverse(curve_name: str) -> None:
         for kind, u in us.items():
             ts = []
             for case in range(8):
-                t = _xswiftec_inv_var(x, u, case, ec)
+                t = _xswiftec_inv_var(Public(x), Public(u), case, ec)
                 assert t == _spec_xswiftec_inv(x, u, case, ec)
                 if t is not None:
                     assert t != 0

@@ -13,6 +13,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from ecc import number_theory
+from ecc.alias import Public
 from ecc.curves import secp256k1
 from ecc.exceptions import EccTypeError, EccValueError
 from ecc.number_theory import (
@@ -95,28 +96,28 @@ def test_a_float_is_no_operand_and_zero_is_no_modulus() -> None:
     # would otherwise make it the modulus one
     for value in (True, False):
         with pytest.raises(EccTypeError, match="not an integer: "):
-            mod_inv_var(value, 7)
+            mod_inv_var(Public(value), 7)
         with pytest.raises(EccTypeError, match="not an integer: "):
-            mod_inv_var(3, value)
+            mod_inv_var(Public(3), value)
 
     for m in (0, -7):
         for call in (mod_inv_var, legendre_symbol_var, mod_sqrt_var, tonelli_var):
             with pytest.raises(EccValueError, match="non-positive modulus: "):
-                call(3, m)
+                call(Public(3), m)
     # xgcd_var takes no modulus: zero is a legitimate operand there, whose
     # greatest common divisor with three is three
-    assert xgcd_var(3, 0)[0] == 3
+    assert xgcd_var(Public(3), Public(0))[0] == 3
 
 
 def test_mod_inv_prime() -> None:
     """Verify the inverse mod a prime, and refuse the zero residue."""
     for p in primes:
         with pytest.raises(EccValueError, match="no inverse mod"):
-            mod_inv_var(0, p)
+            mod_inv_var(Public(0), p)
         for a in range(1, min(p, 500)):  # exhausted only for small p
-            inv = mod_inv_var(a, p)
+            inv = mod_inv_var(Public(a), p)
             assert a * inv % p == 1
-            inv = mod_inv_var(a + p, p)
+            inv = mod_inv_var(Public(a + p), p)
             assert a * inv % p == 1
 
 
@@ -128,14 +129,14 @@ def test_mod_inv() -> None:
         for a in nums:
             mult = [a * i % m for i in nums]
             if 1 in mult:
-                inv = mod_inv_var(a, m)
+                inv = mod_inv_var(Public(a), m)
                 assert a * inv % m == 1
-                inv = mod_inv_var(a + m, m)
+                inv = mod_inv_var(Public(a + m), m)
                 assert a * inv % m == 1
             else:
                 err_msg = "no inverse mod "
                 with pytest.raises(EccValueError, match=err_msg):
-                    mod_inv_var(a, m)
+                    mod_inv_var(Public(a), m)
 
 
 def test_legendre_symbol_is_the_squares_of_the_field() -> None:
@@ -153,9 +154,9 @@ def test_legendre_symbol_is_the_squares_of_the_field() -> None:
         squares = {a * a % p for a in range(1, p)}
         for a in range(p):
             expected = 0 if a == 0 else 1 if a in squares else -1
-            assert legendre_symbol_var(a, p) == expected, (a, p)
-            assert legendre_symbol_var(a + p, p) == expected, (a, p)
-            assert legendre_symbol_var(a - p, p) == expected, (a, p)
+            assert legendre_symbol_var(Public(a), p) == expected, (a, p)
+            assert legendre_symbol_var(Public(a + p), p) == expected, (a, p)
+            assert legendre_symbol_var(Public(a - p), p) == expected, (a, p)
 
 
 def test_mod_sqrt() -> None:
@@ -165,17 +166,17 @@ def test_mod_sqrt() -> None:
         has_root.update(i * i % p for i in range(2, p))
         for i in range(p):
             if i in has_root:
-                root1 = mod_sqrt_var(i, p)
+                root1 = mod_sqrt_var(Public(i), p)
                 assert i == (root1 * root1) % p
                 root2 = p - root1
                 assert i == (root2 * root2) % p
-                root = mod_sqrt_var(i + p, p)
+                root = mod_sqrt_var(Public(i + p), p)
                 assert i == (root * root) % p
                 if p % 4 == 3 or p % 8 == 5:
-                    assert tonelli_var(i, p) in {root1, root2}
+                    assert tonelli_var(Public(i), p) in {root1, root2}
             else:
                 with pytest.raises(EccValueError, match="no root mod "):
-                    mod_sqrt_var(i, p)
+                    mod_sqrt_var(Public(i), p)
 
 
 def test_mod_sqrt2() -> None:
@@ -191,7 +192,7 @@ def test_mod_sqrt2() -> None:
         (41660815127637347468140745042827704103445750172002, 10**50 + 577),
     ]
     for i, p in test_vectors:
-        root = tonelli_var(i, p)
+        root = tonelli_var(Public(i), p)
         assert i == (root * root) % p
 
 
@@ -207,9 +208,9 @@ def test_composite_modulus_raises_instead_of_hanging() -> None:
     err_msg = "p is not prime: "
     for a, p in ((4, 9), (2, 33)):
         with pytest.raises(EccValueError, match=err_msg):
-            tonelli_var(a, p)
+            tonelli_var(Public(a), p)
         with pytest.raises(EccValueError, match=err_msg):
-            mod_sqrt_var(a, p)
+            mod_sqrt_var(Public(a), p)
 
 
 def test_minus_one_quadr_res() -> None:
@@ -217,10 +218,10 @@ def test_minus_one_quadr_res() -> None:
     for p in primes:
         if (p % 4) == 3:
             with pytest.raises(EccValueError, match="no root mod "):
-                mod_sqrt_var(p - 1, p)
+                mod_sqrt_var(Public(p - 1), p)
         else:
             assert p == 2 or p % 4 == 1, "something is badly broken"
-            root = mod_sqrt_var(p - 1, p)
+            root = mod_sqrt_var(Public(p - 1), p)
             assert p - 1 == root * root % p
 
 
@@ -251,13 +252,13 @@ def test_legendre_symbol_agrees_with_euler(a: int, p: int) -> None:
     """
     euler = pow(a, p >> 1, p)
     expected = 0 if euler == 0 else 1 if euler == 1 else -1
-    assert legendre_symbol_var(a, p) == expected
+    assert legendre_symbol_var(Public(a), p) == expected
 
 
 @given(a=st.integers(), b=st.integers())
 def test_xgcd_is_bezout(a: int, b: int) -> None:
     """What xgcd_var returns is the identity it is named after."""
-    g, x, y = xgcd_var(a, b)
+    g, x, y = xgcd_var(Public(a), Public(b))
     assert a * x + b * y == g
     assert g == math.gcd(a, b) or -g == math.gcd(a, b)
 
@@ -271,9 +272,9 @@ def test_mod_inv_inverts(a: int, m: int) -> None:
     """
     if math.gcd(a % m, m) != 1:
         with pytest.raises(EccValueError, match="no inverse"):
-            mod_inv_var(a, m)
+            mod_inv_var(Public(a), m)
         return
-    inverse = mod_inv_var(a, m)
+    inverse = mod_inv_var(Public(a), m)
     assert 0 <= inverse < m
     assert a * inverse % m == 1
 
@@ -286,13 +287,13 @@ def test_mod_sqrt_squares_back(a: int, p: int) -> None:
     for a non-residue, 0 for a multiple of p. The three cases together
     are the whole domain, which is the point of generating a.
     """
-    symbol = legendre_symbol_var(a, p)
+    symbol = legendre_symbol_var(Public(a), p)
     assert symbol in {-1, 0, 1}
     if symbol == -1:
         with pytest.raises(EccValueError, match="no root mod "):
-            mod_sqrt_var(a, p)
+            mod_sqrt_var(Public(a), p)
         return
-    root = mod_sqrt_var(a, p)
+    root = mod_sqrt_var(Public(a), p)
     assert root * root % p == a % p
     # the other root, p - root, is a root too: a square has two
     assert (p - root) * (p - root) % p == a % p
@@ -312,15 +313,15 @@ def test_mod_sqrt_secp256k1_chain_is_pow() -> None:
     exponent = (p + 1) // 4
     residues = non_residues = 0
     for a in [0, 1, 2, p - 1, p - 2] + [secrets.randbelow(p) for _ in range(200)]:
-        if legendre_symbol_var(a, p) == -1:
+        if legendre_symbol_var(Public(a), p) == -1:
             non_residues += 1
             with pytest.raises(EccValueError, match="no root mod "):
-                mod_sqrt_var(a, p)
+                mod_sqrt_var(Public(a), p)
             assert number_theory._sqrt_candidate_secp256k1(a) == pow(a, exponent, p)
         else:
             residues += 1
-            assert mod_sqrt_var(a, p) == pow(a, exponent, p)
-            assert mod_sqrt_var(a + p, p) == pow(a, exponent, p)
+            assert mod_sqrt_var(Public(a), p) == pow(a, exponent, p)
+            assert mod_sqrt_var(Public(a + p), p) == pow(a, exponent, p)
     assert residues
     assert non_residues
 
@@ -334,8 +335,10 @@ def test_mod_inv_batch_is_mod_inv_over_a_sequence() -> None:
     """
     for m in (7, 97, 2**521 - 1):
         values = [1, 2, m - 1, 3, m - 2]
-        assert mod_inv_batch_var(values, m) == [mod_inv_var(v, m) for v in values]
-        assert mod_inv_batch_var([2], m) == [mod_inv_var(2, m)]
+        assert mod_inv_batch_var([Public(v) for v in values], m) == [
+            mod_inv_var(Public(v), m) for v in values
+        ]
+        assert mod_inv_batch_var([Public(2)], m) == [mod_inv_var(Public(2), m)]
     assert mod_inv_batch_var([], 7) == []
 
 
@@ -346,9 +349,9 @@ def test_mod_inv_batch_names_the_element_that_has_no_inverse() -> None:
     as `mod_inv_var` does rather than the product a caller never formed.
     """
     with pytest.raises(EccValueError, match="no inverse mod 7"):
-        mod_inv_batch_var([1, 2, 0, 3], 7)
+        mod_inv_batch_var([Public(1), Public(2), Public(0), Public(3)], 7)
     with pytest.raises(EccValueError, match="no inverse mod 9"):
-        mod_inv_batch_var([2, 3], 9)
+        mod_inv_batch_var([Public(2), Public(3)], 9)
 
     # the arguments are checked as every other function of the module
     # checks its own, a bool being no integer and zero no modulus
@@ -357,7 +360,7 @@ def test_mod_inv_batch_names_the_element_that_has_no_inverse() -> None:
             mod_inv_batch_var([1, value], 7)  # type: ignore[list-item]
     for m in (0, -7, 3.0, False):
         with pytest.raises((EccTypeError, EccValueError)):
-            mod_inv_batch_var([1], m)  # type: ignore[arg-type]
+            mod_inv_batch_var([Public(1)], m)  # type: ignore[arg-type]
 
 
 @given(values=st.lists(st.integers(), max_size=8), m=st.integers(min_value=2))
@@ -365,9 +368,9 @@ def test_mod_inv_batch_inverts(values: list[int], m: int) -> None:
     """Every inverse multiplies its element back to one, or none does."""
     if any(math.gcd(v % m, m) != 1 for v in values):
         with pytest.raises(EccValueError, match="no inverse"):
-            mod_inv_batch_var(values, m)
+            mod_inv_batch_var([Public(v) for v in values], m)
         return
-    inverses = mod_inv_batch_var(values, m)
+    inverses = mod_inv_batch_var([Public(v) for v in values], m)
     assert len(inverses) == len(values)
     for v, inverse in zip(values, inverses, strict=True):
         assert 0 <= inverse < m
@@ -385,18 +388,18 @@ def test_mod_inv_blinded_is_mod_inv() -> None:
     """
     for m in primes:
         for a in range(1, min(m, 200)):
-            assert mod_inv(a, m) == mod_inv_var(a, m)
-            assert mod_inv(a + m, m) == mod_inv_var(a, m)
+            assert mod_inv(a, m) == mod_inv_var(Public(a), m)
+            assert mod_inv(a + m, m) == mod_inv_var(Public(a), m)
 
     for m in range(2, 60):
         for a in range(m):
             if math.gcd(a, m) == 1:
-                assert mod_inv(a, m) == mod_inv_var(a, m)
+                assert mod_inv(a, m) == mod_inv_var(Public(a), m)
             else:
                 with pytest.raises(EccValueError, match="no inverse mod "):
                     mod_inv(a, m)
 
-    assert mod_inv(7, 1) == mod_inv_var(7, 1) == 0
+    assert mod_inv(7, 1) == mod_inv_var(Public(7), 1) == 0
 
     # the arguments are checked here rather than one call deeper: the
     # factor is drawn before `mod_inv_var` is reached, and a modulus that is
@@ -426,14 +429,14 @@ def test_mod_inv_blinded_never_hands_the_operand_to_the_euclid(
 
     def recording_mod_inv(a: int, m: int) -> int:
         seen.append(a)
-        return real_mod_inv(a, m)
+        return real_mod_inv(Public(a), m)
 
     monkeypatch.setattr(number_theory, "mod_inv_var", recording_mod_inv)
 
     n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
     secret = 0x1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF
     for _ in range(32):
-        assert number_theory.mod_inv(secret, n) == real_mod_inv(secret, n)
+        assert number_theory.mod_inv(secret, n) == real_mod_inv(Public(secret), n)
 
     assert secret not in seen
     # every call drew its own factor: a repeat would be a factor that is
@@ -455,14 +458,14 @@ def test_mod_inv_blinded_redraws_a_factor_that_is_a_zero_divisor(
 
     def recording_mod_inv(a: int, m: int) -> int:
         handed.append(a)
-        return real_mod_inv(a, m)
+        return real_mod_inv(Public(a), m)
 
     monkeypatch.setattr(number_theory, "mod_inv_var", recording_mod_inv)
 
     # 1 + randbelow(9) is 2 and then 5, both zero divisors mod 10, and then 3
     draws = iter([1, 4, 2])
     monkeypatch.setattr(secrets, "randbelow", lambda _: next(draws))
-    assert mod_inv(3, 10) == real_mod_inv(3, 10) == 7
+    assert mod_inv(3, 10) == real_mod_inv(Public(3), 10) == 7
     # the euclid sees the products of the three factors, never the operand
     assert handed == [6, 5, 9]
     assert next(draws, None) is None
@@ -487,7 +490,7 @@ def test_mod_inv_blinded_takes_no_gcd_on_a_prime_modulus(
     monkeypatch.setattr(math, "gcd", gcd)
     for m in (7, 97, 2**256 - 2**32 - 977):
         assert mod_inv(5, m) * 5 % m == 1
-        assert mod_inv_batch([3, 5], m) == mod_inv_batch_var([3, 5], m)
+        assert mod_inv_batch([3, 5], m) == mod_inv_batch_var([Public(3), Public(5)], m)
     gcd.assert_not_called()
 
 
@@ -516,8 +519,10 @@ def test_mod_inv_batch_is_mod_inv_batch_var() -> None:
     """
     for m in (7, 97, 2**521 - 1):
         values = [1, 2, m - 1, 3, m - 2]
-        assert mod_inv_batch(values, m) == mod_inv_batch_var(values, m)
-        assert mod_inv_batch([2], m) == [mod_inv_var(2, m)]
+        assert mod_inv_batch(values, m) == mod_inv_batch_var(
+            [Public(v) for v in values], m
+        )
+        assert mod_inv_batch([2], m) == [mod_inv_var(Public(2), m)]
     assert mod_inv_batch([], 7) == []
     assert mod_inv_batch([7], 1) == [0]
 
@@ -547,7 +552,7 @@ def test_mod_inv_batch_falls_back_to_each_element_on_a_zero_divisor(
 
     def recording_mod_inv(a: int, m: int) -> int:
         handed.append(a)
-        return real_mod_inv(a, m)
+        return real_mod_inv(Public(a), m)
 
     monkeypatch.setattr(number_theory, "mod_inv_var", recording_mod_inv)
 
@@ -591,7 +596,7 @@ def test_mod_inv_batch_blinds_each_element_on_its_own(
 
     m = 2**256 - 2**32 - 977
     values = [1 + real_randbelow(m - 1) for _ in range(8)]
-    assert mod_inv_batch(values, m) == mod_inv_batch_var(values, m)
+    assert mod_inv_batch(values, m) == mod_inv_batch_var([Public(v) for v in values], m)
 
     assert len(drawn) == len(values)
     assert len(set(drawn)) == len(drawn)
@@ -625,7 +630,7 @@ def test_is_prime_agrees_with_trial_division() -> None:
     Two is no prime here, as the curve constructor wants it.
     """
     for n in range(-5, 20000):
-        assert number_theory._is_prime_var(n) == (
+        assert number_theory._is_prime_var(Public(n)) == (
             n % 2 == 1 and _is_prime_by_trial_division(n)
         )
 
@@ -646,30 +651,30 @@ def test_is_prime_refuses_pseudoprimes() -> None:
         9746347772161,
     ]
     for n in fermat_base_2 + strong_base_2 + carmichael:
-        assert not number_theory._is_prime_var(n)
+        assert not number_theory._is_prime_var(Public(n))
 
     # the strong Lucas pseudoprimes are what the base-2 step is there for
     for n in (5459, 5777, 10877, 16109, 18971):
-        assert not number_theory._is_prime_var(n)
-        assert number_theory._is_strong_lucas_probable_prime_var(n)
-        assert not number_theory._is_strong_probable_prime_base_2_var(n)
+        assert not number_theory._is_prime_var(Public(n))
+        assert number_theory._is_strong_lucas_probable_prime_var(Public(n))
+        assert not number_theory._is_strong_probable_prime_base_2_var(Public(n))
 
     # a base-2 strong pseudoprime is what the Lucas step is there for
     for n in strong_base_2:
-        assert number_theory._is_strong_probable_prime_base_2_var(n)
-        assert not number_theory._is_strong_lucas_probable_prime_var(n)
+        assert number_theory._is_strong_probable_prime_base_2_var(Public(n))
+        assert not number_theory._is_strong_lucas_probable_prime_var(Public(n))
 
     # perfect squares and a D with a factor in common with n
-    assert not number_theory._is_strong_lucas_probable_prime_var(1681)
-    assert not number_theory._is_strong_lucas_probable_prime_var(1765)
+    assert not number_theory._is_strong_lucas_probable_prime_var(Public(1681))
+    assert not number_theory._is_strong_lucas_probable_prime_var(Public(1765))
 
     # the least strong pseudoprime to each of the first twelve prime bases
-    assert not number_theory._is_prime_var(318665857834031151167461)
+    assert not number_theory._is_prime_var(Public(318665857834031151167461))
 
 
 def test_is_prime_accepts_large_primes() -> None:
     """Accept the Mersenne primes 2**61 - 1 and 2**127 - 1."""
-    assert number_theory._is_prime_var(2**61 - 1)
-    assert number_theory._is_prime_var(2**127 - 1)
-    assert not number_theory._is_prime_var(2**127 + 1)
-    assert not number_theory._is_prime_var((2**61 - 1) * (2**89 - 1))
+    assert number_theory._is_prime_var(Public(2**61 - 1))
+    assert number_theory._is_prime_var(Public(2**127 - 1))
+    assert not number_theory._is_prime_var(Public(2**127 + 1))
+    assert not number_theory._is_prime_var(Public((2**61 - 1) * (2**89 - 1)))

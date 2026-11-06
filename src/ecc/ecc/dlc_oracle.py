@@ -33,7 +33,7 @@ from __future__ import annotations
 from hashlib import sha256
 
 from ecc._utils import bytes_from_octets
-from ecc.alias import Integer, Octets, Point
+from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import double_mult_var, scalar_from_prv_key, secp256k1
 from ecc.ecc import ssa
 
@@ -57,7 +57,7 @@ def sign_(msg: Octets, prv_key: Integer, nonce: Integer) -> ssa.Sig:
     k, x_K = ssa.gen_keys(scalar_from_prv_key(nonce))
     c = ssa.challenge_(msg, x_Q, x_K, secp256k1, sha256)
     sig = ssa._sign_(c, q, k, x_K, secp256k1)
-    return ssa._checked_sign_(c, sig, x_Q, secp256k1, True)
+    return ssa._checked_sign_(Public(c), sig, Public(x_Q), secp256k1, True)
 
 
 def sig_point_var_(
@@ -73,4 +73,4 @@ def sig_point_var_(
     P = ssa.point_from_bip340pub_key_var(pub_key)
     R = ssa.point_from_bip340pub_key_var(pub_nonce)
     c = ssa.challenge_(msg, P[0], R[0], secp256k1, sha256)
-    return double_mult_var(c, P, 1, R)
+    return double_mult_var(Public(c), P, Public(1), R)

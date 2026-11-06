@@ -24,6 +24,7 @@ from typing import Any
 import pytest
 
 from ecc import number_theory as nt
+from ecc.alias import Public
 from ecc.curves import (
     mult_pub_key,
     point_from_octets_var,
@@ -173,7 +174,7 @@ _CASES: dict[str, tuple[Callable[[], Any], int | bytes]] = {
         PRV,
     ),
     "mod_inv_var, no inverse": (
-        lambda: nt.mod_inv_var(PRV_INT & ~1, 2**256),
+        lambda: nt.mod_inv_var(Public(PRV_INT & ~1), 2**256),
         PRV_INT & ~1,
     ),
     "mod_inv, no inverse": (
@@ -185,11 +186,11 @@ _CASES: dict[str, tuple[Callable[[], Any], int | bytes]] = {
         PRV,
     ),
     "mod_sqrt_var, no root": (
-        lambda: nt.mod_sqrt_var(PRV_INT + 1, secp256k1.p),
+        lambda: nt.mod_sqrt_var(Public(PRV_INT + 1), secp256k1.p),
         PRV_INT + 1,
     ),
     "tonelli_var, no root": (
-        lambda: nt.tonelli_var(PRV_INT + 1, secp256k1.p),
+        lambda: nt.tonelli_var(Public(PRV_INT + 1), secp256k1.p),
         PRV_INT + 1,
     ),
     "legendre_symbol_var, bytes": (
@@ -212,7 +213,7 @@ def test_the_key_is_what_it_is_said_to_be() -> None:
     """The key is 32 bytes, a private key, and no x-coordinate."""
     assert len(PRV) == 32
     assert 0 < PRV_INT < secp256k1.n
-    assert not is_x_coordinate_var(PRV_INT)
+    assert not is_x_coordinate_var(Public(PRV_INT))
 
 
 @pytest.mark.parametrize("bindings", _ARMS)

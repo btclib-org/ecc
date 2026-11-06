@@ -26,6 +26,7 @@ from ecc._utils import (
     int_from_integer,
     is_integer,
 )
+from ecc.alias import Public
 from ecc.curves import (
     PreparedPoint,
     bytes_from_point,
@@ -75,11 +76,11 @@ _CASES: list[tuple[str, Callable[[Any], object]]] = [
     ("output size", lambda v: bytes_from_octets(b"x", v)),
     ("output size in an iterable", lambda v: bytes_from_octets(b"x", [v])),
     ("modular operand", lambda v: mod_inv_var(v, 7)),
-    ("modulus", lambda v: mod_inv_var(3, v)),
+    ("modulus", lambda v: mod_inv_var(Public(3), v)),
     ("blinded modular operand", lambda v: mod_inv(v, 7)),
     ("blinded modulus", lambda v: mod_inv(3, v)),
-    ("modular operand in a batch", lambda v: mod_inv_batch_var([3, v], 7)),
-    ("modulus of a batch", lambda v: mod_inv_batch_var([3], v)),
+    ("modular operand in a batch", lambda v: mod_inv_batch_var([Public(3), v], 7)),
+    ("modulus of a batch", lambda v: mod_inv_batch_var([Public(3)], v)),
     # one line stands behind the key path, `int_from_integer`:
     # `scalar_from_prv_key` reads an int through it, and `mult` and the
     # signing functions reach it through that
@@ -257,9 +258,9 @@ def test_the_integers_a_bool_refusal_must_not_take_with_it() -> None:
     assert bytes_from_point(secp256k1.G).hex().startswith("02")
     assert bytes_from_octets(b"x", 1) == b"x"
     assert bytes_from_octets(b"xx", [1, 2]) == b"xx"
-    assert mod_inv_var(3, 7) == 5
+    assert mod_inv_var(Public(3), 7) == 5
     assert mod_inv(3, 7) == 5
-    assert mod_inv_batch_var([3, 2], 7) == [5, 4]
+    assert mod_inv_batch_var([Public(3), Public(2)], 7) == [5, 4]
 
 
 def test_what_is_no_integer_at_all_is_refused_the_same_way() -> None:

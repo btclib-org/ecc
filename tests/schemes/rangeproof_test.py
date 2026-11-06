@@ -93,7 +93,7 @@ from typing import Any
 
 import pytest
 
-from ecc.alias import INF
+from ecc.alias import INF, Public
 from ecc.curves import mult, secp256k1
 from ecc.ecc import pedersen, rangeproof
 from ecc.ecc.borromean import BorromeanSig
@@ -249,7 +249,7 @@ def test_the_sign_bit_is_residuosity_and_not_parity() -> None:
     for vector in _VECTORS:
         proof = RangeProof.parse(bytes.fromhex(vector["proof"]))
         for sign_bit, x in zip(proof.signs, proof.ring_commitments, strict=True):
-            y_residue = secp256k1.y_quadratic_residue_var(x)
+            y_residue = secp256k1.y_quadratic_residue_var(Public(x))
             y = secp256k1.p - y_residue if sign_bit else y_residue
             seen.add(bool(y & 1) == sign_bit)
     assert seen == {True, False}
@@ -614,7 +614,7 @@ def test_pubk_rings_open_at_the_recorded_blinding_factor(
     rings = proof.pubk_rings_var(commitment, _GEN)
     assert tuple(len(ring) for ring in rings) == proof.rsizes
     stated = tuple(
-        _point_from_x_var(x, sign)
+        _point_from_x_var(Public(x), sign)
         for x, sign in zip(proof.ring_commitments, proof.signs, strict=True)
     )
     assert tuple(ring[0] for ring in rings[: len(stated)]) == stated
@@ -658,7 +658,7 @@ def test_a_ring_commitment_x_resolves_against_residuosity() -> None:
     for vector in _VECTORS:
         proof = RangeProof.parse(bytes.fromhex(vector["proof"]))
         for x, sign_bit in zip(proof.ring_commitments, proof.signs, strict=True):
-            point = _point_from_x_var(x, sign_bit)
+            point = _point_from_x_var(Public(x), sign_bit)
             octets = bytes([sign_bit]) + x.to_bytes(secp256k1.p_size, "big")
             assert _bytes_from_point_var(point, _RANGEPROOF_TAG) == octets
 
@@ -1256,7 +1256,7 @@ def test_a_proof_written_here_opens_at_its_own_blinding_factor(
 
     rings = proof.pubk_rings_var(commit(_BLIND, value, _GEN), _GEN)
     stated = tuple(
-        _point_from_x_var(x, sign_bit)
+        _point_from_x_var(Public(x), sign_bit)
         for x, sign_bit in zip(proof.ring_commitments, proof.signs, strict=True)
     )
     assert tuple(ring[0] for ring in rings[: len(stated)]) == stated

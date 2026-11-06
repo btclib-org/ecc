@@ -10,7 +10,7 @@ from functools import partial
 import pytest
 from typing_extensions import override
 
-from ecc.alias import INF, INFJ, JacPoint, Point
+from ecc.alias import INF, INFJ, JacPoint, Point, Public
 from ecc.curves import (
     Curve,
     CurveGroup,
@@ -61,184 +61,186 @@ ec23_31 = low_card_curves["ec23_31"]
 def test_mult_recursive_aff() -> None:
     """Check the recursive affine mult on boundary scalars, every curve."""
     for ec in all_curves.values():
-        assert _mult_recursive_aff_var(0, ec.G, ec) == INF
-        assert _mult_recursive_aff_var(0, INF, ec) == INF
+        assert _mult_recursive_aff_var(Public(0), ec.G, ec) == INF
+        assert _mult_recursive_aff_var(Public(0), INF, ec) == INF
 
-        assert _mult_recursive_aff_var(1, INF, ec) == INF
-        assert _mult_aff_var(1, ec.G, ec) == ec.G
+        assert _mult_recursive_aff_var(Public(1), INF, ec) == INF
+        assert _mult_aff_var(Public(1), ec.G, ec) == ec.G
 
         Q = ec.add_aff_var(ec.G, ec.G)
-        assert _mult_recursive_aff_var(2, ec.G, ec) == Q
+        assert _mult_recursive_aff_var(Public(2), ec.G, ec) == Q
 
-        Q = _mult_recursive_aff_var(ec.n - 1, ec.G, ec)
+        Q = _mult_recursive_aff_var(Public(ec.n - 1), ec.G, ec)
         assert ec.negate(ec.G) == Q
-        assert _mult_recursive_aff_var(ec.n - 1, INF, ec) == INF
+        assert _mult_recursive_aff_var(Public(ec.n - 1), INF, ec) == INF
 
         assert ec.add_aff_var(Q, ec.G) == INF
-        assert _mult_recursive_aff_var(ec.n, ec.G, ec) == INF
-        assert _mult_recursive_aff_var(ec.n, INF, ec) == INF
+        assert _mult_recursive_aff_var(Public(ec.n), ec.G, ec) == INF
+        assert _mult_recursive_aff_var(Public(ec.n), INF, ec) == INF
 
         with pytest.raises(EccValueError, match="negative m$"):
-            _mult_recursive_aff_var(-1, ec.G, ec)
+            _mult_recursive_aff_var(Public(-1), ec.G, ec)
 
     for ec in low_card_curves.values():
         for q in range(ec.n):
-            Q = _mult_recursive_aff_var(q, ec.G, ec)
+            Q = _mult_recursive_aff_var(Public(q), ec.G, ec)
             assert ec.is_on_curve(Q), f"{q}, {ec}"
             QJ = _mult(q, ec.GJ, ec)
             assert ec.is_on_curve(ec.aff_from_jac_var(QJ)), f"{q}, {ec}"
             assert ec.aff_from_jac_var(QJ) == Q, f"{q}, {ec}"
-            assert _mult_recursive_aff_var(q, INF, ec) == INF, f"{q}, {ec}"
+            assert _mult_recursive_aff_var(Public(q), INF, ec) == INF, f"{q}, {ec}"
             assert ec.is_jac_equal(INFJ, _mult(q, INFJ, ec)), f"{q}, {ec}"
 
 
 def test_mult_recursive_jac() -> None:
     """Check the recursive Jacobian mult on boundary scalars, every curve."""
     for ec in all_curves.values():
-        assert ec.is_jac_equal(_mult_recursive_jac_var(0, ec.GJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_recursive_jac_var(0, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_recursive_jac_var(Public(0), ec.GJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_recursive_jac_var(Public(0), INFJ, ec), INFJ)
 
-        assert ec.is_jac_equal(_mult_recursive_jac_var(1, INFJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_recursive_jac_var(1, ec.GJ, ec), ec.GJ)
+        assert ec.is_jac_equal(_mult_recursive_jac_var(Public(1), INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_recursive_jac_var(Public(1), ec.GJ, ec), ec.GJ)
 
         PJ = ec.add_jac(ec.GJ, ec.GJ)
-        assert ec.is_jac_equal(PJ, _mult_recursive_jac_var(2, ec.GJ, ec))
+        assert ec.is_jac_equal(PJ, _mult_recursive_jac_var(Public(2), ec.GJ, ec))
 
-        PJ = _mult_recursive_jac_var(ec.n - 1, ec.GJ, ec)
+        PJ = _mult_recursive_jac_var(Public(ec.n - 1), ec.GJ, ec)
         assert ec.is_jac_equal(ec.negate_jac(ec.GJ), PJ)
-        assert ec.is_jac_equal(_mult_recursive_jac_var(ec.n - 1, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(
+            _mult_recursive_jac_var(Public(ec.n - 1), INFJ, ec), INFJ
+        )
 
         assert ec.is_jac_equal(ec.add_jac(PJ, ec.GJ), INFJ)
-        assert ec.is_jac_equal(_mult_recursive_jac_var(ec.n, ec.GJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_recursive_jac_var(ec.n, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_recursive_jac_var(Public(ec.n), ec.GJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_recursive_jac_var(Public(ec.n), INFJ, ec), INFJ)
 
         with pytest.raises(EccValueError, match="negative m$"):
-            _mult_recursive_jac_var(-1, ec.GJ, ec)
+            _mult_recursive_jac_var(Public(-1), ec.GJ, ec)
 
     ec = ec23_31
     for k1 in range(ec.n):
-        K1 = _mult_recursive_jac_var(k1, ec.GJ, ec)
+        K1 = _mult_recursive_jac_var(Public(k1), ec.GJ, ec)
         assert ec.is_jac_equal(K1, _mult(k1, ec.GJ, ec))
 
 
 def test_mult_aff() -> None:
     """Check the affine double-and-add on boundary scalars, every curve."""
     for ec in all_curves.values():
-        assert _mult_aff_var(0, ec.G, ec) == INF
-        assert _mult_aff_var(0, INF, ec) == INF
+        assert _mult_aff_var(Public(0), ec.G, ec) == INF
+        assert _mult_aff_var(Public(0), INF, ec) == INF
 
-        assert _mult_aff_var(1, INF, ec) == INF
-        assert _mult_aff_var(1, ec.G, ec) == ec.G
+        assert _mult_aff_var(Public(1), INF, ec) == INF
+        assert _mult_aff_var(Public(1), ec.G, ec) == ec.G
 
         Q = ec.add_aff_var(ec.G, ec.G)
-        assert _mult_aff_var(2, ec.G, ec) == Q
+        assert _mult_aff_var(Public(2), ec.G, ec) == Q
 
-        Q = _mult_aff_var(ec.n - 1, ec.G, ec)
+        Q = _mult_aff_var(Public(ec.n - 1), ec.G, ec)
         assert ec.negate(ec.G) == Q
-        assert _mult_aff_var(ec.n - 1, INF, ec) == INF
+        assert _mult_aff_var(Public(ec.n - 1), INF, ec) == INF
 
         assert ec.add_aff_var(Q, ec.G) == INF
-        assert _mult_aff_var(ec.n, ec.G, ec) == INF
-        assert _mult_aff_var(ec.n, INF, ec) == INF
+        assert _mult_aff_var(Public(ec.n), ec.G, ec) == INF
+        assert _mult_aff_var(Public(ec.n), INF, ec) == INF
 
         with pytest.raises(EccValueError, match="negative m$"):
-            _mult_aff_var(-1, ec.G, ec)
+            _mult_aff_var(Public(-1), ec.G, ec)
 
     for ec in low_card_curves.values():
         for q in range(ec.n):
-            Q = _mult_aff_var(q, ec.G, ec)
+            Q = _mult_aff_var(Public(q), ec.G, ec)
             assert ec.is_on_curve(Q), f"{q}, {ec}"
             QJ = _mult(q, ec.GJ, ec)
             assert ec.is_on_curve(ec.aff_from_jac_var(QJ)), f"{q}, {ec}"
             assert ec.aff_from_jac_var(QJ) == Q, f"{q}, {ec}"
-            assert _mult_aff_var(q, INF, ec) == INF, f"{q}, {ec}"
+            assert _mult_aff_var(Public(q), INF, ec) == INF, f"{q}, {ec}"
             assert ec.is_jac_equal(INFJ, _mult(q, INFJ, ec)), f"{q}, {ec}"
 
 
 def test_mult_jac() -> None:
     """Check the Jacobian double-and-add on boundary scalars, every curve."""
     for ec in all_curves.values():
-        assert ec.is_jac_equal(_mult_jac_var(0, ec.GJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_jac_var(0, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_jac_var(Public(0), ec.GJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_jac_var(Public(0), INFJ, ec), INFJ)
 
-        assert ec.is_jac_equal(_mult_jac_var(1, INFJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_jac_var(1, ec.GJ, ec), ec.GJ)
+        assert ec.is_jac_equal(_mult_jac_var(Public(1), INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_jac_var(Public(1), ec.GJ, ec), ec.GJ)
 
         PJ = ec.add_jac(ec.GJ, ec.GJ)
-        assert ec.is_jac_equal(PJ, _mult_jac_var(2, ec.GJ, ec))
+        assert ec.is_jac_equal(PJ, _mult_jac_var(Public(2), ec.GJ, ec))
 
-        PJ = _mult_jac_var(ec.n - 1, ec.GJ, ec)
+        PJ = _mult_jac_var(Public(ec.n - 1), ec.GJ, ec)
         assert ec.is_jac_equal(ec.negate_jac(ec.GJ), PJ)
-        assert ec.is_jac_equal(_mult_jac_var(ec.n - 1, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_jac_var(Public(ec.n - 1), INFJ, ec), INFJ)
 
         assert ec.is_jac_equal(ec.add_jac(PJ, ec.GJ), INFJ)
-        assert ec.is_jac_equal(_mult_jac_var(ec.n, ec.GJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_jac_var(ec.n, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_jac_var(Public(ec.n), ec.GJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_jac_var(Public(ec.n), INFJ, ec), INFJ)
 
         with pytest.raises(EccValueError, match="negative m$"):
-            _mult_jac_var(-1, ec.GJ, ec)
+            _mult_jac_var(Public(-1), ec.GJ, ec)
 
     ec = ec23_31
     for k1 in range(ec.n):
-        K1 = _mult_jac_var(k1, ec.GJ, ec)
+        K1 = _mult_jac_var(Public(k1), ec.GJ, ec)
         assert ec.is_jac_equal(K1, _mult(k1, ec.GJ, ec))
 
 
 def test_mont_ladder() -> None:
     """Check the Montgomery ladder on boundary scalars and against _mult."""
     for ec in low_card_curves.values():
-        assert ec.is_jac_equal(_mult_mont_ladder_var(0, ec.GJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_mont_ladder_var(0, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_mont_ladder_var(Public(0), ec.GJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_mont_ladder_var(Public(0), INFJ, ec), INFJ)
 
-        assert ec.is_jac_equal(_mult_mont_ladder_var(1, INFJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_mont_ladder_var(1, ec.GJ, ec), ec.GJ)
+        assert ec.is_jac_equal(_mult_mont_ladder_var(Public(1), INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_mont_ladder_var(Public(1), ec.GJ, ec), ec.GJ)
 
-        PJ = _mult_mont_ladder_var(2, ec.GJ, ec)
+        PJ = _mult_mont_ladder_var(Public(2), ec.GJ, ec)
         assert ec.is_jac_equal(PJ, ec.add_jac(ec.GJ, ec.GJ))
 
-        PJ = _mult_mont_ladder_var(ec.n - 1, ec.GJ, ec)
+        PJ = _mult_mont_ladder_var(Public(ec.n - 1), ec.GJ, ec)
         assert ec.is_jac_equal(ec.negate_jac(ec.GJ), PJ)
-        assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n - 1, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_mont_ladder_var(Public(ec.n - 1), INFJ, ec), INFJ)
 
         assert ec.is_jac_equal(ec.add_jac(PJ, ec.GJ), INFJ)
-        assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, ec.GJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_mont_ladder_var(Public(ec.n), ec.GJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_mont_ladder_var(Public(ec.n), INFJ, ec), INFJ)
 
         with pytest.raises(EccValueError, match="negative m$"):
-            _mult_mont_ladder_var(-1, ec.GJ, ec)
+            _mult_mont_ladder_var(Public(-1), ec.GJ, ec)
 
     ec = ec23_31
     for k1 in range(ec.n):
-        K1 = _mult_mont_ladder_var(k1, ec.GJ, ec)
+        K1 = _mult_mont_ladder_var(Public(k1), ec.GJ, ec)
         assert ec.is_jac_equal(K1, _mult(k1, ec.GJ, ec))
 
 
 def test_mult_base_3() -> None:
     """Check the base-3 mult on boundary scalars and against _mult."""
     for ec in low_card_curves.values():
-        assert ec.is_jac_equal(_mult_base_3_var(0, ec.GJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_base_3_var(0, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_base_3_var(Public(0), ec.GJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_base_3_var(Public(0), INFJ, ec), INFJ)
 
-        assert ec.is_jac_equal(_mult_base_3_var(1, INFJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_base_3_var(1, ec.GJ, ec), ec.GJ)
+        assert ec.is_jac_equal(_mult_base_3_var(Public(1), INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_base_3_var(Public(1), ec.GJ, ec), ec.GJ)
 
-        PJ = _mult_base_3_var(2, ec.GJ, ec)
+        PJ = _mult_base_3_var(Public(2), ec.GJ, ec)
         assert ec.is_jac_equal(PJ, ec.add_jac(ec.GJ, ec.GJ))
 
-        PJ = _mult_base_3_var(ec.n - 1, ec.GJ, ec)
+        PJ = _mult_base_3_var(Public(ec.n - 1), ec.GJ, ec)
         assert ec.is_jac_equal(ec.negate_jac(ec.GJ), PJ)
-        assert ec.is_jac_equal(_mult_base_3_var(ec.n - 1, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_base_3_var(Public(ec.n - 1), INFJ, ec), INFJ)
 
         assert ec.is_jac_equal(ec.add_jac(PJ, ec.GJ), INFJ)
-        assert ec.is_jac_equal(_mult_base_3_var(ec.n, ec.GJ, ec), INFJ)
-        assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_base_3_var(Public(ec.n), ec.GJ, ec), INFJ)
+        assert ec.is_jac_equal(_mult_mont_ladder_var(Public(ec.n), INFJ, ec), INFJ)
 
         with pytest.raises(EccValueError, match="negative m$"):
-            _mult_base_3_var(-1, ec.GJ, ec)
+            _mult_base_3_var(Public(-1), ec.GJ, ec)
 
     ec = ec23_31
     for k1 in range(ec.n):
-        K1 = _mult_base_3_var(k1, ec.GJ, ec)
+        K1 = _mult_base_3_var(Public(k1), ec.GJ, ec)
         assert ec.is_jac_equal(K1, _mult(k1, ec.GJ, ec))
 
 
@@ -306,45 +308,46 @@ def test_mult_fixed_window() -> None:
     for w in range(1, MAX_W):
         for ec in low_card_curves.values():
             assert ec.is_jac_equal(
-                _mult_fixed_window_var(0, ec.GJ, ec, w, cached=False), INFJ
+                _mult_fixed_window_var(Public(0), ec.GJ, ec, w, cached=False), INFJ
             )
             assert ec.is_jac_equal(
-                _mult_fixed_window_var(0, INFJ, ec, w, cached=False), INFJ
+                _mult_fixed_window_var(Public(0), INFJ, ec, w, cached=False), INFJ
             )
 
             assert ec.is_jac_equal(
-                _mult_fixed_window_var(1, INFJ, ec, w, cached=False), INFJ
+                _mult_fixed_window_var(Public(1), INFJ, ec, w, cached=False), INFJ
             )
             assert ec.is_jac_equal(
-                _mult_fixed_window_var(1, ec.GJ, ec, w, cached=False), ec.GJ
+                _mult_fixed_window_var(Public(1), ec.GJ, ec, w, cached=False), ec.GJ
             )
 
-            PJ = _mult_fixed_window_var(2, ec.GJ, ec, w, cached=False)
+            PJ = _mult_fixed_window_var(Public(2), ec.GJ, ec, w, cached=False)
             assert ec.is_jac_equal(PJ, ec.add_jac(ec.GJ, ec.GJ))
 
-            PJ = _mult_fixed_window_var(ec.n - 1, ec.GJ, ec, w, cached=False)
+            PJ = _mult_fixed_window_var(Public(ec.n - 1), ec.GJ, ec, w, cached=False)
             assert ec.is_jac_equal(ec.negate_jac(ec.GJ), PJ)
             assert ec.is_jac_equal(
-                _mult_fixed_window_var(ec.n - 1, INFJ, ec, w, cached=False), INFJ
+                _mult_fixed_window_var(Public(ec.n - 1), INFJ, ec, w, cached=False),
+                INFJ,
             )
 
             assert ec.is_jac_equal(ec.add_jac(PJ, ec.GJ), INFJ)
             assert ec.is_jac_equal(
-                _mult_fixed_window_var(ec.n, ec.GJ, ec, w, cached=False), INFJ
+                _mult_fixed_window_var(Public(ec.n), ec.GJ, ec, w, cached=False), INFJ
             )
-            assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
+            assert ec.is_jac_equal(_mult_mont_ladder_var(Public(ec.n), INFJ, ec), INFJ)
 
             with pytest.raises(EccValueError, match="negative m$"):
-                _mult_fixed_window_var(-1, ec.GJ, ec, w, cached=False)
+                _mult_fixed_window_var(Public(-1), ec.GJ, ec, w, cached=False)
 
             with pytest.raises(EccValueError, match="non positive w: "):
-                _mult_fixed_window_var(1, ec.GJ, ec, -w, cached=False)
+                _mult_fixed_window_var(Public(1), ec.GJ, ec, -w, cached=False)
 
     ec = ec23_31
     for w in range(1, 10):
         for k1 in range(ec.n):
-            K1 = _mult_fixed_window_var(k1, ec.GJ, ec, w, cached=False)
-            assert ec.is_jac_equal(K1, _mult_jac_var(k1, ec.GJ, ec))
+            K1 = _mult_fixed_window_var(Public(k1), ec.GJ, ec, w, cached=False)
+            assert ec.is_jac_equal(K1, _mult_jac_var(Public(k1), ec.GJ, ec))
 
 
 def test_signed_odd_digits() -> None:
@@ -416,7 +419,9 @@ def test_signed_odd_multiples_aff() -> None:
             T = _signed_odd_multiples_aff(ec.GJ, ec, w)
             assert len(T) == 2**w
             for d in range(-(2**w - 1), 2**w, 2):
-                expected = ec.aff_from_jac_var(_mult_jac_var(d % ec.n, ec.GJ, ec))
+                expected = ec.aff_from_jac_var(
+                    _mult_jac_var(Public(d % ec.n), ec.GJ, ec)
+                )
                 assert T[(d + 2**w - 1) // 2] == expected, (d, w)
 
 
@@ -434,7 +439,7 @@ def test_add_jac_aff_answers_add_jac_on_every_pair() -> None:
     for ec in low_card_curves.values():
         points = [*find_all_points(ec), INF]
         jac = [_jac_from_aff(P) for P in points]
-        jac += [_mult_jac_var(k, ec.GJ, ec) for k in range(ec.n)]
+        jac += [_mult_jac_var(Public(k), ec.GJ, ec) for k in range(ec.n)]
         for PJ in jac:
             for R in points:
                 mixed = ec.add_jac_aff(PJ, R)
@@ -541,7 +546,7 @@ def test_regular_window_addition_count_is_the_same_for_every_scalar() -> None:
         _mult_regular_window(m, secp256k1.GJ, ec, w=4)
         regular.add((ec.additions, ec.doublings))
         ec.additions = ec.doublings = 0
-        _mult_fixed_window_var(m, secp256k1.GJ, ec, w=4, cached=False)
+        _mult_fixed_window_var(Public(m), secp256k1.GJ, ec, w=4, cached=False)
         fixed.add((ec.additions, ec.doublings))
 
     assert len(regular) == 1, regular
@@ -564,7 +569,7 @@ def test_mult_fixed_base() -> None:
             for m in range(ec.n + 1):
                 assert ec.is_jac_equal(
                     _mult_fixed_base(m, ec.GJ, ec, teeth, spacing),
-                    _mult_jac_var(m % ec.n, ec.GJ, ec),
+                    _mult_jac_var(Public(m % ec.n), ec.GJ, ec),
                 ), (m, teeth, spacing, ec)
             assert ec.is_jac_equal(_mult_fixed_base(1, INFJ, ec, teeth, spacing), INFJ)
 
@@ -578,7 +583,7 @@ def test_mult_fixed_base() -> None:
     ec = secp256k1
     for m in (0, 1, 2, 3, ec.n - 1, ec.n, ec.n + 1):
         assert ec.is_jac_equal(
-            _mult_fixed_base(m, ec.GJ, ec, 8, 8), _mult_jac_var(m, ec.GJ, ec)
+            _mult_fixed_base(m, ec.GJ, ec, 8, 8), _mult_jac_var(Public(m), ec.GJ, ec)
         ), m
 
     with pytest.raises(EccValueError, match="does not fit"):
@@ -639,7 +644,7 @@ def test_mult_regular_window() -> None:
     for w in range(1, 10):
         for k1 in range(ec.n):
             K1 = _mult_regular_window(k1, ec.GJ, ec, w)
-            assert ec.is_jac_equal(K1, _mult_jac_var(k1, ec.GJ, ec))
+            assert ec.is_jac_equal(K1, _mult_jac_var(Public(k1), ec.GJ, ec))
 
     # a scalar of more bits than the group has, which is the one case where
     # the digit count is the scalar's own again: the answer is still the
@@ -647,7 +652,7 @@ def test_mult_regular_window() -> None:
     ec = secp256k1
     for m in (ec.n, ec.n + 1, 2 * ec.n, 1 << 300):
         assert ec.is_jac_equal(
-            _mult_regular_window(m, ec.GJ, ec, w=4), _mult_jac_var(m, ec.GJ, ec)
+            _mult_regular_window(m, ec.GJ, ec, w=4), _mult_jac_var(Public(m), ec.GJ, ec)
         ), m
 
 
@@ -656,45 +661,45 @@ def test_mult_fixed_window_cached() -> None:
     for _ in range(1, MAX_W):
         for ec in low_card_curves.values():
             assert ec.is_jac_equal(
-                _mult_fixed_window_cached_var(0, ec.GJ, ec, w=4), INFJ
+                _mult_fixed_window_cached_var(Public(0), ec.GJ, ec, w=4), INFJ
             )
             assert ec.is_jac_equal(
-                _mult_fixed_window_cached_var(0, INFJ, ec, w=4), INFJ
+                _mult_fixed_window_cached_var(Public(0), INFJ, ec, w=4), INFJ
             )
 
             assert ec.is_jac_equal(
-                _mult_fixed_window_cached_var(1, INFJ, ec, w=4), INFJ
+                _mult_fixed_window_cached_var(Public(1), INFJ, ec, w=4), INFJ
             )
             assert ec.is_jac_equal(
-                _mult_fixed_window_cached_var(1, ec.GJ, ec, w=4), ec.GJ
+                _mult_fixed_window_cached_var(Public(1), ec.GJ, ec, w=4), ec.GJ
             )
 
-            PJ = _mult_fixed_window_cached_var(2, ec.GJ, ec, w=4)
+            PJ = _mult_fixed_window_cached_var(Public(2), ec.GJ, ec, w=4)
             assert ec.is_jac_equal(PJ, ec.add_jac(ec.GJ, ec.GJ))
 
-            PJ = _mult_fixed_window_cached_var(ec.n - 1, ec.GJ, ec, w=4)
+            PJ = _mult_fixed_window_cached_var(Public(ec.n - 1), ec.GJ, ec, w=4)
             assert ec.is_jac_equal(ec.negate_jac(ec.GJ), PJ)
             assert ec.is_jac_equal(
-                _mult_fixed_window_cached_var(ec.n - 1, INFJ, ec, w=4), INFJ
+                _mult_fixed_window_cached_var(Public(ec.n - 1), INFJ, ec, w=4), INFJ
             )
 
             assert ec.is_jac_equal(ec.add_jac(PJ, ec.GJ), INFJ)
             assert ec.is_jac_equal(
-                _mult_fixed_window_cached_var(ec.n, ec.GJ, ec, w=4), INFJ
+                _mult_fixed_window_cached_var(Public(ec.n), ec.GJ, ec, w=4), INFJ
             )
-            assert ec.is_jac_equal(_mult_mont_ladder_var(ec.n, INFJ, ec), INFJ)
+            assert ec.is_jac_equal(_mult_mont_ladder_var(Public(ec.n), INFJ, ec), INFJ)
 
             with pytest.raises(EccValueError, match="negative m$"):
-                _mult_fixed_window_cached_var(-1, ec.GJ, ec, w=4)
+                _mult_fixed_window_cached_var(Public(-1), ec.GJ, ec, w=4)
 
             with pytest.raises(EccValueError, match="non positive w: "):
-                _mult_fixed_window_cached_var(1, ec.GJ, ec, -1)
+                _mult_fixed_window_cached_var(Public(1), ec.GJ, ec, -1)
 
     ec = ec23_31
     for w in range(1, 10):
         for k1 in range(ec.n):
-            K1 = _mult_fixed_window_cached_var(k1, ec.GJ, ec, w)
-            assert ec.is_jac_equal(K1, _mult_jac_var(k1, ec.GJ, ec))
+            K1 = _mult_fixed_window_cached_var(Public(k1), ec.GJ, ec, w)
+            assert ec.is_jac_equal(K1, _mult_jac_var(Public(k1), ec.GJ, ec))
 
 
 def test_assorted_jac_mult() -> None:
@@ -707,19 +712,19 @@ def test_assorted_jac_mult() -> None:
         for k2 in range(ec.n):
             K2J = _mult(k2, HJ, ec)
 
-            shamir = _double_mult_var(k1, ec.GJ, k2, ec.GJ, ec)
+            shamir = _double_mult_var(Public(k1), ec.GJ, Public(k2), ec.GJ, ec)
             assert ec.is_on_curve(ec.aff_from_jac_var(shamir))
             assert ec.is_jac_equal(shamir, _mult(k1 + k2, ec.GJ, ec))
 
-            shamir = _double_mult_var(k1, INFJ, k2, HJ, ec)
+            shamir = _double_mult_var(Public(k1), INFJ, Public(k2), HJ, ec)
             assert ec.is_on_curve(ec.aff_from_jac_var(shamir))
             assert ec.is_jac_equal(shamir, K2J)
 
-            shamir = _double_mult_var(k1, ec.GJ, k2, INFJ, ec)
+            shamir = _double_mult_var(Public(k1), ec.GJ, Public(k2), INFJ, ec)
             assert ec.is_on_curve(ec.aff_from_jac_var(shamir))
             assert ec.is_jac_equal(shamir, K1J)
 
-            shamir = _double_mult_var(k1, ec.GJ, k2, HJ, ec)
+            shamir = _double_mult_var(Public(k1), ec.GJ, Public(k2), HJ, ec)
             assert ec.is_on_curve(ec.aff_from_jac_var(shamir))
             K1JK2J = ec.add_jac(K1J, K2J)
             assert ec.is_jac_equal(K1JK2J, shamir)
@@ -728,7 +733,9 @@ def test_assorted_jac_mult() -> None:
             K3J = _mult(k3, ec.GJ, ec)
             K1JK2JK3J = ec.add_jac(K1JK2J, K3J)
             assert ec.is_on_curve(ec.aff_from_jac_var(K1JK2JK3J))
-            boscoster = _multi_mult_var([k1, k2, k3], [ec.GJ, HJ, ec.GJ], ec)
+            boscoster = _multi_mult_var(
+                [Public(k1), Public(k2), Public(k3)], [ec.GJ, HJ, ec.GJ], ec
+            )
             assert ec.is_on_curve(ec.aff_from_jac_var(boscoster))
             assert ec.aff_from_jac_var(K1JK2JK3J) == ec.aff_from_jac_var(boscoster), k3
             assert ec.is_jac_equal(K1JK2JK3J, boscoster)
@@ -738,31 +745,57 @@ def test_assorted_jac_mult() -> None:
             K1JK2JK3JK4J = ec.add_jac(K1JK2JK3J, K4J)
             assert ec.is_on_curve(ec.aff_from_jac_var(K1JK2JK3JK4J))
             points = [ec.GJ, HJ, ec.GJ, HJ]
-            boscoster = _multi_mult_var([k1, k2, k3, k4], points, ec)
+            boscoster = _multi_mult_var(
+                [Public(k1), Public(k2), Public(k3), Public(k4)], points, ec
+            )
             assert ec.is_on_curve(ec.aff_from_jac_var(boscoster))
             assert ec.aff_from_jac_var(K1JK2JK3JK4J) == ec.aff_from_jac_var(
                 boscoster
             ), k4
             assert ec.is_jac_equal(K1JK2JK3JK4J, boscoster)
             assert ec.is_jac_equal(
-                K1JK2JK3J, _multi_mult_var([k1, k2, k3, 0], points, ec)
+                K1JK2JK3J,
+                _multi_mult_var(
+                    [Public(k1), Public(k2), Public(k3), Public(0)], points, ec
+                ),
             )
-            assert ec.is_jac_equal(K1JK2J, _multi_mult_var([k1, k2, 0, 0], points, ec))
-            assert ec.is_jac_equal(K1J, _multi_mult_var([k1, 0, 0, 0], points, ec))
-            assert ec.is_jac_equal(INFJ, _multi_mult_var([0, 0, 0, 0], points, ec))
+            assert ec.is_jac_equal(
+                K1JK2J,
+                _multi_mult_var(
+                    [Public(k1), Public(k2), Public(0), Public(0)], points, ec
+                ),
+            )
+            assert ec.is_jac_equal(
+                K1J,
+                _multi_mult_var(
+                    [Public(k1), Public(0), Public(0), Public(0)], points, ec
+                ),
+            )
+            assert ec.is_jac_equal(
+                INFJ,
+                _multi_mult_var(
+                    [Public(0), Public(0), Public(0), Public(0)], points, ec
+                ),
+            )
 
             err_msg = "mismatch between number of scalars and points: "
             with pytest.raises(EccValueError, match=err_msg):
-                _multi_mult_var([k1, k2, k3, k4], [ec.GJ, HJ, ec.GJ], ec)
+                _multi_mult_var(
+                    [Public(k1), Public(k2), Public(k3), Public(k4)],
+                    [ec.GJ, HJ, ec.GJ],
+                    ec,
+                )
 
             err_msg = "negative coefficient$"
             with pytest.raises(EccValueError, match=err_msg):
-                _multi_mult_var([k1, k2, -k3], [ec.GJ, HJ, ec.GJ], ec)
+                _multi_mult_var(
+                    [Public(k1), Public(k2), Public(-k3)], [ec.GJ, HJ, ec.GJ], ec
+                )
 
     with pytest.raises(EccValueError, match="negative first coefficient$"):
-        _double_mult_var(-5, HJ, 1, ec.GJ, ec)
+        _double_mult_var(Public(-5), HJ, Public(1), ec.GJ, ec)
     with pytest.raises(EccValueError, match="negative second coefficient$"):
-        _double_mult_var(1, HJ, -5, ec.GJ, ec)
+        _double_mult_var(Public(1), HJ, Public(-5), ec.GJ, ec)
 
 
 def test_mult_on_a_characteristic_7_curve() -> None:
@@ -793,12 +826,14 @@ def test_mult_on_a_characteristic_7_curve() -> None:
         ("_mult_regular_window", partial(_mult_regular_window, w=4)),
     )
     for k in range(ec.n):
-        expected = _mult_aff_var(k, ec.G, ec)
+        expected = _mult_aff_var(Public(k), ec.G, ec)
         for name, mult_f in variants:
-            assert ec.aff_from_jac_var(mult_f(k, ec.GJ, ec)) == expected, name
+            assert ec.aff_from_jac_var(mult_f(Public(k), ec.GJ, ec)) == expected, name
         for j in range(ec.n):
-            shamir = _double_mult_var(k, ec.GJ, j, ec.GJ, ec)
-            assert ec.aff_from_jac_var(shamir) == _mult_aff_var(k + j, ec.G, ec), (k, j)
+            shamir = _double_mult_var(Public(k), ec.GJ, Public(j), ec.GJ, ec)
+            assert ec.aff_from_jac_var(shamir) == _mult_aff_var(
+                Public(k + j), ec.G, ec
+            ), (k, j)
 
 
 def _sum_of_mults(
@@ -839,23 +874,28 @@ def test_multi_mult_w_NAF() -> None:
                     points = [ec.GJ, HJ, ec.GJ]
                     expected = _sum_of_mults(scalars, points, ec)
                     got = _multi_mult_w_NAF_var(
-                        scalars, points, ec, w, ec._fixed_points
+                        [Public(v) for v in scalars], points, ec, w, ec._fixed_points
                     )
                     assert ec.is_jac_equal(got, expected), (k1, k2, w)
                     assert ec.is_jac_equal(
-                        got, _multi_mult_bos_coster_var(scalars, points, ec)
+                        got,
+                        _multi_mult_bos_coster_var(
+                            [Public(v) for v in scalars], points, ec
+                        ),
                     ), (k1, k2, w)
 
             # a zero scalar, an INF point, and scalars of distant lengths
             assert ec.is_jac_equal(
-                _multi_mult_w_NAF_var([0, 0], [ec.GJ, HJ], ec, w, ec._fixed_points),
+                _multi_mult_w_NAF_var(
+                    [Public(0), Public(0)], [ec.GJ, HJ], ec, w, ec._fixed_points
+                ),
                 INFJ,
             )
             for scalars in ([0, 3], [3, 0], [1, ec.n - 1], [ec.n - 1, 1]):
                 for points in ([ec.GJ, HJ], [INFJ, HJ], [ec.GJ, INFJ]):
                     expected = _sum_of_mults(scalars, points, ec)
                     got = _multi_mult_w_NAF_var(
-                        scalars, points, ec, w, ec._fixed_points
+                        [Public(v) for v in scalars], points, ec, w, ec._fixed_points
                     )
                     assert ec.is_jac_equal(got, expected), (scalars, w)
 
@@ -869,12 +909,16 @@ def test_multi_mult_w_NAF() -> None:
             for scalars in ([1, ec.n - 1], [ec.n // 2, 3], [0, ec.n - 1]):
                 points = [ec.GJ, HJ]
                 expected = _sum_of_mults(scalars, points, ec)
-                got = _multi_mult_w_NAF_var(scalars, points, ec, w, ec._fixed_points)
+                got = _multi_mult_w_NAF_var(
+                    [Public(v) for v in scalars], points, ec, w, ec._fixed_points
+                )
                 assert ec.is_jac_equal(got, expected), (scalars, w)
 
     ec = secp256k1
     with pytest.raises(EccValueError, match="non positive w: "):
-        _multi_mult_w_NAF_var([1, 1], [ec.GJ, ec.GJ], ec, 0, ec._fixed_points)
+        _multi_mult_w_NAF_var(
+            [Public(1), Public(1)], [ec.GJ, ec.GJ], ec, 0, ec._fixed_points
+        )
 
 
 def test_multi_mult_agrees_across_curves() -> None:
@@ -891,11 +935,18 @@ def test_multi_mult_agrees_across_curves() -> None:
         scalars = [rnd.randrange(ec.n) for _ in points]
         expected = _sum_of_mults(scalars, points, ec)
         assert ec.is_jac_equal(
-            _multi_mult_w_NAF_var(scalars, points, ec, _MULTI_MULT_W, ec._fixed_points),
+            _multi_mult_w_NAF_var(
+                [Public(v) for v in scalars],
+                points,
+                ec,
+                _MULTI_MULT_W,
+                ec._fixed_points,
+            ),
             expected,
         )
         assert ec.is_jac_equal(
-            _multi_mult_bos_coster_var(scalars, points, ec), expected
+            _multi_mult_bos_coster_var([Public(v) for v in scalars], points, ec),
+            expected,
         )
 
 
@@ -917,44 +968,56 @@ def test_multi_mult_dispatch() -> None:
         points = [ec.GJ if i % 2 else HJ for i in range(size)]
         scalars = [rnd.randrange(1, ec.n) for _ in range(size)]
         expected = _sum_of_mults(scalars, points, ec)
-        assert ec.is_jac_equal(_multi_mult_var(scalars, points, ec), expected)
         assert ec.is_jac_equal(
-            _multi_mult_w_NAF_var(scalars, points, ec, _MULTI_MULT_W, ec._fixed_points),
+            _multi_mult_var([Public(v) for v in scalars], points, ec), expected
+        )
+        assert ec.is_jac_equal(
+            _multi_mult_w_NAF_var(
+                [Public(v) for v in scalars],
+                points,
+                ec,
+                _MULTI_MULT_W,
+                ec._fixed_points,
+            ),
             expected,
         )
         assert ec.is_jac_equal(
-            _multi_mult_bos_coster_var(scalars, points, ec), expected
+            _multi_mult_bos_coster_var([Public(v) for v in scalars], points, ec),
+            expected,
         )
 
         # all zero, whatever the algorithm: nothing to sum. Asked of
         # both by name, the dispatch not being able to reach
         # Bos-Coster with it -- a batch of nothing but zeros is a batch
         # of no nonzero scalars, which is below any threshold
-        assert ec.is_jac_equal(_multi_mult_var([0] * size, points, ec), INFJ)
+        assert ec.is_jac_equal(_multi_mult_var([Public(0)] * size, points, ec), INFJ)
         assert ec.is_jac_equal(
             _multi_mult_w_NAF_var(
-                [0] * size, points, ec, _MULTI_MULT_W, ec._fixed_points
+                [Public(0)] * size, points, ec, _MULTI_MULT_W, ec._fixed_points
             ),
             INFJ,
         )
-        assert ec.is_jac_equal(_multi_mult_bos_coster_var([0] * size, points, ec), INFJ)
+        assert ec.is_jac_equal(
+            _multi_mult_bos_coster_var([Public(0)] * size, points, ec), INFJ
+        )
 
         # a batch of this length whose *work* is two scalars: the zeros
         # are dropped downstream, so the count that dispatches counts
         # them out first and this goes to the interleaved wNAF
         sparse = [scalars[0], *([0] * (size - 2)), scalars[-1]]
         assert ec.is_jac_equal(
-            _multi_mult_var(sparse, points, ec), _sum_of_mults(sparse, points, ec)
+            _multi_mult_var([Public(v) for v in sparse], points, ec),
+            _sum_of_mults(sparse, points, ec),
         )
 
         err_msg = "mismatch between number of scalars and points: "
         with pytest.raises(EccValueError, match=err_msg):
-            _multi_mult_var(scalars, points[1:], ec)
+            _multi_mult_var([Public(v) for v in scalars], points[1:], ec)
         with pytest.raises(EccValueError, match="negative coefficient$"):
-            _multi_mult_var([-1, *scalars[1:]], points, ec)
+            _multi_mult_var([Public(v) for v in (-1, *scalars[1:])], points, ec)
 
     with pytest.raises(EccValueError, match="not a multi_mult_var"):
-        _multi_mult_var([1], [ec.GJ], ec)
+        _multi_mult_var([Public(1)], [ec.GJ], ec)
 
 
 def test_multi_mult_drops_a_point_at_infinity() -> None:
@@ -974,11 +1037,15 @@ def test_multi_mult_drops_a_point_at_infinity() -> None:
         for points in (mixed, [INFJ] * size, [INFJ, *finite[1:]]):
             expected = _sum_of_mults(scalars, points, ec)
             for result in (
-                _multi_mult_var(scalars, points, ec),
+                _multi_mult_var([Public(v) for v in scalars], points, ec),
                 _multi_mult_w_NAF_var(
-                    scalars, points, ec, _MULTI_MULT_W, ec._fixed_points
+                    [Public(v) for v in scalars],
+                    points,
+                    ec,
+                    _MULTI_MULT_W,
+                    ec._fixed_points,
                 ),
-                _multi_mult_bos_coster_var(scalars, points, ec),
+                _multi_mult_bos_coster_var([Public(v) for v in scalars], points, ec),
             ):
                 assert ec.is_jac_equal(result, expected)
 
@@ -1007,7 +1074,7 @@ def test_multi_mult_dispatch_counts_out_the_points_at_infinity(
         ([*finite[1:], *[INFJ] * 3], "wNAF"),
     ):
         called.clear()
-        _multi_mult_var(scalars, points, ec)
+        _multi_mult_var([Public(v) for v in scalars], points, ec)
         assert called == [expected]
 
 
@@ -1026,9 +1093,12 @@ def test_multi_mult_distant_magnitudes() -> None:
     HJ = _jac_from_aff(second_generator(ec))
     for scalars in ([10**6, 1], [1, 10**6], [ec.n - 1, 1], [ec.n - 1, ec.n - 2]):
         expected = _sum_of_mults(scalars, [ec.GJ, HJ], ec)
-        assert ec.is_jac_equal(_multi_mult_var(scalars, [ec.GJ, HJ], ec), expected)
         assert ec.is_jac_equal(
-            _multi_mult_bos_coster_var(scalars, [ec.GJ, HJ], ec), expected
+            _multi_mult_var([Public(v) for v in scalars], [ec.GJ, HJ], ec), expected
+        )
+        assert ec.is_jac_equal(
+            _multi_mult_bos_coster_var([Public(v) for v in scalars], [ec.GJ, HJ], ec),
+            expected,
         )
 
 
@@ -1039,7 +1109,7 @@ def test_jac_equality() -> None:
 
     # q in [2, n-1], as the difference with ec.GJ is checked below
     q = 2
-    Q = _mult_aff_var(q, ec.G, ec)
+    Q = _mult_aff_var(Public(q), ec.G, ec)
     QJ = _mult(q, ec.GJ, ec)
     assert ec.is_jac_equal(QJ, _jac_from_aff(Q))
     assert not ec.is_jac_equal(QJ, ec.negate_jac(QJ))
@@ -1051,9 +1121,9 @@ def test_INF() -> None:
     assert INF[1] == 0
 
     with pytest.raises(EccValueError, match="invalid x-coordinate$"):
-        secp256k1.y_var(INF[0])
+        secp256k1.y_var(Public(INF[0]))
     with pytest.raises(EccValueError, match="invalid x-coordinate$"):
-        secp256k1.y_var(INF[0] + secp256k1.n)
+        secp256k1.y_var(Public(INF[0] + secp256k1.n))
 
 
 def test_a_composite_p_is_refused_even_where_it_is_a_fermat_liar() -> None:
@@ -1160,7 +1230,7 @@ def test_the_interleaved_loop_makes_the_operations_its_wnafs_name(
     # alone -- and `_odd_multiples` doubles too, so building the tables under
     # the recorder would put its own operations in the log
     tables = [ec.aff_from_jac_batch_var(_odd_multiples(PJ, ec, w)) for PJ in points]
-    nafs = [_wNAF_of_m_var(n, w) for n in scalars]
+    nafs = [_wNAF_of_m_var(Public(n), w) for n in scalars]
     expected: list[tuple[str, Point | None]] = []
     for j in reversed(range(max(len(naf) for naf in nafs))):
         expected.append(("double", None))
@@ -1184,7 +1254,9 @@ def test_the_interleaved_loop_makes_the_operations_its_wnafs_name(
 
     monkeypatch.setattr(ec, "_double_jac", double)
     monkeypatch.setattr(ec, "_add_jac_aff", add)
-    got = _multi_mult_w_NAF_var(scalars, points, ec, w, frozenset())
+    got = _multi_mult_w_NAF_var(
+        [Public(v) for v in scalars], points, ec, w, frozenset()
+    )
     # the tail, because a table of odd multiples is built before the loop and
     # with the same doubling: one per point, its additions being Jacobian and
     # so not `add_jac_aff`. That prefix is what `fixed` spares a memoized
@@ -1229,6 +1301,6 @@ def test_wNAF_of_m_var_skips_zero_runs() -> None:
     # the widths the callers use go from 1 to the fixed-point one
     for w in range(1, 11):
         for m in scalars:
-            naf = _wNAF_of_m_var(m, w)
+            naf = _wNAF_of_m_var(Public(m), w)
             assert naf == _wNAF_one_bit_at_a_time(m, w), (m, w)
             assert sum(d << i for i, d in enumerate(naf)) == m

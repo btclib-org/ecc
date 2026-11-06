@@ -538,13 +538,13 @@ than skipping it -- `ssa.challenge_`'s `x_Q` and `x_K`, and
 
 ### A `_var` suffix means the operand decides the work
 
-A function ends in `_var` when the value of a valid operand decides its
-work: through a loop of its own whose count follows it, through an early
-exit taken on it, or through a `_var` function it applies to that operand
-and that is the bulk of its work. A branch that only refuses an invalid
-operand, or answers a degenerate or special case outright, such as the
-group law's doubling, does not count. The curve, and a format parameter
-the output states, are not operands.
+A function's name ends in `_var`, before any trailing underscore, when the
+value of a valid operand decides its work: through a loop of its own whose
+count follows it, through an early exit taken on it, or through a `_var`
+function it applies to that operand and that is the bulk of its work. A
+branch that only refuses an invalid operand, or answers a degenerate or
+special case outright, such as the group law's doubling, does not count.
+The curve, and a format parameter the output states, are not operands.
 
 Some loops do not count either. A loop whose extra rounds only discard a
 candidate, such as a nonce function's rejection loop, tells nothing about
@@ -574,8 +574,7 @@ on one machine and one interpreter does not hold on the next, and a
 reader cannot check that someone once took it. It says whether the time
 depends on the value, not how much it costs. A small measured ratio keeps
 the suffix, and a slow function whose algorithm does not follow the value
-does not take it. A ratio illustrates the dependence; it is not a
-threshold.
+does not take it.
 
 **Carrying the suffix up a call is a judgement.** A function whose work is
 a `_var` function on its operand takes the suffix with it. A function
@@ -600,9 +599,7 @@ count the proof's header writes down. `dsa._grind_low_r` and
 does one round per point it returns, and `_multi_mult_pairs` loops once per
 scalar it is handed.
 
-What "the work" is depends on the function. The ratios below illustrate
-it. They were measured on secp256k1's order or its `p`, over random
-operands of 256 bits down to 64, as the ratio between the two ends:
+What "the work" is depends on the function:
 
 - the count of point operations, for a scalar multiplication:
     `curve_group._mult_jac_var` and `curve_group_2._double_mult_w_NAF_var`
@@ -611,28 +608,24 @@ operands of 256 bits down to 64, as the ratio between the two ends:
     scalar of the curve. `curves.double_mult_var` and
     `curves.multi_mult_var` carry it for that reason and `curves.mult`
     does not
-- the iteration count of an extended Euclid: `mod_inv_var` at 4.21x,
-    `xgcd_var` at 4.84x, `mod_inv_batch_var` at 2.01x
-- the length of a loop over the operand: `legendre_symbol_var` at 4.26x,
-    and `tonelli_var`, whose 1.54x is spread within one operand size
-    rather than across sizes — Tonelli-Shanks iterates on the value, not
-    on its length. `mod_sqrt_var` reaches that loop only for a `p` of 1
-    mod 4: on a 3 mod 4 one it is a single exponentiation with a fixed
-    exponent and measures 1.01x, and the catalogue holds both kinds —
-    `secp224k1`, `secp224r1` and `nistp224` are 1 mod 4 — so the caller
-    picks which it gets and the suffix states the worse case
-- the value of a full-size residue: `ellswift._is_x_fraction_var`
-    reduces its product mod `p` before the symbol, so its operands'
-    size moves it by 1.08x, and the symbol's loop over that residue
-    spreads it by 1.3x within one size, as Tonelli-Shanks's does; the
-    scripts are in issue btclib-org/ecc#195
-- one modular inverse, in the layer above: `aff_from_jac_var` at 2.96x,
-    `x_aff_from_jac_var` at 1.93x, `aff_from_jac_batch_var` at 1.67x and
-    `y_aff_from_jac_var` at 1.42x follow the `Z` they are handed;
-    `double_aff_var` at 1.32x, `add_aff_var` at 1.23x and the `add_var`
-    over them at 1.22x follow the coordinates. `y_var` and its three
-    tiebreakers follow their `x` on the 1 mod 4 curves above, 1.84x on
-    `secp224k1`, where on secp256k1 they are flat
+- the iteration count of an extended Euclid: `mod_inv_var`, `xgcd_var` and
+    `mod_inv_batch_var`
+- the length of a loop over the operand: `legendre_symbol_var`, and
+    `tonelli_var`, which iterates on the value, not on its length.
+    `mod_sqrt_var` reaches that loop only for a `p` of 1 mod 4: on a 3 mod
+    4 one it is a single exponentiation with a fixed exponent, and the
+    catalogue holds both kinds — `secp224k1`, `secp224r1` and `nistp224`
+    are 1 mod 4 — so the caller picks which it gets and the suffix states
+    the worse case
+- the value of a full-size residue: `ellswift._is_x_fraction_var` reduces
+    its product mod `p` before the symbol, whose loop follows that residue
+    as Tonelli-Shanks's follows its operand
+- one modular inverse, in the layer above: `aff_from_jac_var`,
+    `x_aff_from_jac_var`, `aff_from_jac_batch_var` and
+    `y_aff_from_jac_var` follow the `Z` they are handed; `double_aff_var`,
+    `add_aff_var` and the `add_var` over them follow the coordinates.
+    `y_var` and its three tiebreakers follow their `x` on the 1 mod 4
+    curves above, where on secp256k1 they are a fixed exponentiation
 
 `aff_from_jac_var` and `add_aff_var` take the suffix because they are an
 extended Euclid and a few products, `y_var`, `sec_point.point_from_octets_var`
@@ -712,8 +705,28 @@ Three tiers of duration follow, of which only the first is constant-time:
 So **a secret takes the plain name and a public value takes the `_var`
 one**, which is the opposite of an optimization default and is meant to
 be: the fail-safe direction is that forgetting to choose gives the slower
-and safer call. A reviewer should be able to tell which is which without
-tracing where each value came from.
+and safer call.
+
+**An integer whose value decides the work is `Public`**, which `ecc.alias`
+defines as `NewType("Public", int)`: a parameter of a `_var` function, and
+one of a function that keeps its plain name over variable-time work on it,
+such as the `r` and `s` of `dsa._assert_as_valid_` or `TweakChain.point`'s
+`t`. A function whose variable-time call is one step among other work
+declares the value at that call, as `frost.sign` does with `signer_id`,
+and the curve's parameters are not operands. The mypy hook runs strict
+over `src/ecc`, `tests` and `.github/scripts`, and refuses a plain `int`
+there, so the caller writes `Public(x)`, and that call is where `x` is
+declared public, as `secp256k1_declassify` marks memory no longer secret
+in libsecp256k1's constant-time analysis. A reviewer reads the declaration
+at the call site rather than tracing where the value came from. A blinded
+value is declared the same way: `mod_inv` hands `mod_inv_var`
+`Public(a * b % m)`.
+
+`tests/public_parameter_test.py` holds every integer parameter of a `_var`
+function to the type, or to the reason it names why it is not `Public`. A
+plain-named function is not walked, and annotating it is the author's
+part. The type is an integer: for a point, octets or a key the suffix
+alone states the contract.
 
 Add the suffix when adding a function whose work follows the operand, and
 not where it does not: a suffix on everything says nothing about anything.
@@ -729,10 +742,9 @@ In this package, the second tier is `_mult_regular_window`,
 operations for every scalar of the curve; `_blinded_jac`, which leaves the
 intermediate values a function of a random factor rather than of the
 scalar alone; and `mod_inv`, which leaves an extended Euclid's iteration
-count following a random factor rather than the caller's operand, at 1.02x
-where `mod_inv_var` is 2.06x over the same range. `dsa`'s signing inverts
-the nonce with `mod_inv` while its `r`, its `s` and a verification's `Z`
-take `mod_inv_var`.
+count following a random factor rather than the caller's operand. `dsa`'s
+signing inverts the nonce with `mod_inv` while its `r`, its `s` and a
+verification's `Z` take `mod_inv_var`.
 
 ### The environment and the gates
 

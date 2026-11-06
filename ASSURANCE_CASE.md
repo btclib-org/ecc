@@ -217,8 +217,10 @@ to, and what counters each.
   run under ClusterFuzzLite in `.github/workflows/fuzz.yml`, and
   `tests/fuzz_corpus_test.py` checks that every seed of their corpus
   still parses.
-- **Observable timing (CWE-208).** The `_var` convention and the
-  delegation above; what is left is published in SECURITY.md.
+- **Observable timing (CWE-208).** The `_var` convention and its
+  `Public` type, which CONTRIBUTING.md's *A `_var` suffix means the
+  operand decides the work* states, and the delegation above; what is
+  left is published in SECURITY.md.
 - **Weak randomness (CWE-330, CWE-338).** Randomness comes from `secrets`
   (SECURITY.md), and ruff's flake8-bandit rules, selected with the rest
   of `ALL` in `pyproject.toml`, flag a call into the `random` module
