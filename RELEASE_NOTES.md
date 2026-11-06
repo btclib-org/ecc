@@ -9,6 +9,43 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.11.7
+
+- **Variable-time integer parameters are typed `ecc.alias.Public`**
+  (closes #420, closes #419). `Public` is `NewType("Public", int)`, and
+  mypy refuses a plain `int` where it is asked for. The run time
+  converts what it converted before. They are:
+    - in `number_theory`, `a` and `b` of `xgcd_var`, and `a` of
+      `mod_inv_var`, `legendre_symbol_var`, `mod_sqrt_var` and
+      `tonelli_var`, which took an `int`, and `a` of `mod_inv_batch_var`,
+      which took a `Sequence[int]` and takes a `Sequence[Public]`;
+    - `x` of `CurveGroup.y_var`, `y_even_var`, `y_low_var` and
+      `y_quadratic_residue_var`, and of `curves.curve.is_x_coordinate_var`,
+      which took an `int`;
+    - in `curves.curve`, `u` and `v` of `double_mult_var`, `t` of
+      `tweak_add_var` and `TweakChain.point`, and `scalars` of
+      `multi_mult_var`, a `Sequence[Public]` where it was a
+      `Sequence[Integer]`;
+    - `t` of `curves.sec_point.PubKeyTweakChain.tweak_add_var` and of
+      `ssa.pub_key_tweak_add_var`, which took an `Integer`.
+
+  Act on it if you type-check code that calls them: wrap each such
+  argument as `Public(x)`, which also says the value is public. mypy
+  refuses octets or a string where an `Integer` became `Public`: convert
+  them to an `int` first.
+- **`dsa.anti_exfil_host_verify` answers `False` for a signature whose s
+  is above n // 2** (closes #465). Plain `dsa.verify_` still accepts both
+  forms.
+
+  Act on it if your device signs with `anti_exfil_sign(...,
+  lower_s=False)`, or the host relied on a high s passing: sign with a low
+  s. `dsa.anti_exfil_host_verify` raises for a structurally invalid key
+  or message hash, and `ssa.anti_exfil_host_verify` for a structurally
+  invalid key or signature, as their `verify_` do; their docstrings
+  promised `False` (closes #466).
+
+`CHANGELOG.md`'s own `v2026.11.7` section has the rest.
+
 ## v2026.11.6
 
 No breaking changes. `ecc.curves.PubKeyTweakChain` is new: it adds

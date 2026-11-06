@@ -23,6 +23,46 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.11.7
+
+### Variable-time integer parameters are typed `ecc.alias.Public`
+
+`Public` is `NewType("Public", int)`, and a caller writes `Public(x)`
+where it declares a value public (closes #420, closes #419,
+issue #418).
+
+### `dsa.anti_exfil_host_verify` refuses a high s
+
+As secp256k1-zkp and the draft anti-exfil BIP do. The draft's vectors
+are vendored, and run for `dsa` and `ssa` on both arms (closes #465,
+closes #466).
+
+### Secret checks are left to the bindings around their calls
+
+`curves.add`, `sec_point.mult_pub_key` and `ecies.derive_keys` run no
+Python check on a secret where the bindings' call makes it (closes #439,
+closes #440, closes #441, closes #442).
+
+### BIP459's vectors are pinned at the merged text
+
+bitcoin/bips `f3d16688`, with its nonce vectors. `ssa` and
+`ssa_halfagg` are tested for errors that cancel in aggregation
+(closes #431, closes #433, closes #443).
+
+### The coverage floor measures `.github/scripts`
+
+(closes #432, closes #430)
+
+### The dev tooling moves
+
+hypothesis 6.170.13, mypy 2.4.1, pytest 9.2.0, ruff 0.17.3 and uv-build
+0.13.6 (#461), and `astral-sh/setup-uv` 10.3.3 (#460).
+
+### CONTRIBUTING.md and RELEASING.md follow btclib-org/.github
+
+(issue btclib-org/.github#2022, issue btclib-org/.github#2054,
+issue btclib-org/.github#1855)
+
 ## v2026.11.6
 
 ### `ecc.curves.PubKeyTweakChain`, BIP32's public derivation on compressed SEC octets
