@@ -10,12 +10,14 @@ http://www.secg.org/sec1-v2.pdf
 
 specialized with bitcoin canonical 'lower-s' form, which is what ``sign``
 produces: a high-s signature is non-standard and does not relay, so
-normalizing is the signer's job. Verification and recovery take both
-forms and offer no flag to refuse either -- which form s carries was
-decided by whoever signed, and refusing one refuses a signature that
-signer was free to make. The rule survives where it belongs: in ``sign``,
-in a script interpreter's own flags, and in the leading-underscore
-functions a test asks for it with.
+normalizing is the signer's job. Plain verification -- ``verify``,
+``verify_`` and ``assert_as_valid_`` -- and recovery take both forms and
+offer no flag to refuse either: which form s carries was decided by
+whoever signed, and refusing one refuses a signature that signer was free
+to make. The rule survives where it belongs: in ``sign``, in a script
+interpreter's own flags, in the leading-underscore functions a test asks
+for it with, and in ``anti_exfil_host_verify``, where the device signs
+and is the party not trusted to choose.
 
 ``sign`` also grinds for a low-R signature -- one byte shorter in DER --
 by default, as Core does; ``_grind_low_r`` is the loop and says why. Its
@@ -293,9 +295,9 @@ class Sig:
     The ECDSA signature (r, s) should be 64 bytes,
     r and s being 32 bytes integers each;
     however, integers in DER are signed,
-    so if the value being encoded is greater than 2^128,
+    so if the value being encoded is 2^255 or more,
     a 33rd byte is added in front.
-    Bitcoin has a "low s" rule for the s value to be below ec.n,
+    Bitcoin has a "low s" rule for the s value to be at most ec.n // 2,
     but it is only a standardness rule miners are allowed to ignore.
     Moreover, no such rule exists for r.
 
@@ -1704,8 +1706,7 @@ def assert_as_valid_(
     Both forms of s are accepted, and there is no flag to ask otherwise:
     which of the two a signature carries was decided by whoever signed it,
     so a verifier refusing one is refusing a signature the signer was free
-    to make. The low-s rule belongs to the signer -- ``sign`` applies it --
-    and to a script interpreter, which reads it off its own flags.
+    to make. The module docstring says where the low-s rule belongs.
     """
     # ahead of everything, and the one input whose refusal has to be a
     # TypeError: verify_ below turns a ValueError into False, so an hf
@@ -1895,12 +1896,12 @@ def verify_(
     is: the answer is about this signature and this commitment, both.
 
     Raises where the public key or the message hash is structurally
-    invalid -- a key spelled in a way no conversion accepts, or a digest
-    that is not `hf`'s size -- and answers False for a well-formed
-    signature, key and digest that are merely not authentic: a scalar out
-    of range, a key that does not lift, a malformed DER encoding, an
-    equation that does not hold. See `_assert_structurally_valid_`, the
-    comment every boolean verification in this library points at.
+    invalid -- a key spelled in a way no conversion accepts or that does
+    not lift, or a digest that is not `hf`'s size -- and answers False for
+    a well-formed signature, key and digest that are merely not authentic:
+    a scalar out of range, a malformed DER encoding, an equation that does
+    not hold. See `_assert_structurally_valid_`, the comment every boolean
+    verification in this library points at.
 
     Where the bindings are required (`curves.set_libsecp256k1_serving` with
     `required=True`) and decline `hf`, it raises `EccRuntimeError`
@@ -2074,6 +2075,9 @@ def anti_exfil_sign(
     exchange is over -- and because the R of step 2 belonged to the
     commitment it was derived from, no nonce is ever used twice and the
     device's key is never the thing at risk.
+
+    With ``lower_s=False`` the signature fails step 5 whenever its s is
+    the high one: ``anti_exfil_host_verify`` says why.
     """
     # grind=False, and it is the protocol that requires it rather than the
     # encoding: grinding a nonce is the freedom this exchange takes away
@@ -2114,11 +2118,24 @@ def anti_exfil_host_verify(
 
     receipt is the R of step 2, what secp256k1-zkp's
     `secp256k1_ecdsa_s2c_opening` holds.
-    False and not an exception for everything that fails, as ``verify_``
-    answers: a rho of the wrong size is a rho this commitment does
-    not open to.
+
+    **A high s is False here**, though ``verify_`` accepts it. The
+    device signs, and if the host took both s and n - s, the device
+    could pick one of the two and send out one bit per signature.
+    secp256k1-zkp's `secp256k1_anti_exfil_host_verify` refuses a high s
+    too, since it ends in `secp256k1_ecdsa_verify`, which accepts the
+    lower s only.
+
+    Otherwise it raises and answers False for the same reasons ``verify_``
+    does: a key or a message hash that is structurally invalid raises, and
+    a rho of the wrong size is False, a rho this commitment does not open
+    to.
     """
-    return verify_(msg_hash, key, sig, hf, commit_hash=rho, receipt=receipt)
+    if not verify_(msg_hash, key, sig, hf, commit_hash=rho, receipt=receipt):
+        return False
+    # verify_ answered True, so sig is a valid signature and parses
+    parsed = sig if isinstance(sig, Sig) else Sig.parse(sig)
+    return parsed.s <= parsed.ec.n // 2
 
 
 def _recover_pub_keys_(
@@ -2398,13 +2415,13 @@ def _libsecp256k1_recover_sec_(
     # `_recover_pub_key_` makes on its own side, the screen there
     # being what the bindings impose here.
     #
-    # The lower-s rule is checked here and not there, and only when asked
-    # for: the recoverable parser takes any s in [1, n-1], as it must, a
-    # malleated signature recovering a key too. Nothing in the public
-    # surface asks -- which form s took was the signer's choice -- so this
-    # is the private spelling of the same question _assert_as_valid_
-    # answers with this very message, and it exists so that the two
-    # implementations of the step can be held to one answer under it
+    # The lower-s rule is checked here and not there, and only when asked for:
+    # the recoverable parser takes any s in [1, n-1], as it must, a malleated
+    # signature recovering a key too. Nothing in the public recovery surface
+    # asks -- which form s took was the signer's choice -- so this is the
+    # private spelling of the same question _assert_as_valid_ answers with this
+    # very message, and it exists so that the two implementations of the step
+    # can be held to one answer under it
     if lower_s and sig.s > sig.ec.n // 2:
         raise EccValueError("not a low s")
 

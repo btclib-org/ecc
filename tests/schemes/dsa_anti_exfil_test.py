@@ -29,8 +29,9 @@ from hashlib import sha1, sha256
 
 import pytest
 
-from ecc.curves import bytes_from_point, secp256k1
+from ecc.curves import bytes_from_point, mult, secp256k1
 from ecc.ecc import dsa
+from ecc.ecc.commit_nonce import commit_nonce_
 from ecc.exceptions import EccValueError
 
 # the key and the message of test_ecdsa_s2c_fixed_vectors, which
@@ -126,6 +127,9 @@ def test_the_whole_handshake() -> None:
     sig = dsa.anti_exfil_sign(_HANDSHAKE_MSG_HASH, _PRV_KEY, _RHO)
     # 5. the host checks the signature against that R and its own rho
     assert dsa.anti_exfil_host_verify(_HANDSHAKE_MSG_HASH, _PUB_KEY, sig, _RHO, R)
+    assert dsa.anti_exfil_host_verify(
+        _HANDSHAKE_MSG_HASH, _PUB_KEY, sig.serialize(), _RHO, R
+    )
 
     # an ordinary ECDSA signature, which is the whole point: nothing on
     # the chain says the nonce was negotiated
@@ -147,15 +151,42 @@ def test_the_whole_handshake() -> None:
         secp256k1.add_var(R, secp256k1.G),
     )
 
-    # the malleated twin shares r, so the commitment opens to it as well, and
-    # step 5 accepts it: what this step proves is that the nonce was the
-    # committed one, which the negation of s does not touch. Whether s is the
-    # low one was the device's choice and is nobody's business here (issue
-    # btclib-org/btclib#695) -- a host that wants the canonical form has the
-    # signature in hand and can look
+    # nor the malleated twin, which shares r and so opens the commitment, and
+    # which plain verification accepts: `anti_exfil_host_verify` says why the
+    # host refuses it all the same
     malleated = dsa.Sig(sig.r, sig.ec.n - sig.s)
-    assert dsa.anti_exfil_host_verify(_HANDSHAKE_MSG_HASH, _PUB_KEY, malleated, _RHO, R)
     assert malleated.s > secp256k1.n // 2
+    assert dsa.verify_(_HANDSHAKE_MSG_HASH, _PUB_KEY, malleated)
+    assert not dsa.anti_exfil_host_verify(
+        _HANDSHAKE_MSG_HASH, _PUB_KEY, malleated, _RHO, R
+    )
+    assert not dsa.anti_exfil_host_verify(
+        _HANDSHAKE_MSG_HASH, _PUB_KEY, malleated.serialize(), _RHO, R
+    )
+
+
+def test_the_largest_low_s_is_accepted_and_the_next_is_refused() -> None:
+    """The largest low s, n // 2, passes step 5, and its twin does not.
+
+    The draft anti-exfil BIP's case for this bound,
+    `ecdsa-forced-isolated-s-low-limit-host`, needs a hash override, and
+    `anti_exfil_vectors_test.py` runs none. This builds such a tuple
+    without one: a nonce of its own, tweaked by rho as step 4 tweaks it,
+    and the message hash that makes s the bound.
+    """
+    n = secp256k1.n
+    # the tag `dsa` tweaks its sign-to-contract nonce with
+    nonce, R = commit_nonce_(_RHO, 11, b"s2c/ecdsa/point")
+    r = mult(nonce)[0] % n
+    q = int.from_bytes(_PRV_KEY, "big")
+    msg_hash = ((n // 2 * nonce - r * q) % n).to_bytes(32, "big")
+    low = dsa.Sig(r, n // 2)
+    high = dsa.Sig(r, n // 2 + 1)
+    assert high.s == n - low.s
+    assert dsa.verify_(msg_hash, _PUB_KEY, low)
+    assert dsa.verify_(msg_hash, _PUB_KEY, high)
+    assert dsa.anti_exfil_host_verify(msg_hash, _PUB_KEY, low, _RHO, R)
+    assert not dsa.anti_exfil_host_verify(msg_hash, _PUB_KEY, high, _RHO, R)
 
 
 def test_the_signer_keeps_no_state() -> None:

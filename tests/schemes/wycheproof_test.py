@@ -38,10 +38,11 @@ What it does not share is the low-s rule, and the two files say so by naming the
 same signature twice: tcId 1 and tcId 388 of the bitcoin file are tcId 5 and
 tcId 392 of the generic one -- one key and one signature each time, `invalid`
 there and `valid` here. This package answers `valid` for all four, which form s
-took having been the signer's choice, so a verifier has no standing to refuse it
-(issue btclib-org/btclib#695); the rule itself lives in `sign` and in the
-leading-underscore spellings. `_generic_valid` below is how those two are found,
-and says why a flag would find only one.
+took having been the signer's choice, so plain verification has no standing to
+refuse it (issue btclib-org/btclib#695). `ecc.ecc.dsa`'s module docstring says
+where the rule belongs, an anti-exfil host's check among those places.
+`_generic_valid` below is how those two are found, and says why a flag would
+find only one.
 
 Hash functions beyond sha256, for the same reason in a second direction.
 Bitcoin signs with sha256 and nothing else, so the sha512, SHA3 and SHAKE

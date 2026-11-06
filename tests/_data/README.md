@@ -1045,6 +1045,47 @@ with secret key zero, which is not a valid key. This package refuses a
 zero r or s where upstream parses it; the test asks `recover_pub_key_`
 for the refusal.
 
+## AvilaLabs/anti-exfil
+
+### The draft anti-exfil BIP: files under `tests/schemes/_data/`
+
+`bip-anti-exfil.json` and `bip-anti-exfil-boundary.json`, under
+upstream's own names, from `vectors/`. They are the vectors of the
+protocol the draft `spec/bip-anti-exfil.md` specifies. Both are pinned
+to the commit that added them, the last to touch either path. Upstream's
+`vectors/bip-anti-exfil.README.md` offers `bip-anti-exfil.json` under
+CC0 or MIT, and the `license` field of both files reads MIT.
+
+`tests/schemes/anti_exfil_vectors_test.py` runs the host side of every
+`valid`, `reject` and `host_accept` case of both files, and its docstring
+says which cases it does not run and why.
+
+### `tests/schemes/_data/bip-anti-exfil.json`
+
+```text
+repo    AvilaLabs/anti-exfil
+path    vectors/bip-anti-exfil.json
+commit  928f9b123b823697202a4ca287d2337c169751b5  2026-11-05
+blob    36bb03f6855b56262346759afee0d9967b40c02d
+pulled  2026-11-06
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical**.
+
+### `tests/schemes/_data/bip-anti-exfil-boundary.json`
+
+```text
+repo    AvilaLabs/anti-exfil
+path    vectors/bip-anti-exfil-boundary.json
+commit  928f9b123b823697202a4ca287d2337c169751b5  2026-11-05
+blob    fc5980813573e7357244c4abb130be6062f83fbd
+pulled  2026-11-06
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical**.
+
 ## Other projects
 
 ### `tests/schemes/_data/bitcoin_core_compact_vectors.json`
@@ -1579,9 +1620,10 @@ repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/ecdsa_s2c/tests_impl.h
 commit  6a01f71674cd3550e42d725420ddfb9e8571e223  2026-10-17
 blob    701b5ae56795a717b2e6b22f7e2ee349cfd3131d
-ours    ddefb3ccb2c582e17352087ea93fb96386abc242
+ours    ea9dfd46c3efa96ccc76bc68c6d3763c78b8a876
 pulled  2026-08-02, refreshed 2026-08-06, 2026-08-07, 2026-08-09,
-        2026-08-13, 2026-08-14, 2026-09-10 and 2026-09-26
+        2026-08-13, 2026-08-14, 2026-09-10, 2026-09-26, 2026-10-20 and
+        2026-11-06
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -1935,8 +1977,8 @@ git ls-files 'tests/_data/*' 'tests/*/_data/*' | grep -cv 'README.md'
 Against a pinned upstream blob:
 
 - identical byte for byte: the BIP327 vector files,
-  `wallet-test-vectors.json`, the Wycheproof vector files and
-  `ecdsa_adaptor.json`.
+  `wallet-test-vectors.json`, the Wycheproof vector files,
+  `ecdsa_adaptor.json` and the draft anti-exfil BIP's vector files.
 - identical but for a trailing newline: `WYCHEPROOF_COPYING`,
   `dlc_schnorr_test.json` and the BIP445 vector files.
 - identical but for CRLF against LF: `bip340_test_vectors.csv`, the

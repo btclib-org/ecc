@@ -89,6 +89,10 @@ _TESTS = Path(__file__).parent
 _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
     "curves/bip32_public_derivation_test.py": ("bip32_public_derivation.json",),
     "curves/curve_test.py": ("pubkey.json",),
+    "schemes/anti_exfil_vectors_test.py": (
+        "bip-anti-exfil-boundary.json",
+        "bip-anti-exfil.json",
+    ),
     "schemes/der_test.py": ("der_length_vectors.json",),
     "schemes/dleq_test.py": (
         "test_vectors_generate_proof.csv",
@@ -152,6 +156,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "curves.curve.TweakChain.__init__": ("curves/curve_test.py",),
     "curves.curve._add": ("curves/curve_test.py",),
     "curves.curve._jac_double_mult_var": (
+        "schemes/anti_exfil_vectors_test.py",
         "schemes/der_test.py",
         "schemes/dlc_oracle_test.py",
         "schemes/dsa_recovery_test.py",
@@ -166,6 +171,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "curves.curve._mult_checked": (
         "curves/bip32_public_derivation_test.py",
         "curves/curve_test.py",
+        "schemes/anti_exfil_vectors_test.py",
         "schemes/dahlias_test.py",
         "schemes/der_test.py",
         "schemes/dlc_oracle_test.py",
@@ -193,6 +199,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.curve._tweak_add_var": (
         "curves/curve_test.py",
+        "schemes/anti_exfil_vectors_test.py",
         "schemes/dahlias_test.py",
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
@@ -201,6 +208,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "curves.curve._x_octets": (
         "curves/bip32_public_derivation_test.py",
         "curves/curve_test.py",
+        "schemes/anti_exfil_vectors_test.py",
         "schemes/dahlias_test.py",
         "schemes/der_test.py",
         "schemes/dlc_oracle_test.py",
@@ -242,6 +250,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "ecc.dsa.Signer.__init__": (),
     "ecc.dsa.Signer.sign_": (),
     "ecc.dsa.assert_as_valid_": (
+        "schemes/anti_exfil_vectors_test.py",
         "schemes/ecdsa_adaptor_test.py",
         "schemes/rfc6979_test.py",
         "schemes/wycheproof_test.py",
@@ -262,6 +271,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "ecc.ssa.Signer.__init__": ("schemes/ssa_test.py",),
     "ecc.ssa.Signer.sign_": ("schemes/ssa_test.py",),
     "ecc.ssa.assert_as_valid_": (
+        "schemes/anti_exfil_vectors_test.py",
         "schemes/dlc_oracle_test.py",
         "schemes/frost_test.py",
         "schemes/musig2_test.py",

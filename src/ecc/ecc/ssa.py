@@ -1456,9 +1456,10 @@ def anti_exfil_host_verify(
     not a signature. Which ``verify_`` already does in one call, both
     checks running against the same r.
 
-    receipt is the R of step 2. False and not an exception for everything
-    that fails, as ``verify_`` answers: a rho of the wrong size is a rho
-    this commitment does not open to.
+    receipt is the R of step 2. It raises and answers False for the same
+    reasons ``verify_`` does: a key or a signature that is structurally
+    invalid raises, and a rho of the wrong size is False, a rho this
+    commitment does not open to.
     """
     return verify_(msg, Q, sig, hf, commit_hash=rho, receipt=receipt)
 

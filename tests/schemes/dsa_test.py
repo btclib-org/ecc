@@ -1377,9 +1377,9 @@ def test_the_low_s_rule_is_asked_for_and_not_assumed(
     The rule is policy: `SCRIPT_VERIFY_LOW_S` is in Core's
     `STANDARD_SCRIPT_VERIFY_FLAGS`, so a high-s signature inside a
     transaction is non-standard and does not relay, and `sign` normalizes
-    for that reason. A verifier here does not refuse one -- so the
-    strict answer is what a leading-underscore function gives when asked
-    for it, `lower_s=False` being the default there too.
+    for that reason. `verify` and the recovery do not refuse one -- so
+    the strict answer is what a leading-underscore function gives when
+    asked for it, `lower_s=False` being the default there too.
 
     Both implementations of the recovery are asked, being one step written
     twice: the bindings answer the named candidate and the Python path
