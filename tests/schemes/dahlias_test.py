@@ -8,9 +8,9 @@ The vectors are BIP459's own, the csv files of `bip-0459/vectors/`,
 vendored under `tests/schemes/_data/bip459/`; `tests/_data/README.md`
 pins the revision. Every case of every file is run.
 
-A signature of the wrong size, which the verify vectors read as False,
-raises `EccValueError` here: CONTRIBUTING.md's verification carve-out
-covers a value of a declared size.
+A signature or a message of the wrong size, which the verify vectors
+read as False, raises `EccValueError` here: CONTRIBUTING.md's
+verification carve-out covers a value of a declared size.
 
 Sessions are also built here by hand: round trips, the checks `sign`
 makes, and the failures BIP459 lists, those no vector reaches
@@ -1015,6 +1015,52 @@ def _ids(rows: list[list[str]]) -> list[str]:
     return [vector_id(int(row[0]), row[-1]) for row in rows]
 
 
+_NONCE_GEN = _vectors("test_vectors_nonce_gen.csv")
+
+
+@pytest.mark.parametrize("row", _NONCE_GEN, ids=_ids(_NONCE_GEN))
+@both_arms
+def test_nonce_gen_vectors(row: list[str]) -> None:
+    """The secnonce and the pubnonce match, with and without each option."""
+    _, rand_, sk, extra_in, sec_nonce, pub_nonce, _ = row
+    prv_key = int(sk, 16) if sk else None
+    sec, pub = dahlias.nonce_gen_(rand_, prv_key, extra_in)
+    assert (sec.hex(), pub.hex()) == (sec_nonce.lower(), pub_nonce.lower())
+
+
+_NONCE_AGG = _vectors("test_vectors_nonce_agg.csv")
+
+
+# each refused case's comment -> the signer it blames, None for a half that
+# sums to infinity; a refused case missing here fails
+_NONCE_AGG_BLAMES = {
+    "Signer 1's pubnonce first half has prefix 0x04": 1,
+    "Signer 0's pubnonce second half is not on the curve": 0,
+    "Signer 0's pubnonce second half exceeds field size": 0,
+    "Aggregate nonce R1 is infinity": None,
+    "Aggregate nonce R2 is infinity": None,
+}
+
+
+@pytest.mark.parametrize("row", _NONCE_AGG, ids=_ids(_NONCE_AGG))
+@both_arms
+def test_nonce_agg_vectors(row: list[str]) -> None:
+    """Each aggregate matches; each refusal blames the signer the file names."""
+    _, pub_nonces, expected, agg_nonce, comment = row
+    nonces = _hex_list(pub_nonces)
+    if expected == "TRUE":
+        assert dahlias.nonce_agg_var(nonces).hex() == agg_nonce.lower()
+        return
+    signer = _NONCE_AGG_BLAMES[comment]
+    if signer is None:
+        with pytest.raises(EccValueError, match="infinity"):
+            dahlias.nonce_agg_var(nonces)
+    else:
+        with pytest.raises(InvalidContributionError) as e:
+            dahlias.nonce_agg_var(nonces)
+        assert (e.value.signer, e.value.contrib) == (signer, "pubnonce")
+
+
 _SIGN = _vectors("test_vectors_sign.csv")
 
 
@@ -1091,10 +1137,10 @@ _VERIFY = _vectors("test_vectors_verify.csv")
 
 @pytest.mark.parametrize("row", _VERIFY, ids=_ids(_VERIFY))
 def test_verify_vectors(row: list[str]) -> None:
-    """Each answer matches; a signature of the wrong size raises."""
+    """Each answer matches; a signature or message of the wrong size raises."""
     _, pks, msgs, sig, expected, _ = row
     pub_keys, ms = _hex_list(pks), _hex_list(msgs)
-    if len(sig) != 128:
+    if len(sig) != 128 or any(len(m) != 32 for m in ms):
         assert expected == "FALSE"
         with pytest.raises(EccValueError):
             dahlias.verify(pub_keys, ms, sig)

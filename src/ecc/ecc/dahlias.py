@@ -4,7 +4,7 @@
 
 """DahLIAS fully aggregated signatures, according to BIP459.
 
-https://github.com/bitcoin/bips/pull/2210, a draft, at head `8678edb4ad`.
+https://github.com/bitcoin/bips/blob/master/bip-0459.mediawiki
 
 Each of *u* signers signs its own 32-byte message under its own x-only
 key, and the signers jointly produce one 64-byte signature for the

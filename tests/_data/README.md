@@ -590,27 +590,52 @@ The csv files of `bip-0459/vectors/`, vendored whole and under upstream's
 own names, in a subdirectory: the names say nothing of BIP459, and
 `test_vectors_verify.csv` is a name another BIP's vectors could carry.
 
-The BIP is a draft, on `bitcoin/bips#2210` and on no branch of
-`bitcoin/bips` yet. Each pin is the pull request's head ref, which `ref`
-names: GitHub keeps that ref in `bitcoin/bips` itself, so it survives the
-fork's branch being renamed, rebased or deleted. `commit` is the last
-commit on it touching the path, and the pull request's head when this
-was pulled, `8678edb4ad56abd98acb56705b1a2861dcc97d8a`, holds the same
-blob. The weekly check reports a new revision of the pull request that
-touches a file. Once the BIP is merged the ref stops moving, and the
-pins move to `master`.
+Each is pinned to the commit that last touched it, `f3d16688`, the
+commit of bitcoin/bips#2210 that adds the BIP; the merge commit,
+`21bfd24d`, holds the same blobs.
 
 `tests/schemes/dahlias_test.py` runs every case of every file. A
-signature of the wrong size, which the verify file reads as False,
-raises there instead, as the test module's docstring says.
+signature or a message of the wrong size, which the verify file reads as
+False, raises there instead, as the test module's docstring says.
+
+### `tests/schemes/_data/bip459/test_vectors_nonce_agg.csv`
+
+```text
+repo    bitcoin/bips
+path    bip-0459/vectors/test_vectors_nonce_agg.csv
+commit  f3d1668891fcdad99770245110bc6a22c87bce97  2026-11-03
+blob    ef6072cfd57ea1353eaa2195b265f0233af9dfba
+ours    b7646aa926babbdabaf8de44c3eb0d57c4d4b81e
+pulled  2026-11-06
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the exception
+`bip340_test_vectors.csv` above documents, our blob `b7646aa9` rather
+than the one above.
+
+### `tests/schemes/_data/bip459/test_vectors_nonce_gen.csv`
+
+```text
+repo    bitcoin/bips
+path    bip-0459/vectors/test_vectors_nonce_gen.csv
+commit  f3d1668891fcdad99770245110bc6a22c87bce97  2026-11-03
+blob    92bc3b4c83ba34a0719005b0a93d3ff2b1311cc6
+ours    a8c50fb17504e43c2f7f05c1d9236c3448e30c7e
+pulled  2026-11-06
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **identical but for line endings**, the exception
+`bip340_test_vectors.csv` above documents, our blob `a8c50fb1` rather
+than the one above.
 
 ### `tests/schemes/_data/bip459/test_vectors_partial_sig_verify.csv`
 
 ```text
 repo    bitcoin/bips
 path    bip-0459/vectors/test_vectors_partial_sig_verify.csv
-ref     refs/pull/2210/head
-commit  b3343f3b848d49f407e2d6e5912bd5c9ce9cdf5f  2026-10-21
+commit  f3d1668891fcdad99770245110bc6a22c87bce97  2026-11-03
 blob    995149bc604b861dd17e2da4d524965cb06213d4
 ours    a9793e1f321f52351ae4844ff10ba61eb5844d9d
 pulled  2026-10-25
@@ -626,8 +651,7 @@ than the one above.
 ```text
 repo    bitcoin/bips
 path    bip-0459/vectors/test_vectors_sign.csv
-ref     refs/pull/2210/head
-commit  b3343f3b848d49f407e2d6e5912bd5c9ce9cdf5f  2026-10-21
+commit  f3d1668891fcdad99770245110bc6a22c87bce97  2026-11-03
 blob    6f9c78f77950518d8e46b8f5a031745efa772680
 ours    58fa716aac5aba285f0c1402581fbf7e94b5d821
 pulled  2026-10-25
@@ -643,8 +667,7 @@ than the one above.
 ```text
 repo    bitcoin/bips
 path    bip-0459/vectors/test_vectors_sign_error.csv
-ref     refs/pull/2210/head
-commit  b3343f3b848d49f407e2d6e5912bd5c9ce9cdf5f  2026-10-21
+commit  f3d1668891fcdad99770245110bc6a22c87bce97  2026-11-03
 blob    859c88e6d3467b452075e5a898f96c7d592590ee
 ours    6384a647ad1947010f14669c706a7dcd5270aaca
 pulled  2026-10-25
@@ -660,8 +683,7 @@ than the one above.
 ```text
 repo    bitcoin/bips
 path    bip-0459/vectors/test_vectors_tweak.csv
-ref     refs/pull/2210/head
-commit  b3343f3b848d49f407e2d6e5912bd5c9ce9cdf5f  2026-10-21
+commit  f3d1668891fcdad99770245110bc6a22c87bce97  2026-11-03
 blob    406e8650f610177db40f5562a8bf66ef041eeb72
 ours    7380491d292dfb994527f623ebfec70a9928e7ca
 pulled  2026-10-25
@@ -677,16 +699,15 @@ than the one above.
 ```text
 repo    bitcoin/bips
 path    bip-0459/vectors/test_vectors_verify.csv
-ref     refs/pull/2210/head
-commit  b3343f3b848d49f407e2d6e5912bd5c9ce9cdf5f  2026-10-21
-blob    68b5564ae6a8544137d0c93904d603a34c9ca8c3
-ours    97cfb8151fb789bc97b0b88396456d4ec6992434
-pulled  2026-10-25
+commit  f3d1668891fcdad99770245110bc6a22c87bce97  2026-11-03
+blob    8706ead5260803f0a47f38ea0c684c727343e423
+ours    156e4a990a092fd1af5bfdb378d7ee4d36c06612
+pulled  2026-10-25, refreshed 2026-11-06
 behind  0 revisions; that commit is the tip of the path
 ```
 
 Verdict: **identical but for line endings**, the exception
-`bip340_test_vectors.csv` above documents, our blob `97cfb815` rather
+`bip340_test_vectors.csv` above documents, our blob `156e4a99` rather
 than the one above.
 
 ## siv2r/bip-frost-signing
@@ -896,7 +917,7 @@ the file is the program's output unchanged.
 ```text
 repo    bitcoin-core/secp256k1
 path    src
-commit  32099110d63a1dec1a7d27067450fd97d20ea30f  2026-10-20
+commit  1c088b64867d63f489d9d2ec58219e21f28357dd  2026-11-03
 ours    a8f306732166cf782473ecbd2b90030616953689
 pulled  2026-09-10, refreshed 2026-09-14, 2026-10-07, 2026-10-26 and 2026-10-28
 behind  0 revisions; that commit is the tip of the path
@@ -1031,8 +1052,8 @@ for the refusal.
 ```text
 repo    bitcoin/bitcoin
 path    src/test/key_tests.cpp
-commit  e8691056c0140f8fa850fc6837dde915ebeb22cc  2026-08-03
-blob    75173e4b2e0d026b3d406f6830646aec8c1ab2e9
+commit  722d08e03980c359bae4e3b65551d6b8ba615a7a  2026-10-22
+blob    ba37ce0f687ba2b34e579326df41e6f25eaf562a
 ours    b69061ea0c19ce5ad310816b918f946c3bfebe15
 pulled  2026-10-11
 behind  0 revisions; that commit is the tip of the path

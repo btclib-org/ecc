@@ -792,6 +792,28 @@ def test_batch_and_single_verification_agree_about_a_non_canonical_s(
         ssa.assert_batch_as_valid(msgs, Qs, sigs)
 
 
+@pytest.mark.parametrize("d", [1, 2, 3])
+@both_arms
+def test_a_batch_refuses_two_invalid_signatures_whose_errors_cancel(d: int) -> None:
+    """A batch of s - d and s + d passes only with a second randomizer of 1.
+
+    The first randomizer is 1, so the two errors add up to (a_1 - 1) * d,
+    with a_1 the second one: the batch is refused unless a_1 is 1. A single
+    bad signature fails at any coefficient, so it cannot catch a
+    randomizer stuck at 1 (https://delvingbitcoin.org/t/3019).
+    """
+    q, Q = ssa.gen_keys(1)
+    msg = b"msg"
+    sig = ssa.sign(msg, q, b"\x00" * 32)
+    low = ssa.Sig(sig.r, sig.s - d)
+    high = ssa.Sig(sig.r, sig.s + d)
+    assert not ssa.verify(msg, Q, low)
+    assert not ssa.verify(msg, Q, high)
+    assert not ssa.batch_verify([msg, msg], [Q, Q], [low, high])
+    with pytest.raises(EccRuntimeError, match="signature verification failed"):
+        ssa.assert_batch_as_valid([msg, msg], [Q, Q], [low, high])
+
+
 def test_batch_validation_on_the_python_path(monkeypatch: pytest.MonkeyPatch) -> None:
     """The batch verification equation, on both point arithmetics.
 

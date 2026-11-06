@@ -137,6 +137,20 @@ def test_the_empty_aggregate() -> None:
                 function(wrong_length, [])
 
 
+def test_inc_aggregate_adds_the_s_of_an_empty_aggregate() -> None:
+    """With no earlier signature, the input aggregate's s is still added.
+
+    BIP458's IncAggregate starts from the input s whatever the number of
+    pairs; z_0 is 1, so an empty aggregate whose s is 1 plus one signature
+    gives that signature with s + 1.
+    """
+    pk, msg, sig = _triples(1)[0]
+    one = (1).to_bytes(32, "big")
+    s = int.from_bytes(sig[32:], "big")
+    expected = sig[:32] + ((s + 1) % ec.n).to_bytes(32, "big")
+    assert ssa_halfagg.inc_aggregate(one, [], [(pk, msg, sig)]) == expected
+
+
 def test_incremental_aggregation_equals_one_shot() -> None:
     """Adding signatures to an aggregate, at every split, is aggregating all."""
     triples = _triples(5)
@@ -260,8 +274,10 @@ def test_inc_aggregate_checks_no_signature() -> None:
 
     BIP458 says so, and this builds the case: s_0 raised by d and s_1
     lowered by d/z_1 leave the sum unchanged, so two invalid signatures
-    give the aggregate of two valid ones. Aggregating also takes an r and
-    a key that are no x-coordinate, which only verification lifts.
+    give the aggregate of two valid ones, through `aggregate` and through
+    `inc_aggregate` onto an input aggregate that does not verify.
+    Aggregating also takes an r and a key that are no x-coordinate, which
+    only verification lifts.
     """
     triples = _triples(2)
     aggsig = ssa_halfagg.aggregate(triples)
@@ -281,6 +297,14 @@ def test_inc_aggregate_checks_no_signature() -> None:
     assert not ssa.verify_(m1, pk1, bad1[2])
     assert ssa_halfagg.aggregate([bad0, bad1]) == aggsig
     assert ssa_halfagg.verify(aggsig, _pairs(triples))
+
+    # the aggregate of one signature is that signature
+    pairs0 = _pairs(triples[:1])
+    assert not ssa_halfagg.verify(bad0[2], pairs0)
+    assert ssa_halfagg.inc_aggregate(bad0[2], pairs0, [bad1]) == aggsig
+    assert not ssa_halfagg.verify(
+        ssa_halfagg.inc_aggregate(bad0[2], pairs0, [triples[1]]), _pairs(triples)
+    )
 
     unliftable = (_NO_X, m0, _NO_X + sig0[32:])
     assert ssa_halfagg.aggregate([unliftable])[:32] == _NO_X

@@ -95,6 +95,8 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
         "test_vectors_verify_proof.csv",
     ),
     "schemes/dahlias_test.py": (
+        "test_vectors_nonce_agg.csv",
+        "test_vectors_nonce_gen.csv",
         "test_vectors_partial_sig_verify.csv",
         "test_vectors_sign.csv",
         "test_vectors_sign_error.csv",
