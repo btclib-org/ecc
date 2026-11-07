@@ -1047,6 +1047,7 @@ test = [
     { name = "pytest-cov" },
     { name = "pytest-randomly" },
     { name = "pytest-xdist" },
+    { name = "sphinx", marker = "python_full_version >= '3.12'" },
 ]
 
 [package.metadata]
@@ -1120,6 +1121,7 @@ test = [
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-randomly", specifier = ">=5.0.0" },
     { name = "pytest-xdist", specifier = ">=3.8.0" },
+    { name = "sphinx", marker = "python_full_version >= '3.12'", specifier = ">=9.1.0" },
 ]
 
 [[package]]

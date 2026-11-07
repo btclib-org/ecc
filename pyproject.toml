@@ -136,6 +136,9 @@ test = [
     { include-group = "harness" },
     { include-group = "bindings" },
     { include-group = "gmpy2" },
+    # tests/docs_conf_test.py executes docs/source/conf.py, which imports
+    # it; the marker and the bound are `docs`'s, below
+    "sphinx>=9.1.0; python_full_version >= '3.12'",
 ]
 lint = [
     { include-group = "bindings" },

@@ -102,8 +102,8 @@ It is fully annotated and ships `py.typed`.
 - the ANSI X9.63 key derivation function and HKDF (`kdf`), and the BIP340
   tagged hash (`hashes`)
 
-[ARCHITECTURE.md](./ARCHITECTURE.md) says how these modules layer and
-which may import which.
+[ARCHITECTURE.md](https://github.com/btclib-org/ecc/blob/main/ARCHITECTURE.md)
+says how these modules layer and which may import which.
 
 For secp256k1 the arithmetic is delegated to
 [btclib-secp256k1](https://github.com/btclib-org/btclib-secp256k1),
@@ -114,13 +114,14 @@ Without them, or with the delegation turned off, every call still
 answers, on the Python arithmetic, which is slower and not constant-time;
 that Python arithmetic serves every other curve anyway, and the suite
 validates it against the bindings.
-[SECURITY.md](./SECURITY.md)'s "Limitations, not vulnerabilities" states
-which calls delegate and what the Python path does and does not hide.
+[SECURITY.md](https://github.com/btclib-org/ecc/blob/main/SECURITY.md)'s
+"Limitations, not vulnerabilities" states which calls delegate and what
+the Python path does and does not hide.
 
 The suite answers to vectors their authors publish -- the BIPs' own,
 Wycheproof's and libsecp256k1-zkp's -- and
-[tests/_data/README.md](./tests/_data/README.md) pins each vendored file
-to the upstream commit it was copied from.
+[tests/_data/README.md](https://github.com/btclib-org/ecc/blob/main/tests/_data/README.md)
+pins each vendored file to the upstream commit it was copied from.
 
 ## Installing
 
@@ -174,24 +175,26 @@ and `tests/readme_test.py` runs every Python block of this file.
 
 ## Security
 
-[SECURITY.md](./SECURITY.md) says how to report a vulnerability, which
-versions are supported, and how a published file is traced back to the
-run that built it.
-[ASSURANCE_CASE.md](./ASSURANCE_CASE.md) argues why the security it states
-holds: the threat model, the trust boundaries, the design principles and
-the weaknesses countered.
+[SECURITY.md](https://github.com/btclib-org/ecc/blob/main/SECURITY.md)
+says how to report a vulnerability, which versions are supported, and
+how a published file is traced back to the run that built it.
+[ASSURANCE_CASE.md](https://github.com/btclib-org/ecc/blob/main/ASSURANCE_CASE.md)
+argues why the security it states holds: the threat model, the trust
+boundaries, the design principles and the weaknesses countered.
 
 ## Contributing
 
 Development is LLM-based: humans are welcome, as long as they are
 comfortable with agentic development ;-). A contribution must have been
 read and understood by the person who submits it.
-[`CONTRIBUTING.md`](./CONTRIBUTING.md#working-with-an-llm) has the rules.
+[`CONTRIBUTING.md`](https://github.com/btclib-org/ecc/blob/main/CONTRIBUTING.md#working-with-an-llm)
+has the rules.
 
-[CONTRIBUTING.md](./CONTRIBUTING.md) has the commands each CI job runs,
-verbatim. `uv sync` creates the environment; uv is the only tool that has
-to be installed. [REVIEWING.md](./REVIEWING.md) is what a pull request is
-answered against.
+[CONTRIBUTING.md](https://github.com/btclib-org/ecc/blob/main/CONTRIBUTING.md)
+has the commands each CI job runs, verbatim. `uv sync` creates the
+environment; uv is the only tool that has to be installed.
+[REVIEWING.md](https://github.com/btclib-org/ecc/blob/main/REVIEWING.md)
+is what a pull request is answered against.
 
 How the organization decides, and who holds which role, is its
 [GOVERNANCE.md](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md);
@@ -203,7 +206,8 @@ what it intends to do, and what it deliberately does not, is its
 - Documentation: <https://btclib-ecc.readthedocs.io/>
 - Source: <https://github.com/btclib-org/ecc>
 - Releases: <https://github.com/btclib-org/ecc/releases>
-- [CHANGELOG.md](./CHANGELOG.md), and [RELEASE_NOTES.md](./RELEASE_NOTES.md)
+- [CHANGELOG.md](https://github.com/btclib-org/ecc/blob/main/CHANGELOG.md),
+  and [RELEASE_NOTES.md](https://github.com/btclib-org/ecc/blob/main/RELEASE_NOTES.md)
   for what a release asks a user to act on
 
 ---
