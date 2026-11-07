@@ -537,14 +537,18 @@ question names it.
   default is that a matching `source-include` pattern puts it there.
 - For each sentence the diff adds: **does the fact it states already
   live elsewhere in the tree?** Search every tracked file for a key
-  phrase of it, with `[\s#]+` between the words so that a phrase wrapped
-  across lines, or across `#` comment lines, still matches:
+  phrase of it, with `\W+` between the words, so that the phrase still
+  matches where a line break, a comment marker or a Markdown backtick
+  falls between them:
 
   ```shell
-  git ls-files -z | xargs -0 perl -0777 -ne \
-    'print "$ARGV\n" if /key[\s#]+phrase/i'
+  git ls-files -z | xargs -0 perl -0777 -e \
+    'while (<<>>) { print "$ARGV\n" if /key\W+phrase/i }' --
   ```
 
-  Read each file it lists. A second statement of the same fact is a
-  finding; the standard's section 9, *One fact in one place*, states the
-  rule.
+  `<<>>` and `--` keep a file name from running as a command or being
+  read as an option. Read each file it lists. A second statement of the
+  same fact is a finding; the standard's section 9, *One fact in one
+  place*, states the rule. A copy a rule requires, such as a source
+  file's copyright header or a file the standard's section 14 copies
+  verbatim, is not one.
