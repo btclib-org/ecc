@@ -535,3 +535,16 @@ question names it.
 - A new file in the repository root: `[tool.check-sdist]`'s `git-only`
   is what says it is deliberately not in the distribution, and its
   default is that a matching `source-include` pattern puts it there.
+- For each sentence the diff adds: **does the fact it states already
+  live elsewhere in the tree?** Search every tracked file for a key
+  phrase of it, with `[\s#]+` between the words so that a phrase wrapped
+  across lines, or across `#` comment lines, still matches:
+
+  ```shell
+  git ls-files -z | xargs -0 perl -0777 -ne \
+    'print "$ARGV\n" if /key[\s#]+phrase/i'
+  ```
+
+  Read each file it lists. A second statement of the same fact is a
+  finding; the standard's section 9, *One fact in one place*, states the
+  rule.
