@@ -92,7 +92,7 @@ pull_requests = "https://github.com/btclib-org/ecc/pulls"
 # is past GHSA-8h6f-34jj-7p6c too, which 0.8.0.10 fixes.
 # This package needs `ecdh.shared_point` (0.8.0.8,
 # btclib-org/btclib-secp256k1#1005), which `curves.curve`,
-# `curves.sec_point` and `ecc.ecc.dh` call to multiply a point other than
+# `curves.sec_point` and `ecc.dh` call to multiply a point other than
 # the generator by a private scalar. `_libsecp256k1` imports the whole
 # surface in one `try`, and a release missing one name of it fails that
 # import with an error naming the installed version and this floor
@@ -356,7 +356,7 @@ extend-ignore-re = ['[0-9A-Za-z+/]{26,}={0,2}']
 # `secp256k1_borromean_verify_impl`'s own out-parameter, the challenges it
 # saves for a rewind (secp256k1-zkp,
 # src/modules/rangeproof/borromean_impl.h), which
-# src/ecc/ecc/rangeproof.py cites. The hook runs with
+# src/ecc/rangeproof.py cites. The hook runs with
 # --write-changes, so without this line it becomes `evaluates`, a word
 # naming nothing in zkp -- a citation a reader would go and fail to find
 evalues = "evalues"

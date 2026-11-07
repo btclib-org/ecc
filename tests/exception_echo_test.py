@@ -23,6 +23,7 @@ from typing import Any
 
 import pytest
 
+from ecc import dleq, dsa, ecies, musig2, pedersen, rangeproof, ssa
 from ecc import number_theory as nt
 from ecc.alias import Public
 from ecc.curves import (
@@ -33,7 +34,6 @@ from ecc.curves import (
 )
 from ecc.curves.curve import is_x_coordinate_var
 from ecc.curves.curve_group import signed_odd_digits
-from ecc.ecc import dleq, dsa, ecies, musig2, pedersen, rangeproof, ssa
 from ecc.exceptions import EccException
 from tests import needs_bindings
 from tests.curves.curve_test import no_bindings_anywhere

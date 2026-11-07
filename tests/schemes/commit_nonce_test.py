@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.commit_nonce` module.
+"""Tests for the `ecc.commit_nonce` module.
 
 The commitment is a parameter of `dsa.sign` and `ssa.sign`, so what is
 exercised here is those two: a signature carrying a commitment verifies as
@@ -25,25 +25,23 @@ from typing import Any
 
 import pytest
 
+from ecc import commit_nonce, dsa, ssa
 from ecc.alias import INF
-from ecc.curves import bytes_from_point, mult, point_from_pub_key, secp256k1
-from ecc.curves.curve import CURVES
-from ecc.ecc import commit_nonce, dsa, ssa
-from ecc.ecc.bip340_nonce import bip340_nonce_
-from ecc.ecc.commit_nonce import (
+from ecc.bip340_nonce import bip340_nonce_
+from ecc.commit_nonce import (
     _tweak,
     commit_entropy_,
     commit_nonce_,
     commit_point_var_,
 )
-from ecc.ecc.dsa import (
+from ecc.curves import bytes_from_point, mult, point_from_pub_key, secp256k1
+from ecc.curves.curve import CURVES
+from ecc.dsa import (
     _S2C_DATA_TAG,
     _S2C_POINT_TAG,
     _compact,
     _sig_from_compact,
 )
-from ecc.ecc.rfc6979_nonce import rfc6979_nonce_
-from ecc.ecc.ssa import _S2C_POINT_TAG as _SSA_POINT_TAG
 from ecc.exceptions import (
     EccException,
     EccRuntimeError,
@@ -51,6 +49,8 @@ from ecc.exceptions import (
     EccValueError,
 )
 from ecc.hashes import reduce_to_hlen
+from ecc.rfc6979_nonce import rfc6979_nonce_
+from ecc.ssa import _S2C_POINT_TAG as _SSA_POINT_TAG
 from tests import REFUSED_SCALARS, both_arms, needs_zkp, refused_secret
 from tests.curves.curve_test import low_card_curves
 from tests.secret_free import assert_secret_free

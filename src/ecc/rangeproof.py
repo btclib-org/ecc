@@ -47,7 +47,7 @@ change with it and the chain behind them does not.
 made under, and every entry point below takes it: it enters the
 octets hashed into the message every ring is signed over, the weight
 each ring's keys step down by in `_pub_expand_var`, and the `min_value`
-offset `pubk_rings_var` subtracts. `ecc.ecc.pedersen.commit` takes it too, so
+offset `pubk_rings_var` subtracts. `ecc.pedersen.commit` takes it too, so
 a caller holding one generator per asset commits and proves under
 each of them.
 
@@ -77,7 +77,7 @@ arguments is the answer, byte for byte.
 - `e0` and one `s` per public key, ring-major, thirty-two octets each.
 
 The last row is a `BorromeanSig`, which is why one is a field here
-rather than an `e0` and an `s` of this module's own: `ecc.ecc.borromean`
+rather than an `e0` and an `s` of this module's own: `ecc.borromean`
 already writes and reads that layout. What the rangeproof adds is
 `rsizes` -- how the mantissa decides the ring structure -- which
 `secp256k1_rangeproof_verify_impl` computes and hands to
@@ -91,13 +91,13 @@ the ring commitment's y is not a square. That is not the even/odd
 convention `curves.bytes_from_point`, BIP340 and the `02`/`03` SEC
 prefix carry, and the two disagree on the vectors
 `tests/schemes/rangeproof_test.py` reads.
-`ecc.ecc.pedersen._bytes_from_point_var` at `_RANGEPROOF_TAG` is that codec, and
+`ecc.pedersen._bytes_from_point_var` at `_RANGEPROOF_TAG` is that codec, and
 every point entering a proof's hash goes through it: the value commitment, the
 generator, and each ring commitment `sign` states. A parse reads those bits back
 and a serialize writes them out, so what a `RangeProof` holds is the octets'
 own answer. Resolving
 an x back to a point is that convention read the other way, and
-`ecc.ecc.pedersen._point_from_x_var` is what does it: `secp256k1_ge_set_xquad`
+`ecc.pedersen._point_from_x_var` is what does it: `secp256k1_ge_set_xquad`
 takes the y that is a square, and `secp256k1_rangeproof_verify_impl`
 negates it where the sign bit says the y is not one.
 
@@ -139,6 +139,7 @@ from ecc._utils import (
     read_exactly,
 )
 from ecc.alias import INF, BinaryData, Integer, Octets, Point, Public
+from ecc.borromean import BorromeanSig, PubkeyRing, _hash
 from ecc.curves import (
     bytes_from_point,
     double_mult_var,
@@ -146,21 +147,20 @@ from ecc.curves import (
     scalar_from_prv_key,
     secp256k1,
 )
-from ecc.ecc.borromean import BorromeanSig, PubkeyRing, _hash
-from ecc.ecc.pedersen import (
-    _RANGEPROOF_TAG,
-    _bytes_from_point_var,
-    _commit,
-    _point_from_x_var,
-    commit,
-)
-from ecc.ecc.rfc6979_nonce import _HmacDrbg
 from ecc.exceptions import (
     EccRuntimeError,
     EccTypeError,
     EccValueError,
 )
 from ecc.number_theory import mod_inv_var
+from ecc.pedersen import (
+    _RANGEPROOF_TAG,
+    _bytes_from_point_var,
+    _commit,
+    _point_from_x_var,
+    commit,
+)
+from ecc.rfc6979_nonce import _HmacDrbg
 
 __all__ = [
     "NonceChain",
@@ -839,7 +839,7 @@ class RangeProof:
         multiples of it.
 
         `commitment` is the Pedersen commitment the proof was written
-        against, `ecc.ecc.pedersen.commit`'s own point rather than octets --
+        against, `ecc.pedersen.commit`'s own point rather than octets --
         the ones `secp256k1_pedersen_commitment_serialize` hands back
         carry the residuosity bit too, `secp256k1_pedersen_commitment_save`
         writing it at `9 ^ is_square(y)` where
@@ -959,7 +959,7 @@ class RangeProof:
         """Return where in each ring the key of that value sits.
 
         `secp256k1_range_proveparams`' `secidx`, and
-        `ecc.ecc.borromean.sign`'s argument of this name: the base-4 digits
+        `ecc.borromean.sign`'s argument of this name: the base-4 digits
         of the value less `min_value` over `10**exp`, least significant
         ring first. A ring of two takes the odd bit an odd mantissa
         leaves over, and the digit there is below two because the value
@@ -1081,7 +1081,7 @@ def _challenge(m: bytes, r: bytes, i: int, j: int) -> int:
     `secp256k1_borromean_hash` over the ring's running point and the
     message, read as a scalar the way `secp256k1_scalar_set_b32` reads
     one: a digest at or past n raises the overflow flag and zkp
-    abandons the proof, where `ecc.ecc.borromean` reduces it and carries
+    abandons the proof, where `ecc.borromean` reduces it and carries
     on. Reducing here would write a proof
     `secp256k1_borromean_verify_impl` refuses.
     """
@@ -1101,14 +1101,14 @@ def _borromean_sign(
 ) -> BorromeanSig:
     """Close every ring over that message, as `secp256k1_borromean_sign` does.
 
-    `ecc.ecc.borromean.sign_` is the same walk, differing where a
+    `ecc.borromean.sign_` is the same walk, differing where a
     rangeproof cannot follow it. It draws every forged `s` from
     `secrets`, where here they are `draws` -- what
     `secp256k1_rangeproof_genrand` derived from the caller's nonce, so
     that a proof is a function of its arguments and a recipient holding
     the nonce reads the value back out. And it carries the real
     signer's `s` as `k + e*q` against a ring walked at `-e`, where zkp
-    walks at `+e` and answers `k - e*sec`: `ecc.ecc.borromean`'s module
+    walks at `+e` and answers `k - e*sec`: `ecc.borromean`'s module
     docstring has what one calling `P` where the other calls `-P`
     costs. `_challenge` is a third such difference.
 
@@ -1135,7 +1135,7 @@ def _borromean_sign(
             r = bytes_from_point(t, secp256k1)
         e0_preimage += r
     # the message closes the preimage the ring points opened, which is
-    # `ecc.ecc.borromean.sign_`'s order too
+    # `ecc.borromean.sign_`'s order too
     e0 = sha256(e0_preimage + m).digest()
 
     for i, (ring, k, j_star) in enumerate(
@@ -1171,7 +1171,7 @@ def sign(
     """Return the proof that a blinded value lies in a stated range.
 
     `secp256k1_rangeproof_sign_impl`. The commitment the proof is
-    written against is `ecc.ecc.pedersen.commit` over `blind` and `value`,
+    written against is `ecc.pedersen.commit` over `blind` and `value`,
     the same point `secp256k1_pedersen_commit` answers, and the range
     the header states is `_prove_params`' rather than the caller's:
     `min_value`, `exp` and `min_bits` are what is asked for, and the
@@ -1328,7 +1328,7 @@ def _borromean_verify(
 
     `secp256k1_borromean_verify_impl`, and what comes back is its
     `evalues` -- the challenges it saves only where a caller asked to
-    rewind. `ecc.ecc.borromean.assert_as_valid` is the same walk answering
+    rewind. `ecc.borromean.assert_as_valid` is the same walk answering
     a bool over rings a caller supplies, and differs where a rangeproof
     cannot follow it: it hashes those rings into a message of its own,
     it walks at `-e` where zkp walks at `+e`, and it reduces a
@@ -1466,15 +1466,15 @@ def assert_as_valid(
 
     `zkp.rangeproof.verify` answers that range instead of a verdict,
     having only the octets to answer from. `verify` here is the boolean
-    answer, as `ecc.ecc.borromean.verify` is to
-    `ecc.ecc.borromean.assert_as_valid`.
+    answer, as `ecc.borromean.verify` is to
+    `ecc.borromean.assert_as_valid`.
 
     `extra_commit` is what the proof was written under, and a proof
     holds for the octets `sign` was given and for no others: they
     close the message the rings are signed over, so any other value
     walks the rings to some `e0` the signature does not state.
-    Keyword-only, as the sign-to-contract `commit` of `ecc.ecc.dsa` and
-    `ecc.ecc.ssa` is on the same pair of calls.
+    Keyword-only, as the sign-to-contract `commit` of `ecc.dsa` and
+    `ecc.ssa` is on the same pair of calls.
     """
     _ = _verify_rings(
         commitment, _proof_from(proof), gen, bytes_from_octets(extra_commit)
@@ -1493,7 +1493,7 @@ def _assert_structurally_valid_(proof: RangeProof | Octets) -> RangeProof:
     `serialize` could not have written, which its own docstring says of
     the object's half and `_assert_valid_header` says of the header's.
     So the encoding and what it decodes to are one question here, unlike
-    the scalar of an `ecc.ecc.ssa` signature, and a defect in either is
+    the scalar of an `ecc.ssa` signature, and a defect in either is
     material the range question was never asked of.
 
     The proof is handed back and `verify` passes it on, the shape
@@ -1502,11 +1502,11 @@ def _assert_structurally_valid_(proof: RangeProof | Octets) -> RangeProof:
     that check and not this parse.
 
     `commitment`, `gen` and `extra_commit` are asked nothing here. The first two
-    enter as native points that no parse reads -- `ecc.ecc.pedersen.commit` and
-    `ecc.ecc.pedersen.second_generator` are where each is built -- and
+    enter as native points that no parse reads -- `ecc.pedersen.commit` and
+    `ecc.pedersen.second_generator` are where each is built -- and
     `extra_commit` is what the proof is written *about*, on issue
-    btclib-org/btclib#814's side of the line with `ecc.ecc.dsa`'s and
-    `ecc.ecc.ssa`'s messages.
+    btclib-org/btclib#814's side of the line with `ecc.dsa`'s and
+    `ecc.ssa`'s messages.
     """
     return proof if isinstance(proof, RangeProof) else RangeProof.parse(proof)
 

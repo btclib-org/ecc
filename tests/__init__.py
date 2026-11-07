@@ -169,7 +169,7 @@ def replace_unchecked(instance: Any, **changes: Any) -> Any:
 class KeyPairSpellings(NamedTuple):
     """One key pair, in every spelling dsa_test.py and hashes_test.py read.
 
-    The WIF and the xprv are here for the refusals alone: `ecc.ecc` takes a
+    The WIF and the xprv are here for the refusals alone: the schemes take a
     scalar and a point, and a spelling that carries a network is read by
     whatever defines its format (issue btclib-org/btclib#1188). Each is
     written out as the Base58Check of its serialization, `b58encode`
@@ -550,8 +550,8 @@ class AllOnesHash:
 #
 # **Why a test writes its own block cipher.** This package takes no
 # cryptographic dependency and ships no cipher: hashlib and the
-# secp256k1 bindings are the whole of it, `ecc.ecc.ecies`'s module docstring
-# has the argument in full, and `ecc.ecc.dsa`/`ecc.ecc.ssa` inherit it -- a
+# secp256k1 bindings are the whole of it, `ecc.ecies`'s module docstring
+# has the argument in full, and `ecc.dsa`/`ecc.ssa` inherit it -- a
 # table-driven AES leaks its key through cache timing, and a
 # timing-vulnerable cipher is a worse thing to ship than none. None of
 # that reaches this file: the wheel and the sdist carry no tests, so

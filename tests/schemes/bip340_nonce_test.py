@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.bip340_nonce` module.
+"""Tests for the `ecc.bip340_nonce` module.
 
 The BIP340 vectors pin secp256k1 with sha256, in `tests/schemes/ssa_test.py`.
 These cover the other curves and hash functions.
@@ -14,11 +14,11 @@ from typing import Any
 
 import pytest
 
+from ecc import bip340_nonce, ssa
 from ecc.alias import HashF, Point
+from ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
 from ecc.curves import mult, secp256k1
 from ecc.curves.curve import CURVES
-from ecc.ecc import bip340_nonce, ssa
-from ecc.ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
 from ecc.exceptions import EccException, EccValueError
 from ecc.hashes import tagged_hash
 from tests import (
@@ -164,7 +164,7 @@ def test_a_given_pub_key_spares_the_multiplication_and_changes_nothing(
         Q = mult(q)
         calls.clear()
         with monkeypatch.context() as patch:
-            patch.setattr("ecc.ecc.bip340_nonce.mult", spy)
+            patch.setattr("ecc.bip340_nonce.mult", spy)
             assert (
                 _nonce_with_pub_key_(b"a message", q, bytes(32), secp256k1, sha256, Q)
                 == expected
@@ -174,7 +174,7 @@ def test_a_given_pub_key_spares_the_multiplication_and_changes_nothing(
         # the control: without the point the derivation multiplies twice
         calls.clear()
         with monkeypatch.context() as patch:
-            patch.setattr("ecc.ecc.bip340_nonce.mult", spy)
+            patch.setattr("ecc.bip340_nonce.mult", spy)
             _nonce_with_pub_key_(b"a message", q, bytes(32), secp256k1, sha256, None)
         assert len(calls) == 2
 

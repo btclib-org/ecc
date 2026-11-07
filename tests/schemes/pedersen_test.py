@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.pedersen` module.
+"""Tests for the `ecc.pedersen` module.
 
 The `zkp`-marked tests at the end are issue btclib-org/btclib#1679's third
 oracle. H for (secp256k1, sha256) is the generator libsecp256k1-zkp calls
@@ -44,6 +44,7 @@ from typing import Any
 
 import pytest
 
+from ecc import pedersen
 from ecc.alias import INF, Point, Public
 from ecc.curves import (
     # the module, not only the names in it: `_libsecp256k1_available` is a
@@ -55,7 +56,6 @@ from ecc.curves import (
     secp256k1,
 )
 from ecc.curves.curve import CURVES, _assert_in_subgroup
-from ecc.ecc import pedersen
 from ecc.exceptions import (
     EccException,
     EccRuntimeError,

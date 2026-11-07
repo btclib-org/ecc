@@ -6,7 +6,7 @@
 
 BIE1 is the ECIES variant the bitcoin world converged on: Electrum's
 `encrypt` / `decrypt` commands, bitcore and bitcoinjs all speak it, and it
-is what turns the shared secret of :mod:`ecc.ecc.dh` into an actual
+is what turns the shared secret of :mod:`ecc.dh` into an actual
 encrypted message. A sender who has the recipient's public key:
 
 - generates an ephemeral key pair and runs ECDH against that public key
@@ -59,10 +59,10 @@ is its implementations, of which Electrum's is the most read. This module is
 written against `ecies_encrypt_message` and `ecies_decrypt_message` in
 electrum/crypto.py and matches them byte for byte, and the test suite decrypts
 ciphertexts taken from Electrum's own test vectors. That is also why nothing
-here is parameterized by curve or hash function, unlike the rest of
-:mod:`ecc.ecc`: every implementation that exists is secp256k1 with
-sha512 and HMAC-SHA256, so a parameter would advertise an interoperability that
-has no other end.
+here is parameterized by curve or hash function, unlike :mod:`ecc.dsa` and
+:mod:`ecc.ssa`: every implementation that exists is secp256k1 with sha512 and
+HMAC-SHA256, so a parameter would advertise an interoperability that has no
+other end.
 
 The magic bytes are a parameter, though, because Electrum itself varies
 them: `BIE1` for a user password and `BIE2` for an xpub-derived one, over
@@ -127,10 +127,10 @@ def derive_keys(prv_key: Integer, pub_key: PubKey) -> tuple[bytes, bytes, bytes]
     envelope.
 
     The multiplication is delegated and the derivation is not;
-    :mod:`ecc.ecc.dh` says why.
+    :mod:`ecc.dh` says why.
 
     No infinity check on the shared point, unlike
-    :func:`ecc.ecc.dh.diffie_hellman`, which takes a bare int: the
+    :func:`ecc.dh.diffie_hellman`, which takes a bare int: the
     scalars that could produce one are exactly those `scalar_from_prv_key`
     rejects, and both inputs here go through a validating conversion.
     """
@@ -140,7 +140,7 @@ def derive_keys(prv_key: Integer, pub_key: PubKey) -> tuple[bytes, bytes, bytes]
     # either side of it where the bindings serve.
     # `_sec_from_pub_key` hands them over unproven -- the multiplication
     # below is the proof, its own parse refusing what is not a point of
-    # the curve, the same trade `ecc.ecc.dsa` makes for its own delegated
+    # the curve, the same trade `ecc.dsa` makes for its own delegated
     # calls (issue btclib-org/btclib#887)
     sec = _sec_from_pub_key(pub_key, secp256k1)
     shared_point_bytes = _mult_sec_compressed(sec, q, secp256k1)

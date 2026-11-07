@@ -21,22 +21,22 @@ optional libsecp256k1 bindings and imports `exceptions` and the root
 `curve` on `curve_group` and `curve_group_2`, and `sec_point` on `curve`.
 Only `curves/__init__.py` imports `curve_group_f`.
 
-`ecc` is the top layer: the schemes and the modules they share, one file
-each. It may import every lower layer, and none of them imports it. Within
-it, `dsa` builds on `commit_nonce` and `rfc6979_nonce`, `ssa` on
-`commit_nonce` and `bip340_nonce`, `ecdsa_adaptor` on `dsa`, and
-`dlc_oracle`, `frost`, `musig2`, `ssa_adaptor` and `ssa_halfagg` on `ssa`.
-`rangeproof` builds on `borromean`, `pedersen` and `rfc6979_nonce`, and
-`dh` on `kdf`.
+The schemes and the modules they share are the top layer, one module
+each. They may import every lower layer, and no lower layer imports one of
+them. Among them, `dsa` builds on `commit_nonce` and `rfc6979_nonce`, `ssa`
+on `commit_nonce` and `bip340_nonce`, `ecdsa_adaptor` on `dsa`, and
+`dahlias`, `dlc_oracle`, `frost`, `musig2`, `ssa_adaptor` and `ssa_halfagg`
+on `ssa`. `rangeproof` builds on `borromean`, `pedersen` and
+`rfc6979_nonce`, and `dh` on `kdf`.
 
 `test_the_layers_import_only_downwards`, in `tests/imports_test.py`,
 holds each module to the imports that file's `_MAY_IMPORT` table names
 for its unit: the root, or the module or subpackage right below it. So
 it fails on an import the table does not name, a lower layer's included,
 which is then added to the table. It reads every import statement of
-every file, a function-local one included. It reads `curves` and
-`ecc.ecc` each as one unit, so it does not hold the order inside them.
-The root loads the public modules lazily, by name, so `import ecc`, with
-or without `as`, `import ecc.<module>` with no `as`, and
-`from ecc import *` count as importing any of them, and the test refuses
-them in every unit. A string passed to `import_module` is not read.
+every file, a function-local one included. It reads `curves` as one
+unit, so it does not hold the order inside it. The root loads the public
+modules lazily, by name, so `import ecc`, with or without `as`, `import
+ecc.<module>` with no `as`, and `from ecc import *` count as importing
+any of them, and the test refuses them in every unit. A string passed to
+`import_module` is not read.

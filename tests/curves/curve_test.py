@@ -79,9 +79,9 @@ from ecc.curves.curve_group import (
     _mult,
     _mult_jac_var,
 )
-from ecc.ecc import second_generator
 from ecc.exceptions import EccTypeError, EccValueError
 from ecc.number_theory import _is_prime_var, mod_inv_var, mod_sqrt_var
+from ecc.pedersen import second_generator
 from tests import both_arms, load, needs_bindings, vector_id
 
 # test curves: very low cardinality. The name is p and n, in that order,
@@ -1435,7 +1435,7 @@ def no_bindings_anywhere(monkeypatch: pytest.MonkeyPatch) -> None:
     `no_bindings` above answers for `curve.py`'s own names and the one class
     beside them, which is what every arm gated on the curve and the hash
     function alone reaches through. An arm gated on availability alone can hold
-    a binding of its own a module further out -- `ecc.ecc.dsa`'s own
+    a binding of its own a module further out -- `ecc.dsa`'s own
     `_libsecp256k1_recover_sec_` binds `recovery` -- and `from ... import x as
     y` copies the object rather than looking it up again, so a patch on the
     module the bindings live in does not reach a name already copied out of it.

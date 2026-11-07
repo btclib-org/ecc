@@ -186,12 +186,12 @@ _PUBLISHED = frozenset(
 _SWEPT = ("src/ecc", "tests")
 
 # a C identifier of the library's family, anchored on the left so that a
-# longer identifier ending in one is not read as one: `ecc.ecc.dsa`'s own
+# longer identifier ending in one is not read as one: `ecc.dsa`'s own
 # `_libsecp256k1_sign_` would otherwise spell a name of the library's
 _NAME = re.compile(r"(?<![A-Za-z0-9_])secp256k1_[a-z0-9_]+")
 
 # the library, in the two spellings this tree uses for it. The right
-# lookahead is what keeps `ecc.ecc.dsa`'s own `_libsecp256k1_sign_` and the
+# lookahead is what keeps `ecc.dsa`'s own `_libsecp256k1_sign_` and the
 # fork's `libsecp256k1-zkp` from reading as the library, a letter, a
 # digit, an underscore or a hyphen after the word ruling all of both
 # out; the left anchor answers the other end, a word ending in the
@@ -366,8 +366,8 @@ def test_a_paragraph_naming_the_fork_is_left_alone() -> None:
     """The fork carries the library's names and its own, so nothing decides.
 
     The same paragraph as above with the fork named in it, which is what
-    every correct sign-to-contract paragraph in `ecc.ecc.dsa` and
-    `ecc.ecc.commit_nonce` looks like.
+    every correct sign-to-contract paragraph in `ecc.dsa` and
+    `ecc.commit_nonce` looks like.
     """
     absent = "secp256k1_ecdsa_s2c_opening"
     credited = "It is libsecp256k1's `" + absent + "`."
@@ -449,7 +449,7 @@ def test_the_vendored_set_is_the_library_and_not_the_fork() -> None:
 
 
 def test_this_package_s_own_dispatch_name_is_not_read_as_the_library() -> None:
-    """`_libsecp256k1_sign_` is `ecc.ecc.dsa`'s function, not upstream's.
+    """`_libsecp256k1_sign_` is `ecc.dsa`'s function, not upstream's.
 
     A paragraph whose only occurrence of the word is inside that
     identifier credits nothing to anybody, so it is not a paragraph this

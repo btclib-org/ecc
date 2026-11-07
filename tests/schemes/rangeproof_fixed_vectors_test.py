@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for `ecc.ecc.rangeproof` against the proofs zkp publishes.
+"""Tests for `ecc.rangeproof` against the proofs zkp publishes.
 
 The vectors are the C arrays of libsecp256k1-zkp's own
 `src/modules/rangeproof/tests_impl.h`, with the blinding factor, the
@@ -46,14 +46,14 @@ import pytest
 
 from ecc.alias import Public
 from ecc.curves import mult, secp256k1
-from ecc.ecc.pedersen import (
+from ecc.pedersen import (
     _point_from_x_var,
     bytes_from_commitment_var,
     commit,
     commitment_from_octets_var,
     second_generator,
 )
-from ecc.ecc.rangeproof import RangeProof, rewind, verify
+from ecc.rangeproof import RangeProof, rewind, verify
 from tests import load, vector_id
 
 # the generator every commitment and every proof below is made under:
@@ -151,7 +151,7 @@ def test_the_rings_open_at_the_published_blinding_factor(
     """The commitment, its ring commitments, and the keys the digits name.
 
     The commitment comes first because everything after it hangs from
-    it: `ecc.ecc.pedersen.commit` over the published blinding factor and
+    it: `ecc.pedersen.commit` over the published blinding factor and
     value has to be the point whose octets upstream published beside
     the proof, which is what `bytes_from_commitment_var` writes. Reading its
     residuosity bit as parity answers a different point for some of
@@ -188,7 +188,7 @@ def test_the_signature_holds_for_the_published_commitment(
     """The rings walked back to the `e0` upstream published.
 
     The commitment is the one published beside the proof, lifted with
-    `ecc.ecc.pedersen.commitment_from_octets_var` rather than recomputed from
+    `ecc.pedersen.commitment_from_octets_var` rather than recomputed from
     the blinding factor: everything the walk hangs from is then read
     out of the vector, the last ring commitment it recovers included.
 

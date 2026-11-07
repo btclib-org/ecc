@@ -21,7 +21,7 @@ is `ssa.sign_`'s.
 **The message** is BIP340's, of any size, signed as it is. The
 specification's tagged hash of an outcome is the caller's to compute.
 The curve, secp256k1, and the hash, sha256, are not arguments, as in
-`ecc.ecc.ecdsa_adaptor`.
+`ecc.ecdsa_adaptor`.
 
 **Timing.** The key and the nonce go through `mult` and integer
 products, as in `ssa`'s Python path; what `sig_point_var_` handles is
@@ -32,10 +32,10 @@ from __future__ import annotations
 
 from hashlib import sha256
 
+from ecc import ssa
 from ecc._utils import bytes_from_octets
 from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import double_mult_var, scalar_from_prv_key, secp256k1
-from ecc.ecc import ssa
 
 __all__ = [
     "sig_point_var_",

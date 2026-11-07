@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the ECDSA Anti-Exfil Protocol of `ecc.ecc.dsa`.
+"""Tests for the ECDSA Anti-Exfil Protocol of `ecc.dsa`.
 
 BlockstreamResearch/secp256k1-zkp's `ecdsa_s2c` module carries the
 vectors: the fixture below is that module's `ecdsa_s2c_tests`, whose
@@ -20,7 +20,7 @@ Which revision of `src/modules/ecdsa_s2c/tests_impl.h` those columns
 are is `tests/_data/README.md`'s entry for this module, beside the
 vendored files, and none is recorded here: a pin in that ledger is what
 `.github/workflows/vendored-vectors.yml` re-checks weekly, opening an
-issue where it is no longer the tip of its path. `ecc.ecc.dsa`'s
+issue where it is no longer the tip of its path. `ecc.dsa`'s
 `anti_exfil_host_commit` cites the header its docstring paraphrases, and
 that README's opening says why the citation carries no revision.
 """
@@ -29,9 +29,9 @@ from hashlib import sha1, sha256
 
 import pytest
 
+from ecc import dsa
+from ecc.commit_nonce import commit_nonce_
 from ecc.curves import bytes_from_point, mult, secp256k1
-from ecc.ecc import dsa
-from ecc.ecc.commit_nonce import commit_nonce_
 from ecc.exceptions import EccValueError
 
 # the key and the message of test_ecdsa_s2c_fixed_vectors, which

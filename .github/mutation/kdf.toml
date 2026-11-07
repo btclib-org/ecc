@@ -1,11 +1,11 @@
-# Key agreement and key derivation, mutated: `ecc/ecc/dh.py`'s Diffie-Hellman
+# Key agreement and key derivation, mutated: `ecc/dh.py`'s Diffie-Hellman
 # and `kdf.py`'s ANSI X9.63 and HKDF, whose output length is the numeric
 # bound a mutant most often moves -- negative, zero, maximum and
 # maximum-plus-one, and a bool passing where a bool is not a number.
 # tests/integer_policy_test.py is beside each module's own file because
 # it is where that bool refusal is asserted by name.
 #
-# The survivors of `ecc/ecc/dh.py` and of `kdf.py`'s ANSI X9.63 KDF were
+# The survivors of `ecc/dh.py` and of `kdf.py`'s ANSI X9.63 KDF were
 # weighed on btclib-org/btclib's copies of these modules, in its own
 # `.github/mutation/numeric.toml`, a scope holding btclib's `amount.py`
 # and `fee.py` beside them; that file's record of its session puts HKDF
@@ -15,7 +15,7 @@
 
 [cosmic-ray]
 module-path = [
-    "src/ecc/ecc/dh.py",
+    "src/ecc/dh.py",
     "src/ecc/kdf.py",
 ]
 
@@ -35,7 +35,7 @@ excluded-modules = []
 # every `|` in the two modules is in an annotation, whose mutants are
 # equivalent under deferred annotation evaluation (PEP 649):
 #
-#   grep -n ' | ' src/ecc/ecc/dh.py src/ecc/kdf.py
+#   grep -n ' | ' src/ecc/dh.py src/ecc/kdf.py
 [cosmic-ray.filters.operators-filter]
 exclude-operators = ["core/ReplaceBinaryOperator_BitOr_.*"]
 

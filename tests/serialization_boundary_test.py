@@ -54,11 +54,11 @@ from typing import Any
 
 import pytest
 
+from ecc import dsa, ecies, ssa
+from ecc.borromean import BorromeanSig
 from ecc.curves import bytes_from_point, secp256k1
-from ecc.ecc import dsa, ecies, ssa
-from ecc.ecc.borromean import BorromeanSig
-from ecc.ecc.rangeproof import RangeProof
 from ecc.exceptions import EccTypeError
+from ecc.rangeproof import RangeProof
 from tests import module_names, public_classes_with
 
 # a value of no type any of these positions declares. `Any`, because
@@ -97,10 +97,10 @@ _TEXT_IDS = tuple(label for label, _, _ in _TEXT_DECODERS)
 # says where it does it -- and is therefore read for its truth, as
 # `check_validity` is
 _EXTRA_ARGUMENTS = {
-    ("ecc.ecc.borromean.BorromeanSig", "parse"): "rsizes",
-    ("ecc.ecc.ecies.Envelope", "parse"): "magic",
-    ("ecc.ecc.ecies.Envelope", "b64decode"): "magic",
-    ("ecc.ecc.dsa.Sig", "parse"): "strict",
+    ("ecc.borromean.BorromeanSig", "parse"): "rsizes",
+    ("ecc.ecies.Envelope", "parse"): "magic",
+    ("ecc.ecies.Envelope", "b64decode"): "magic",
+    ("ecc.dsa.Sig", "parse"): "strict",
 }
 
 # the names issue btclib-org/btclib#867 measured, which is what the walk

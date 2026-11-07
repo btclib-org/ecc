@@ -28,9 +28,9 @@ import sys
 
 import atheris
 
-from ecc.ecc.dsa import Sig as DsaSig
-from ecc.ecc.ssa import Sig as SsaSig
+from ecc.dsa import Sig as DsaSig
 from ecc.exceptions import EccException
+from ecc.ssa import Sig as SsaSig
 
 # tests/fuzz_corpus_test.py reads this by ast.literal_eval, never by
 # importing the module -- atheris below is CI-only and undeclared in
@@ -39,8 +39,8 @@ from ecc.exceptions import EccException
 # call one attribute deep, `DsaSig.parse`, against the import that binds
 # the name
 ENTRY_POINTS = (
-    "ecc.ecc.dsa:Sig.parse",
-    "ecc.ecc.ssa:Sig.parse",
+    "ecc.dsa:Sig.parse",
+    "ecc.ssa:Sig.parse",
 )
 
 

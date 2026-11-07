@@ -173,7 +173,7 @@ class HashObject(Protocol):
 HashF = Callable[[], HashObject]
 
 # A block cipher under a key and an initialization vector: (key, iv, data)
-# to the transformed data. ecc.ecc.ecies takes one of these in each
+# to the transformed data. ecc.ecies takes one of these in each
 # direction because it ships no cipher of its own; that module's docstring
 # has the contract the two callables must honour, which this name cannot
 # carry -- padding and block size are not in the signature.

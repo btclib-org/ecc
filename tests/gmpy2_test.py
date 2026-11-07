@@ -23,7 +23,7 @@ from typing import Any
 
 import pytest
 
-from ecc import number_theory
+from ecc import dsa, number_theory, ssa
 from ecc.alias import Public
 from ecc.curves import (
     Curve,
@@ -38,7 +38,6 @@ from ecc.curves import (
 )
 from ecc.curves.curve import CURVES
 from ecc.curves.curve_group import BOS_COSTER_THRESHOLD
-from ecc.ecc import dsa, ssa
 from ecc.exceptions import EccValueError
 from tests.curves.curve_test import no_bindings_anywhere
 
@@ -194,7 +193,7 @@ if {implementation!r}:
 
 from ecc.curves import double_mult_var, mult, secp256k1
 from ecc.curves.curve import CURVES
-from ecc.ecc import dsa, ssa
+from ecc import dsa, ssa
 
 r1 = CURVES["secp256r1"]
 m = {m}

@@ -247,32 +247,32 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.sec_point.bytes_from_prv_key_int": ("schemes/musig2_test.py",),
     "curves.sec_point.prv_key_tweak_add": ("schemes/dahlias_test.py",),
-    "ecc.commit_nonce.commit_nonce_": ("schemes/ssa_test.py",),
-    "ecc.dh.diffie_hellman": ("schemes/wycheproof_test.py",),
-    "ecc.dsa.Signer.__init__": (),
-    "ecc.dsa.Signer.sign_": (),
-    "ecc.dsa.assert_as_valid_": (
+    "commit_nonce.commit_nonce_": ("schemes/ssa_test.py",),
+    "dh.diffie_hellman": ("schemes/wycheproof_test.py",),
+    "dsa.Signer.__init__": (),
+    "dsa.Signer.sign_": (),
+    "dsa.assert_as_valid_": (
         "schemes/anti_exfil_vectors_test.py",
         "schemes/ecdsa_adaptor_test.py",
         "schemes/rfc6979_test.py",
         "schemes/wycheproof_test.py",
     ),
-    "ecc.dsa.recover_pub_key_": ("schemes/dsa_recovery_test.py",),
-    "ecc.dsa.recover_pub_keys_": ("schemes/dsa_recovery_test.py",),
-    "ecc.dsa.recover_sec_": ("schemes/dsa_recovery_test.py",),
-    "ecc.dsa.sign_": (
+    "dsa.recover_pub_key_": ("schemes/dsa_recovery_test.py",),
+    "dsa.recover_pub_keys_": ("schemes/dsa_recovery_test.py",),
+    "dsa.recover_sec_": ("schemes/dsa_recovery_test.py",),
+    "dsa.sign_": (
         "schemes/der_test.py",
         "schemes/rfc6979_test.py",
     ),
-    "ecc.dsa.sign_recoverable_": (),
-    "ecc.ellswift.create": ("schemes/ellswift_test.py",),
-    "ecc.ellswift.decode_var": ("schemes/ellswift_test.py",),
-    "ecc.ellswift.encode_var": ("schemes/ellswift_test.py",),
-    "ecc.ellswift.xdh": ("schemes/ellswift_test.py",),
-    "ecc.musig2.partial_sig_verify_": ("schemes/musig2_test.py",),
-    "ecc.ssa.Signer.__init__": ("schemes/ssa_test.py",),
-    "ecc.ssa.Signer.sign_": ("schemes/ssa_test.py",),
-    "ecc.ssa.assert_as_valid_": (
+    "dsa.sign_recoverable_": (),
+    "ellswift.create": ("schemes/ellswift_test.py",),
+    "ellswift.decode_var": ("schemes/ellswift_test.py",),
+    "ellswift.encode_var": ("schemes/ellswift_test.py",),
+    "ellswift.xdh": ("schemes/ellswift_test.py",),
+    "musig2.partial_sig_verify_": ("schemes/musig2_test.py",),
+    "ssa.Signer.__init__": ("schemes/ssa_test.py",),
+    "ssa.Signer.sign_": ("schemes/ssa_test.py",),
+    "ssa.assert_as_valid_": (
         "schemes/anti_exfil_vectors_test.py",
         "schemes/dlc_oracle_test.py",
         "schemes/frost_test.py",
@@ -280,16 +280,16 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/ssa_halfagg_test.py",
         "schemes/ssa_test.py",
     ),
-    "ecc.ssa.assert_batch_as_valid_": ("schemes/ssa_test.py",),
-    "ecc.ssa.prv_key_tweak_add": (
+    "ssa.assert_batch_as_valid_": ("schemes/ssa_test.py",),
+    "ssa.prv_key_tweak_add": (
         "schemes/dahlias_test.py",
         "schemes/ssa_tweak_test.py",
     ),
-    "ecc.ssa.pub_key_tweak_add_var": (
+    "ssa.pub_key_tweak_add_var": (
         "schemes/dahlias_test.py",
         "schemes/ssa_tweak_test.py",
     ),
-    "ecc.ssa.sign_": (
+    "ssa.sign_": (
         "schemes/ssa_halfagg_test.py",
         "schemes/ssa_test.py",
     ),
@@ -303,12 +303,12 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 #   a point multiplied from its SEC octets. No vendored vector here hands
 #   the package octets to multiply; a set that does, an ECDH one taking the
 #   peer's key as octets, would.
-# - `ecc.dsa.Signer.__init__` and `ecc.dsa.Signer.sign_`, `Signer`'s
+# - `dsa.Signer.__init__` and `dsa.Signer.sign_`, `Signer`'s
 #   constructor and signing. Every third-party vector
 #   reaches `dsa.sign_` or `dsa.assert_as_valid_` through the free
 #   functions; pointing one of those modules at the class is a test to
 #   write rather than a vector to find.
-# - `ecc.dsa.sign_recoverable_`, signing with the recovery id. The only
+# - `dsa.sign_recoverable_`, signing with the recovery id. The only
 #   vector that holds it is Bitcoin Core's, and
 #   `tests/schemes/dsa_sign_recoverable_test.py`, which checks it, is left out
 #   of `_THIRD_PARTY_VECTORS` for the reason `tests/_data/README.md` gives
@@ -318,9 +318,9 @@ _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",
         "curves.sec_point._mult_sec_compressed",
-        "ecc.dsa.Signer.__init__",
-        "ecc.dsa.Signer.sign_",
-        "ecc.dsa.sign_recoverable_",
+        "dsa.Signer.__init__",
+        "dsa.Signer.sign_",
+        "dsa.sign_recoverable_",
     }
 )
 

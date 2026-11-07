@@ -2,14 +2,14 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.ssa_halfagg` module.
+"""Tests for the `ecc.ssa_halfagg` module.
 
 The vectors are BIP458's own, the csv files of `bip-0458/vectors/` in
 bitcoin/bips, vendored under `tests/schemes/_data/`;
 `tests/_data/README.md` pins the revision. Every vector of each file is
 run.
 
-The other tests sign with `ecc.ecc.ssa`, and check the aggregate against
+The other tests sign with `ecc.ssa`, and check the aggregate against
 BIP458's definitions recomputed here: the randomizers as the tagged hash
 of each prefix, and s as their weighted sum.
 """
@@ -19,8 +19,8 @@ from typing import Any
 
 import pytest
 
+from ecc import ssa, ssa_halfagg
 from ecc.curves import secp256k1 as ec
-from ecc.ecc import ssa, ssa_halfagg
 from ecc.exceptions import EccRuntimeError, EccTypeError, EccValueError
 from ecc.hashes import tagged_hash
 from tests import both_arms, load_csv, vector_id

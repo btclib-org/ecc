@@ -15,8 +15,8 @@
 
 [cosmic-ray]
 module-path = [
-    "src/ecc/ecc/ssa.py",
-    "src/ecc/ecc/dsa.py",
+    "src/ecc/ssa.py",
+    "src/ecc/dsa.py",
 ]
 
 # each module's own file; der_test.py is dsa.py's DER codec;
@@ -41,7 +41,7 @@ excluded-modules = []
 # under deferred annotation evaluation (PEP 649), and read as that class
 # in the survivors file:
 #
-#   grep -n ' | ' src/ecc/ecc/ssa.py src/ecc/ecc/dsa.py
+#   grep -n ' | ' src/ecc/ssa.py src/ecc/dsa.py
 
 [cosmic-ray.distributor]
 name = "local"

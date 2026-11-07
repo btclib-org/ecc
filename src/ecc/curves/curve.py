@@ -213,7 +213,7 @@ class Curve(CurveGroup):
     round on purpose: this is the only group anything else in this package
     multiplies in, and `Curve` is what a caller asks for.
 
-    Two things follow from n being prime, and ecc.ecc relies on both:
+    Two things follow from n being prime, and the schemes rely on both:
     the integers modulo n are a field, so every scalar but zero has an
     inverse — the nonce and s that ecdsa inverts, the challenge that ssa's
     key recovery does — and the subgroup has no subgroup other than itself

@@ -17,7 +17,7 @@ from contextlib import suppress
 
 from ecc._libsecp256k1 import dsa as libsecp256k1_dsa
 from ecc.curves import secp256k1
-from ecc.ecc.dsa import Sig
+from ecc.dsa import Sig
 from ecc.exceptions import EccValueError
 from tests import needs_bindings
 

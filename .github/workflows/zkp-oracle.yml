@@ -61,13 +61,13 @@ on:
       - tests/schemes/pedersen_test.py
       - tests/schemes/rangeproof_test.py
       - tests/schemes/_data/zkp_rangeproof_vectors.json
-      - src/ecc/ecc/borromean.py
-      - src/ecc/ecc/dsa.py
-      - src/ecc/ecc/commit_nonce.py
-      - src/ecc/ecc/ecdsa_adaptor.py
-      - src/ecc/ecc/musig2.py
-      - src/ecc/ecc/pedersen.py
-      - src/ecc/ecc/rangeproof.py
+      - src/ecc/borromean.py
+      - src/ecc/dsa.py
+      - src/ecc/commit_nonce.py
+      - src/ecc/ecdsa_adaptor.py
+      - src/ecc/musig2.py
+      - src/ecc/pedersen.py
+      - src/ecc/rangeproof.py
 
 permissions:
   contents: read

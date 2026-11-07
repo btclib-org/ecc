@@ -24,7 +24,7 @@ an invalid signature can still give an aggregate that verifies, as
 BIP458 states. A caller who needs every input valid verifies each one
 with `ssa.verify_` first.
 
-Like `ecc.ecc.musig2` and `ecc.ecc.dleq`, the curve and the hash
+Like `ecc.musig2` and `ecc.dleq`, the curve and the hash
 function are not arguments: BIP458 is defined for secp256k1 and sha256
 only. A public key is a 32-byte x-only key, a message is exactly 32
 bytes, and a signature is BIP340's 64 bytes.
@@ -40,8 +40,8 @@ from ecc._utils import assert_type, bytes_from_octets, is_octets
 from ecc.alias import INF, Octets, Public
 from ecc.curves import secp256k1
 from ecc.curves.curve import _multi_mult_x_only_var, mult
-from ecc.ecc.ssa import challenge_
 from ecc.exceptions import EccRuntimeError, EccTypeError, EccValueError
+from ecc.ssa import challenge_
 
 __all__ = [
     "aggregate",

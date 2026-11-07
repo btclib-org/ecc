@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.rangeproof` module.
+"""Tests for the `ecc.rangeproof` module.
 
 The vectors are proofs libsecp256k1-zkp signed, recorded with the
 arguments that produced them and with what `zkp.rangeproof.info`
@@ -93,11 +93,17 @@ from typing import Any
 
 import pytest
 
+from ecc import pedersen, rangeproof
 from ecc.alias import INF, Public
+from ecc.borromean import BorromeanSig
 from ecc.curves import mult, secp256k1
-from ecc.ecc import pedersen, rangeproof
-from ecc.ecc.borromean import BorromeanSig
-from ecc.ecc.pedersen import (
+from ecc.exceptions import (
+    EccException,
+    EccRuntimeError,
+    EccTypeError,
+    EccValueError,
+)
+from ecc.pedersen import (
     _RANGEPROOF_TAG,
     _bytes_from_point_var,
     _point_from_x_var,
@@ -107,13 +113,7 @@ from ecc.ecc.pedersen import (
     generator_from_seed,
     second_generator,
 )
-from ecc.ecc.rangeproof import RangeProof, sign, sign_public_value
-from ecc.exceptions import (
-    EccException,
-    EccRuntimeError,
-    EccTypeError,
-    EccValueError,
-)
+from ecc.rangeproof import RangeProof, sign, sign_public_value
 from tests import (
     HELD_KEY_SPELLINGS,
     HELD_KEYS,
@@ -1146,7 +1146,7 @@ def test_a_draw_that_is_no_scalar_is_refused_and_not_redrawn(
 def test_a_challenge_that_is_no_scalar_is_refused(
     challenge: bytes, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The same refusal a step later, where `ecc.ecc.borromean` makes none.
+    """The same refusal a step later, where `ecc.borromean` makes none.
 
     `secp256k1_borromean_sign` reads its challenge through
     `secp256k1_scalar_set_b32` too and returns zero on the flag, where
@@ -1662,8 +1662,8 @@ def test_a_built_proof_is_asked_what_a_parse_asks_the_octets() -> None:
     """What `check_validity=False` makes reachable (btclib-org/btclib#2182).
 
     `RangeProof.parse` asks `assert_valid` of octets and `_proof_from` asks it
-    of a `RangeProof` a caller built, which is how `ecc.ecc.borromean` and
-    `ecc.ecc.ssa` ask their own object argument for it. So `assert_as_valid` and
+    of a `RangeProof` a caller built, which is how `ecc.borromean` and
+    `ecc.ssa` ask their own object argument for it. So `assert_as_valid` and
     `rewind` refuse with this library's own exception, and `verify` answers
     False -- where octets that are no proof raise out of `verify` instead (issue
     btclib-org/btclib#2170), an object having no octets to be wrong.
@@ -2563,7 +2563,7 @@ def test_a_nonempty_extra_commit_crosses_in_both_directions(
 def test_a_proof_under_a_derived_generator_crosses_to_zkp() -> None:
     """The whole structure at a generator that is not `h`.
 
-    `zkp.generator.generate` derives one and `ecc.ecc.pedersen` derives the
+    `zkp.generator.generate` derives one and `ecc.pedersen` derives the
     same, so both sides name it before anything is signed. Then both
     directions: a proof this module writes under it is verified and
     rewound by libsecp256k1-zkp, and a proof that library writes under

@@ -437,8 +437,8 @@ jobs:
           import sys
           from importlib.metadata import requires, version
           import ecc
+          from ecc import dsa
           from ecc.curves import is_libsecp256k1_serving, mult, secp256k1
-          from ecc.ecc import dsa
 
           print(version(ecc.name), requires(ecc.name))
           assert ecc.__version__ == version(ecc.name)

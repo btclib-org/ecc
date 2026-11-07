@@ -88,7 +88,7 @@ vulnerabilities*:
 - memory disclosure: a secret in a Python object is not zeroized
 - a secret handed to a delegated `_var` multiplication, which is
   variable time in its scalar
-- the block cipher `ecc.ecc.ecies` takes from its caller, whose
+- the block cipher `ecc.ecies` takes from its caller, whose
   resistance to side channels is the caller's
 - the operating system's random number generator, which the package uses
   through `secrets` rather than seeding one of its own
@@ -133,7 +133,7 @@ as its encoding says, a complete octet string is one whole object, and a
 caller's stream is the caller's. `tests/parse_contract_test.py` walks the
 package for every public class carrying a `parse`, and holds each to that
 contract or names the reason it is excluded. A range proof header names
-an exponent and a mantissa, and `src/ecc/ecc/rangeproof.py`
+an exponent and a mantissa, and `src/ecc/rangeproof.py`
 bounds them by `_MAX_EXP` and `_MAX_MANTISSA`, the mantissa being checked
 before any ring size is computed from it. An ECIES envelope's MAC is
 verified, by `hmac.compare_digest`, before the caller's cipher is handed

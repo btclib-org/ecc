@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.dleq` module.
+"""Tests for the `ecc.dleq` module.
 
 The vectors are BIP374's own, both csv files of
 https://github.com/bitcoin/bips/tree/master/bip-0374, vendored under
@@ -19,8 +19,8 @@ from typing import Any
 
 import pytest
 
+from ecc import dleq
 from ecc.curves import mult, point_from_pub_key, secp256k1
-from ecc.ecc import dleq
 from ecc.exceptions import EccException, EccValueError
 from ecc.hashes import tagged_hash
 from tests import (

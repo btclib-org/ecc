@@ -8,7 +8,7 @@ https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki
 
 MuSig2 turns many signers into one: their public keys aggregate into a
 single x-only key Q, and their partial signatures into a single BIP340
-signature that verifies under Q with `ecc.ecc.ssa` and with any other
+signature that verifies under Q with `ecc.ssa` and with any other
 BIP340 verifier. A verifier -- and the chain -- sees an ordinary
 single-key Schnorr signature, which is where the privacy and the size
 come from.
@@ -53,14 +53,14 @@ the accumulated negation and the accumulated tweak -- so that the
 partial signatures still add up to a signature valid under the tweaked
 key.
 
-secp256k1 and sha256 are not parameters here, unlike everywhere else in
-`ecc.ecc`. BIP327 is defined for that pair alone: the tags below, the
-33-byte compressed points, the 32-byte scalars and the 66-byte nonces
-are its serialization, and there is no other curve for which a test
-vector exists. A `Curve` argument would advertise a genericity the
-specification does not define and no vector could check.
+secp256k1 and sha256 are not parameters here, unlike in `dsa` and `ssa`.
+BIP327 is defined for that pair alone: the tags below, the 33-byte
+compressed points, the 32-byte scalars and the 66-byte nonces are its
+serialization, and there is no other curve for which a test vector exists. A
+`Curve` argument would advertise a genericity the specification does not
+define and no vector could check.
 
-The message is of any size, as in `ecc.ecc.ssa`: BIP327 states no
+The message is of any size, as in `ecc.ssa`: BIP327 states no
 restriction, and two of its own vectors are an empty message and a
 38-byte one.
 
@@ -126,6 +126,7 @@ from dataclasses import dataclass, field
 from hashlib import sha256
 from typing import TYPE_CHECKING
 
+from ecc import ssa
 from ecc._libsecp256k1 import musig as libsecp256k1_musig
 from ecc._utils import assert_type, bytes_from_octets, is_octets
 from ecc.alias import INF, Integer, Octets, Point, Public
@@ -136,7 +137,6 @@ from ecc.curves.sec_point import (
     bytes_from_prv_key_int,
     point_from_octets_var,
 )
-from ecc.ecc import ssa
 from ecc.exceptions import (
     EccRuntimeError,
     EccTypeError,
@@ -1109,7 +1109,7 @@ class PreSignature:
     "not adapted yet" -- and what keeps `partial_sig_agg`'s own return
     type exactly what it already was. It carries no `serialize`/`parse`
     of its own: BIP373 has no field for a pre-signature
-    (`ecc.ecc.musig2`'s own docstring says so), so there is no wire
+    (`ecc.musig2`'s own docstring says so), so there is no wire
     format to answer to yet, and one invented here would have no caller
     to check it against.
     """
@@ -1155,7 +1155,7 @@ def partial_sig_agg(psigs: Sequence[Octets], session_ctx: SessionContext) -> ssa
     """Aggregate the partial signatures into one BIP340 signature.
 
     An `ssa.Sig`, because that is what it is: the result verifies under
-    the x-only aggregate key with `ecc.ecc.ssa.verify_` and with
+    the x-only aggregate key with `ecc.ssa.verify_` and with
     every other BIP340 verifier, and handing back 64 bytes would only
     make the caller parse them again to find out.
 

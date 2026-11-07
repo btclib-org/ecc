@@ -35,9 +35,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from ecc.curves import mult, secp256k1
-from ecc.curves.sec_point import bytes_from_point, point_from_octets_var
-from ecc.ecc import (
+from ecc import (
     dahlias,
     dleq,
     dsa,
@@ -50,13 +48,15 @@ from ecc.ecc import (
     ssa,
     ssa_adaptor,
 )
-from ecc.ecc.borromean import BorromeanSig
-from ecc.ecc.rangeproof import RangeProof
+from ecc.borromean import BorromeanSig
+from ecc.curves import mult, secp256k1
+from ecc.curves.sec_point import bytes_from_point, point_from_octets_var
 from ecc.exceptions import (
     EccRuntimeError,
     EccTypeError,
     EccValueError,
 )
+from ecc.rangeproof import RangeProof
 from tests import public_classes_with
 
 # What a decoder of this package is allowed to raise. Anything else

@@ -9,13 +9,9 @@ field and group operations of `curve_group`, the `Curve` built on them, the
 catalogued curves (secp256k1 among them), and the SEC encoding of a point.
 Nothing here knows what a signature is.
 
-What is built *on* a curve lives in ecc.ecc -- dsa, ssa, borromean,
-pedersen, Diffie-Hellman, the nonces -- and ARCHITECTURE.md says which of
-the two imports the other.
-
-The two names are easy to conflate -- everything in ecc.ecc is also about
-curves -- so the anchor is worth stating: `from ecc.curves import mult`,
-`from ecc.ecc import dsa`.
+What is built *on* a curve -- dsa, ssa, borromean, pedersen,
+Diffie-Hellman, the nonces -- is in the modules beside this package, and
+ARCHITECTURE.md says which imports which.
 
 What this package exports is the curve API: a Curve, the catalogue they
 are looked up in, the scalar multiplications, the SEC point codec, and
@@ -64,7 +60,7 @@ That holds against the memoized odd multiples of G at w=8, w=10 and w=12 alike,
 issue btclib-org/ecc#194.
 So the arm every key derivation, every BIP32 child and every signing nonce runs
 has no variable-time alternative to offer. What is left is a
-variable-base mult with a secret scalar, measured over ecc.ecc.dh: 1.13x on
+variable-base mult with a secret scalar, measured over ecc.dh: 1.13x on
 secp256k1 and 1.03x on nistp256, the second being that measurement's own noise.
 Beside it, the blinded nonce inverse is a fraction of a percent of a signature,
 the projective blinding of curve_group._blinded_jac is 1%, and every

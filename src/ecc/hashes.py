@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""The hashing ecc.ecc's schemes do.
+"""The hashing the schemes do.
 
 BIP340's tagged hash, SEC 1's reduction of a message to one digest, and
 the check that a hash function is a constructor. Each is `hashlib` and

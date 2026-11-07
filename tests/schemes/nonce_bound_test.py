@@ -15,13 +15,13 @@ from typing import Any
 
 import pytest
 
+from ecc import dsa, ssa
 from ecc._utils import _MAX_NONCE_ATTEMPTS
+from ecc.bip340_nonce import bip340_nonce_
+from ecc.commit_nonce import _tweak
 from ecc.curves import secp256k1
-from ecc.ecc import dsa, ssa
-from ecc.ecc.bip340_nonce import bip340_nonce_
-from ecc.ecc.commit_nonce import _tweak
-from ecc.ecc.rfc6979_nonce import rfc6979_nonce_
 from ecc.exceptions import EccRuntimeError
+from ecc.rfc6979_nonce import rfc6979_nonce_
 from tests import AllOnesHash
 from tests.secret_free import assert_secret_free
 

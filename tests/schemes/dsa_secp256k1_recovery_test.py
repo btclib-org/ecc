@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 
-from ecc.ecc import dsa
+from ecc import dsa
 from ecc.exceptions import EccRuntimeError, EccValueError
 from tests import both_arms, load, vector_id
 

@@ -51,8 +51,8 @@ from ecc.curves.curve_group import (
     _wNAF_of_m_var,
     signed_odd_digits,
 )
-from ecc.ecc import second_generator
 from ecc.exceptions import EccTypeError, EccValueError
+from ecc.pedersen import second_generator
 from tests.curves.curve_test import all_curves, low_card_curves
 
 ec23_31 = low_card_curves["ec23_31"]

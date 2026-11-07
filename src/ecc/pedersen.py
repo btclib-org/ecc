@@ -32,7 +32,7 @@ octet reports whether y is a quadratic residue:
 `src/modules/generator/main_impl.h`;
 `secp256k1_rangeproof_serialize_point` writes `1 ^` it, in
 `src/modules/rangeproof/rangeproof_impl.h`. That third tag is the base
-`ecc.ecc.rangeproof` hashes a point under and lifts a ring commitment's x
+`ecc.rangeproof` hashes a point under and lifts a ring commitment's x
 against, and that module reaches the codec below for both rather than
 carrying one of its own. Lifting such an octet by the parity the
 `02`/`03` of `curves.point_from_octets_var` carries answers the same point
@@ -171,7 +171,7 @@ _SECOND_GENERATION = b"2nd generation: "
 # there being the negation of the first, where the field answers them:
 # for a p of 3 mod 4 `mod_sqrt_var` returns the root that is itself a
 # square, and `test_the_map_constants_are_derived` holds that root
-# against the literal. `ecc.ecc.ellswift._constants` derives the same root
+# against the literal. `ecc.ellswift._constants` derives the same root
 # the same way, SwiftEC being written around it too.
 _SQRT_MINUS_3 = mod_sqrt_var(Public(-3 % secp256k1.p), secp256k1.p)
 _HALF_SQRT_MINUS_3_LESS_1 = (
@@ -261,7 +261,7 @@ def generator_from_seed(seed: Octets, blind: Integer | None = None) -> Point:
     uniformly over the curve, with no known discrete logarithm with
     respect to G or to any other generator this answers -- which is what
     a confidential transaction committing each of several assets under
-    its own generator asks for, `commit` and `ecc.ecc.rangeproof` taking the
+    its own generator asks for, `commit` and `ecc.rangeproof` taking the
     generator they work at.
 
     `blind` adds `blind*G` to that sum, and one function takes it where
@@ -373,7 +373,7 @@ def _commit(r: int, v: Integer, gen: Point, ec: Curve) -> Point:
     same point in one call, and its work follows its scalars on both
     arms, one `secp256k1_ec_pubkey_tweak_mul` per term on the bindings
     and an interleaved wNAF in Python. `commit` refuses an r of 0 mod n
-    ahead of this; `ecc.ecc.rangeproof.rewind` does not, putting what it
+    ahead of this; `ecc.rangeproof.rewind` does not, putting what it
     recovered back against the commitment as
     `secp256k1_rangeproof_verify_impl` does, which rebuilds it from the
     two and compares with nothing refused first.
@@ -415,7 +415,7 @@ def _assert_structurally_valid_(r: Integer, v: Integer, gen: Point, ec: Curve) -
     An `Integer` is an int, or the octets or the hex text of one, and
     `int_from_integer` is what reads the last two; text that is no
     number leaves no opening to compare, which is the same unanswerable
-    question `ecc.ecc.dsa` refuses for a key spelling that is no key. An
+    question `ecc.dsa` refuses for a key spelling that is no key. An
     r of 0 mod n is not that: it is an integer, and one this scheme
     refuses for what it is worth rather than for what it is spelled,
     so it stays False with the rest of `commit`'s refusals.
@@ -471,7 +471,7 @@ def verify(
 # the residuosity bit alone: `secp256k1_rangeproof_serialize_point`
 # writes `data[0] = !secp256k1_fe_is_square_var(&point->y)`, and a proof
 # carries that bit in a packed field rather than in front of an x, which
-# is why `ecc.ecc.rangeproof` calls `_bytes_from_point_var` and
+# is why `ecc.rangeproof` calls `_bytes_from_point_var` and
 # `_point_from_x_var` and never `_point_from_octets_var`
 _RANGEPROOF_TAG = 1
 _COMMITMENT_TAG = 9
@@ -549,7 +549,7 @@ def commitment_from_octets_var(octets: Octets) -> Point:
     `secp256k1_pedersen_commitment_parse`. An Elements output carries
     these, and this is the lift a caller holding them makes before
     calling anything that takes the commitment as a point --
-    `ecc.ecc.rangeproof.RangeProof.pubk_rings_var`, `assert_as_valid`, `verify`.
+    `ecc.rangeproof.RangeProof.pubk_rings_var`, `assert_as_valid`, `verify`.
     """
     return _point_from_octets_var(octets, _COMMITMENT_TAG, "Pedersen commitment")
 

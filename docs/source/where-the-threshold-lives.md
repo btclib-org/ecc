@@ -73,7 +73,7 @@ MuSig2 and FROST have no ceiling the chain imposes, the chain seeing one
 key. What bounds them is the specification, and the two bounds are not
 the same kind of thing. BIP327's is serialization: the number of
 individual public keys is an unsigned 32-bit count. BIP445's is
-security: it refuses an *n* past 128, and so does {py:mod}`ecc.ecc.frost`,
+security: it refuses an *n* past 128, and so does {py:mod}`ecc.frost`,
 whose module docstring gives the reason.
 
 ### The price is state and simultaneity
@@ -83,8 +83,8 @@ compromised or offline does not touch the others. MuSig2 and FROST need
 a nonce round before the partial signatures — so, signers available at
 the same time — and above all a secret nonce that is never reused.
 Reusing one does not degrade security, it hands out the key.
-{py:func}`musig2.sign <ecc.ecc.musig2.sign>` and
-{py:func}`frost.sign <ecc.ecc.frost.sign>` refuse a secret nonce they
+{py:func}`musig2.sign <ecc.musig2.sign>` and
+{py:func}`frost.sign <ecc.frost.sign>` refuse a secret nonce they
 have already consumed; their docstrings say how.
 
 ### Attribution
@@ -107,7 +107,7 @@ different set and the funds stay where they are.
 Script multisig has no phase in which anybody holds everything. FROST
 has one wherever a trusted dealer distributes the shares: that dealer
 transiently knows the whole key. Avoiding it takes a distributed key
-generation, and {py:mod}`ecc.ecc.frost` takes key material already split
+generation, and {py:mod}`ecc.frost` takes key material already split
 rather than splitting any;
 btclib's [ISS 2200](https://github.com/btclib-org/btclib/issues/2200)
 tracks key generation.
@@ -163,7 +163,7 @@ that writes one: `multi()` and `sortedmulti()` (BIP383), `multi_a()` and
 `sortedmulti_a()` (BIP386, BIP387).
 
 The cryptographic threshold is this package's:
-{py:mod}`ecc.ecc.musig2` (BIP327) and {py:mod}`ecc.ecc.frost` (BIP445).
+{py:mod}`ecc.musig2` (BIP327) and {py:mod}`ecc.frost` (BIP445).
 btclib-wallet's `btclib_wallet.psbt.musig2` (BIP373) and
 `btclib_wallet.psbt.frost` carry a session of each through a psbt: the
 first in the fields BIP373 assigns, the second in proprietary records of
@@ -172,11 +172,11 @@ BIP390's `musig()` key expression, inside a `tr()` or a `rawtr()`;
 FROST has none.
 
 What they produce is not one object for all three.
-{py:func}`musig2.partial_sig_agg <ecc.ecc.musig2.partial_sig_agg>` and
-{py:func}`frost.partial_sig_agg <ecc.ecc.frost.partial_sig_agg>` each
-answer an {py:class}`ecc.ecc.ssa.Sig`, the BIP340 signature
-{py:mod}`ecc.ecc.ssa` verifies and so does every other BIP340 verifier.
+{py:func}`musig2.partial_sig_agg <ecc.musig2.partial_sig_agg>` and
+{py:func}`frost.partial_sig_agg <ecc.frost.partial_sig_agg>` each
+answer an {py:class}`ecc.ssa.Sig`, the BIP340 signature
+{py:mod}`ecc.ssa` verifies and so does every other BIP340 verifier.
 A `multi_a()` leaf is checked against BIP340 signatures too, btclib's
-tapscript engine calling {py:mod}`ecc.ecc.ssa` for them.
+tapscript engine calling {py:mod}`ecc.ssa` for them.
 `OP_CHECKMULTISIG` is the one that differs: it verifies ECDSA, through
-{py:mod}`ecc.ecc.dsa`.
+{py:mod}`ecc.dsa`.

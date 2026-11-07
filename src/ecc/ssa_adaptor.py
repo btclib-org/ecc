@@ -47,6 +47,7 @@ from __future__ import annotations
 import secrets
 from hashlib import sha256
 
+from ecc import ssa
 from ecc._utils import bytes_from_octets
 from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import (
@@ -59,7 +60,6 @@ from ecc.curves import (
     secp256k1,
 )
 from ecc.curves.sec_point import point_from_octets_var
-from ecc.ecc import ssa
 from ecc.exceptions import EccRuntimeError, EccValueError
 from ecc.hashes import tagged_hash
 

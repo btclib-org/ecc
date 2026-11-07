@@ -106,7 +106,7 @@ def _canonical_spec(module: str, remote: str, attr: str) -> str:
 
     `from ecc import kdf; kdf.parse(...)` would bind a module,
     where `parse` is that module's own function; `from
-    ecc.ecc.ecies import Envelope; Envelope.b64decode(...)`
+    ecc.ecies import Envelope; Envelope.b64decode(...)`
     binds a class, where `b64decode` is a method on it. Trying the
     submodule import is what tells the two apart, both being an ordinary
     `from X import Y` to the AST alone.
@@ -363,15 +363,14 @@ def test_round_trip_is_unchecked_when_b64decode_has_no_b64encode() -> None:
     counterpart today -- Envelope carries one -- so this is exercised on a
     bare object rather than on any seed.
     """
-    assert _round_trip("ecc.ecc.ecies:Envelope.b64decode", object(), b"") is None
+    assert _round_trip("ecc.ecies:Envelope.b64decode", object(), b"") is None
 
 
 def test_canonical_spec_tells_a_submodule_from_a_class() -> None:
     """Both harnesses here bind a class, so the module side is asked here."""
     assert _canonical_spec("ecc", "kdf", "parse") == "ecc.kdf:parse"
     assert (
-        _canonical_spec("ecc.ecc.ecies", "Envelope", "parse")
-        == "ecc.ecc.ecies:Envelope.parse"
+        _canonical_spec("ecc.ecies", "Envelope", "parse") == "ecc.ecies:Envelope.parse"
     )
 
 
@@ -381,4 +380,4 @@ def test_round_trip_is_unchecked_when_parse_returns_no_serializer() -> None:
     Every object the harnesses here parse into serializes, so this is
     exercised on a bare object rather than on any seed.
     """
-    assert _round_trip("ecc.ecc.dsa:Sig.parse", object(), b"") is None
+    assert _round_trip("ecc.dsa:Sig.parse", object(), b"") is None

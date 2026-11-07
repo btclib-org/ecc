@@ -148,8 +148,8 @@ An ECDSA signature, verified from the DER octets a peer would send, and
 a BIP340 Schnorr signature:
 
 ```python
+from ecc import dsa, ssa
 from ecc.curves import sec_point
-from ecc.ecc import dsa, ssa
 
 prv_key = 0xB7E151628AED2A6ABF7158809CF4F3C762E7160F38B4DA56A784D9045190CFEF
 

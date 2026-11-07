@@ -217,13 +217,13 @@ def test_the_walk_reaches_what_it_claims() -> None:
     A walk that found nothing would pass the test above.
     """
     assert _NAMED["ecc.curves.curve_group.is_on_curve"] == "bool"
-    assert _NAMED["ecc.ecc.dsa.verify_"] == "bool"
-    assert _NAMED["ecc.ecc.ssa.batch_verify"] == "bool"
-    assert _NAMED["ecc.ecc.dsa.assert_as_valid"] == "None"
+    assert _NAMED["ecc.dsa.verify_"] == "bool"
+    assert _NAMED["ecc.ssa.batch_verify"] == "bool"
+    assert _NAMED["ecc.dsa.assert_as_valid"] == "None"
     # `TypeIs` read as the bool it answers
     assert _NAMED["ecc._utils.is_octets"] == "bool"
     # a method
-    assert _NAMED["ecc.ecc.dsa.assert_valid"] == "None"
+    assert _NAMED["ecc.dsa.assert_valid"] == "None"
 
     # a private name, and a name that promises nothing
     assert "ecc.hashes._assert_valid_hf" not in _NAMED
@@ -280,10 +280,10 @@ def test_an_argument_less_member_is_read_not_called(dotted: str) -> None:
 
 def test_the_walk_reaches_every_shape_of_member() -> None:
     """One of each, so neither branch above is running over nothing."""
-    assert _CLASS_MEMBERS["ecc.ecc.rangeproof.RangeProof.max_value"] is True
+    assert _CLASS_MEMBERS["ecc.rangeproof.RangeProof.max_value"] is True
     # and the three of HashObject that hashlib spells as attributes
     assert _CLASS_MEMBERS["ecc.alias.HashObject.digest_size"] is True
     # and the shapes that are not a read
-    assert _CLASS_MEMBERS["ecc.ecc.dsa.Sig.assert_valid"] is False
-    assert _CLASS_MEMBERS["ecc.ecc.dsa.Signer.wipe"] is False
+    assert _CLASS_MEMBERS["ecc.dsa.Sig.assert_valid"] is False
+    assert _CLASS_MEMBERS["ecc.dsa.Signer.wipe"] is False
     assert _CLASS_MEMBERS["ecc.alias.HashObject.digest"] is False

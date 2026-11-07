@@ -141,7 +141,14 @@ jobs:
           from importlib.metadata import requires, version
           import ecc
           from ecc.curves import mult
-          from ecc.ecc import dsa
+
+          # PyPI's newest release may still keep the schemes under `ecc.ecc`
+          # (btclib-org/ecc#482); the fallback goes once one with them at
+          # the top is published
+          try:
+              from ecc import dsa
+          except ImportError:
+              from ecc.ecc import dsa
 
           print("installed version:", version("ecc"))
           print("requires:", requires("ecc"))

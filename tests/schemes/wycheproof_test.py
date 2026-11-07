@@ -39,7 +39,7 @@ same signature twice: tcId 1 and tcId 388 of the bitcoin file are tcId 5 and
 tcId 392 of the generic one -- one key and one signature each time, `invalid`
 there and `valid` here. This package answers `valid` for all four, which form s
 took having been the signer's choice, so plain verification has no standing to
-refuse it (issue btclib-org/btclib#695). `ecc.ecc.dsa`'s module docstring says
+refuse it (issue btclib-org/btclib#695). `ecc.dsa`'s module docstring says
 where the rule belongs, an anti-exfil host's check among those places.
 `_generic_valid` below is how those two are found, and says why a flag would
 find only one.
@@ -83,10 +83,9 @@ from typing import Any, Protocol
 
 import pytest
 
-from ecc import kdf
+from ecc import dh, dsa, kdf
 from ecc.alias import HashF, HashObject, Point
 from ecc.curves import mult, point_from_octets_var, secp256k1
-from ecc.ecc import dh, dsa
 from ecc.exceptions import (
     EccRuntimeError,
     EccValueError,

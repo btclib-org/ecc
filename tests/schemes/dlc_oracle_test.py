@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.dlc_oracle` module.
+"""Tests for the `ecc.dlc_oracle` module.
 
 The vectors are the DLC specification's own, `test/dlc_schnorr_test.json`
 of discreetlogcontracts/dlcspecs, vendored under `tests/schemes/_data/`;
@@ -15,8 +15,8 @@ from typing import Any
 
 import pytest
 
+from ecc import dlc_oracle, ssa
 from ecc.curves import bytes_from_point, mult, secp256k1
-from ecc.ecc import dlc_oracle, ssa
 from ecc.exceptions import EccException, EccValueError
 from tests import REFUSED_SCALARS, both_arms, load, refused_secret, vector_id
 from tests.secret_free import assert_secret_free

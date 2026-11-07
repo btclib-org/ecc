@@ -47,9 +47,9 @@ _NOT_OPERANDS = {
     "ecc.curves.curve_group._additions_by_position_var.nafs": "digits",
     "ecc.curves.curve_group_2._double_and_add_var.digits": "digits",
     # a modulus or a coefficient, which the rule counts with the curve
-    "ecc.ecc.ellswift._is_square_var.p": "modulus",
-    "ecc.ecc.ellswift._is_x_fraction_var.b": "coefficient",
-    "ecc.ecc.ellswift._is_x_fraction_var.p": "modulus",
+    "ecc.ellswift._is_square_var.p": "modulus",
+    "ecc.ellswift._is_x_fraction_var.b": "coefficient",
+    "ecc.ellswift._is_x_fraction_var.p": "modulus",
     "ecc.number_theory.mod_inv_var.m": "modulus",
     "ecc.number_theory.mod_inv_batch_var.m": "modulus",
     "ecc.number_theory.legendre_symbol_var.p": "modulus",
@@ -57,24 +57,24 @@ _NOT_OPERANDS = {
     "ecc.number_theory.tonelli_var.p": "modulus",
     "ecc.number_theory._jacobi_var.n": "modulus",
     # which of the eight preimages to try, drawn by `_ell_from_point_var`
-    "ecc.ecc.ellswift._xswiftec_inv_var.case": "selector",
+    "ecc.ellswift._xswiftec_inv_var.case": "selector",
     # only refused when out of range: the work is the parse of the shares
-    "ecc.ecc.frost._parse_session_pub_shares_var.ids": "range-checked",
-    "ecc.ecc.frost._parse_session_pub_shares_var.n": "range-checked",
+    "ecc.frost._parse_session_pub_shares_var.ids": "range-checked",
+    "ecc.frost._parse_session_pub_shares_var.n": "range-checked",
     # a format the output states
-    "ecc.ecc.pedersen._bytes_from_point_var.tag": "format",
-    "ecc.ecc.pedersen._point_from_octets_var.tag": "format",
+    "ecc.pedersen._bytes_from_point_var.tag": "format",
+    "ecc.pedersen._point_from_octets_var.tag": "format",
     # header fields of a range proof: hashed, or a count the header writes
-    "ecc.ecc.rangeproof._hashed_prefix_var.exp": "header",
-    "ecc.ecc.rangeproof._hashed_prefix_var.mantissa": "header",
-    "ecc.ecc.rangeproof._hashed_prefix_var.min_value": "header",
-    "ecc.ecc.rangeproof._pub_expand_var.exp": "header",
-    "ecc.ecc.rangeproof._pub_expand_var.rsizes": "header",
-    "ecc.ecc.rangeproof._value_encoding_var.rsizes": "header",
+    "ecc.rangeproof._hashed_prefix_var.exp": "header",
+    "ecc.rangeproof._hashed_prefix_var.mantissa": "header",
+    "ecc.rangeproof._hashed_prefix_var.min_value": "header",
+    "ecc.rangeproof._pub_expand_var.exp": "header",
+    "ecc.rangeproof._pub_expand_var.rsizes": "header",
+    "ecc.rangeproof._value_encoding_var.rsizes": "header",
     # the digits of a value recovered with a secret nonce, which is not
     # public: SECURITY.md's limitations state what this leaks
-    "ecc.ecc.rangeproof._value_encoding_var.written": "not public",
-    "ecc.ecc.rangeproof._value_encoding_var.drawn": "not public",
+    "ecc.rangeproof._value_encoding_var.written": "not public",
+    "ecc.rangeproof._value_encoding_var.drawn": "not public",
 }
 
 

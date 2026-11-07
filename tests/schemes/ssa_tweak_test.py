@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for BIP341's x-only tweaks in `ecc.ecc.ssa`.
+"""Tests for BIP341's x-only tweaks in `ecc.ssa`.
 
 The vectors are BIP341's own, bip-0341/wallet-test-vectors.json of
 bitcoin/bips: `tests/_data/README.md` has the revision vendored.
@@ -13,9 +13,9 @@ from typing import Any
 
 import pytest
 
+from ecc import ssa
 from ecc.alias import Public
 from ecc.curves import CURVES, mult, secp256k1
-from ecc.ecc import ssa
 from ecc.exceptions import (
     EccException,
     EccTypeError,

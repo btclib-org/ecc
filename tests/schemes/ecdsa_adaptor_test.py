@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.ecdsa_adaptor` module.
+"""Tests for the `ecc.ecdsa_adaptor` module.
 
 The vectors are the DLC specification's own, `test/ecdsa_adaptor.json`
 of discreetlogcontracts/dlcspecs, vendored under `tests/schemes/_data/`;
@@ -25,8 +25,8 @@ from typing import Any
 
 import pytest
 
+from ecc import dsa, ecdsa_adaptor
 from ecc.curves import CURVES, bytes_from_point, mult, secp256k1
-from ecc.ecc import dsa, ecdsa_adaptor
 from ecc.exceptions import EccException, EccValueError
 from tests import (
     REFUSED_AUX,

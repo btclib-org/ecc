@@ -2,9 +2,9 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.rfc6979_nonce` module.
+"""Tests for the `ecc.rfc6979_nonce` module.
 
-The last four compare it against `ecc.ecc.bip340_nonce`, the other
+The last four compare it against `ecc.bip340_nonce`, the other
 deterministic nonce this library derives.
 """
 
@@ -16,19 +16,19 @@ from typing import Any
 
 import pytest
 
+from ecc import dsa
 from ecc.alias import HashObject
+from ecc.bip340_nonce import _bip340_nonce_, bip340_nonce_
 from ecc.curves import mult
 from ecc.curves.curve import CURVES, Curve, secp256k1
-from ecc.ecc import dsa
-from ecc.ecc.bip340_nonce import _bip340_nonce_, bip340_nonce_
-from ecc.ecc.rfc6979_nonce import (
+from ecc.exceptions import EccException, EccRuntimeError
+from ecc.hashes import reduce_to_hlen
+from ecc.rfc6979_nonce import (
     _HmacDrbg,
     _rfc6979_nonce_,
     challenge_,
     rfc6979_nonce_,
 )
-from ecc.exceptions import EccException, EccRuntimeError
-from ecc.hashes import reduce_to_hlen
 from tests import (
     HELD_KEY_SPELLINGS,
     HELD_KEYS,

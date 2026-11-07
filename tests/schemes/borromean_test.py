@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.borromean` module."""
+"""Tests for the `ecc.borromean` module."""
 
 import hashlib
 import inspect
@@ -14,8 +14,10 @@ from typing import Any
 
 import pytest
 
+from ecc import borromean, dsa
 from ecc._utils import int_from_bits
 from ecc.alias import Point, Public
+from ecc.borromean import BorromeanSig, _get_msg_format, _hash
 from ecc.curves import (
     Curve,
     bytes_from_point,
@@ -23,8 +25,6 @@ from ecc.curves import (
     mult,
     secp256k1,
 )
-from ecc.ecc import borromean, dsa
-from ecc.ecc.borromean import BorromeanSig, _get_msg_format, _hash
 from ecc.exceptions import (
     BorromeanRingError,
     EccException,
@@ -271,7 +271,7 @@ def test_the_curve_and_the_hash_function_are_parameters() -> None:
     """As module globals, selecting either would be process-wide.
 
     Choosing another curve or hash would mean rebinding an attribute of
-    ecc.ecc.borromean, which changes the algorithm for every other
+    ecc.borromean, which changes the algorithm for every other
     caller in the process. They are arguments, with the same defaults
     and in the same position as in dsa, ssa and pedersen.
     """
@@ -571,7 +571,7 @@ def test_sign_key_idx_out_of_range_is_refused() -> None:
 
 
 def test_a_scalar_outside_1_to_n_minus_1_is_refused() -> None:
-    """The range check every other signer in `ecc.ecc` has, and this had not.
+    """The range check every other signer in the package has, and this had not.
 
     `sign_keys[i]` reached step 2's `(k + sign_keys[i] * e[i][j_star]) %
     ec.n` as it came, so three values outside 1..n-1 signed that
@@ -904,7 +904,7 @@ def test_verify_tells_octets_that_are_no_signature_from_one_that_fails() -> None
     fails to close, and `BorromeanSig.parse` is where that is read. What
     the encoding *can* carry -- an `s` at or above the group order, each
     scalar occupying its own `ec.n_size` octets -- stays False, as
-    `ecc.ecc.ssa`'s own out-of-range scalar does.
+    `ecc.ssa`'s own out-of-range scalar does.
     """
     ring_sizes = [2, 3]
     sign_key_idx = [0, 2]

@@ -366,11 +366,11 @@ def legendre_symbol_var(a: Public, p: int) -> int:
     in the tree asks this about a value that has to stay hidden.
     `curves.curve._is_x_coordinate_var` reaches it for a signature's r,
     the x-coordinate of a serialized xpub, or the -x-u that an
-    ElligatorSwift encoding is tested against, and `ecc.ecc.ellswift`
+    ElligatorSwift encoding is tested against, and `ecc.ellswift`
     reaches it directly for the fractions and radicands its map and its
     inverse test, each of them public and on secp256k1 each answered by
     the bindings before this is reached;
-    `ecc.ecc.pedersen` and `ecc.ecc.rangeproof` reach it for the residuosity
+    `ecc.pedersen` and `ecc.rangeproof` reach it for the residuosity
     octet of a point they are about to write down.
     """
     _assert_valid_operand(a)

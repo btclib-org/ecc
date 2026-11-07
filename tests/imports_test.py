@@ -24,7 +24,6 @@ import importlib
 import subprocess
 import sys
 from pathlib import Path
-from types import ModuleType
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -146,7 +145,7 @@ def test_curves_stays_stdlib_light() -> None:
     Subset rather than equal: a new edge into the package is the defect
     this exists to catch, and a removed one is not. Narrower than the
     package: it is the curve's own arithmetic, and its docstring states
-    "Nothing here knows what a signature is", so `ecc.ecc` is out of it.
+    "Nothing here knows what a signature is", so the schemes are out of it.
     """
     assert _loaded_within("ecc.curves") <= {
         "ecc._libsecp256k1",
@@ -161,23 +160,6 @@ def test_curves_stays_stdlib_light() -> None:
         "ecc.exceptions",
         "ecc.number_theory",
     }
-
-
-def test_ecc_loads_every_scheme() -> None:
-    """`ecc.ecc` binds each scheme it publishes, eagerly.
-
-    Its `__init__` imports every module `__all__` names, which is what
-    lets `ecc.ecc.dsa` answer after `import ecc.ecc`
-    alone; the heavy modules are asked of it by the test above.
-    """
-    loaded = _loaded_within("ecc.ecc")
-    schemes = {
-        f"ecc.ecc.{name}"
-        for name in importlib.import_module("ecc.ecc").__all__
-        if isinstance(getattr(importlib.import_module("ecc.ecc"), name), ModuleType)
-    }
-    assert schemes
-    assert schemes <= loaded
 
 
 # the distributions a module of the package may import at the top level,
@@ -239,14 +221,14 @@ def test_no_module_imports_outside_the_stdlib_and_the_extras() -> None:
         )
         for path in sorted(root.rglob("*.py"))
     }
-    assert "ecc/dsa.py" in found
+    assert "dsa.py" in found
     assert not {file: names for file, names in found.items() if names}
 
 
 # what each unit of the package may import from the package itself, as
 # ARCHITECTURE.md states. A unit is the root (`ecc`) or the first module
-# below it (`ecc.kdf`), so the subpackage `ecc.ecc` is one unit and its
-# schemes are free among themselves
+# below it (`ecc.kdf`), so the subpackage `ecc.curves` is one unit and its
+# modules are free among themselves
 _EXCEPTIONS = "ecc.exceptions"
 _ALIAS = "ecc.alias"
 _UTILS = "ecc._utils"
@@ -255,7 +237,20 @@ _HASHES = "ecc.hashes"
 _LIBSECP256K1 = "ecc._libsecp256k1"
 _KDF = "ecc.kdf"
 _CURVES = "ecc.curves"
-_SCHEMES = "ecc.ecc"
+# what every scheme may import: each layer below the schemes
+_BELOW_SCHEMES = frozenset(
+    {
+        "ecc",
+        _LIBSECP256K1,
+        _UTILS,
+        _ALIAS,
+        _EXCEPTIONS,
+        _NUMBER_THEORY,
+        _HASHES,
+        _KDF,
+        _CURVES,
+    }
+)
 _MAY_IMPORT: dict[str, frozenset[str]] = {
     "ecc": frozenset(),
     _EXCEPTIONS: frozenset(),
@@ -266,19 +261,26 @@ _MAY_IMPORT: dict[str, frozenset[str]] = {
     _LIBSECP256K1: frozenset({"ecc", _EXCEPTIONS}),
     _KDF: frozenset({_UTILS, _ALIAS, _EXCEPTIONS, _HASHES}),
     _CURVES: frozenset({_LIBSECP256K1, _UTILS, _ALIAS, _EXCEPTIONS, _NUMBER_THEORY}),
-    _SCHEMES: frozenset(
-        {
-            "ecc",
-            _LIBSECP256K1,
-            _UTILS,
-            _ALIAS,
-            _EXCEPTIONS,
-            _NUMBER_THEORY,
-            _HASHES,
-            _KDF,
-            _CURVES,
-        }
-    ),
+    "ecc.bip340_nonce": _BELOW_SCHEMES,
+    "ecc.borromean": _BELOW_SCHEMES,
+    "ecc.commit_nonce": _BELOW_SCHEMES,
+    "ecc.dahlias": _BELOW_SCHEMES | {"ecc.ssa"},
+    "ecc.dh": _BELOW_SCHEMES,
+    "ecc.dlc_oracle": _BELOW_SCHEMES | {"ecc.ssa"},
+    "ecc.dleq": _BELOW_SCHEMES,
+    "ecc.dsa": _BELOW_SCHEMES | {"ecc.commit_nonce", "ecc.rfc6979_nonce"},
+    "ecc.ecdsa_adaptor": _BELOW_SCHEMES | {"ecc.dsa"},
+    "ecc.ecies": _BELOW_SCHEMES,
+    "ecc.ellswift": _BELOW_SCHEMES,
+    "ecc.frost": _BELOW_SCHEMES | {"ecc.ssa"},
+    "ecc.musig2": _BELOW_SCHEMES | {"ecc.ssa"},
+    "ecc.pedersen": _BELOW_SCHEMES,
+    "ecc.rangeproof": _BELOW_SCHEMES
+    | {"ecc.borromean", "ecc.pedersen", "ecc.rfc6979_nonce"},
+    "ecc.rfc6979_nonce": _BELOW_SCHEMES,
+    "ecc.ssa": _BELOW_SCHEMES | {"ecc.bip340_nonce", "ecc.commit_nonce"},
+    "ecc.ssa_adaptor": _BELOW_SCHEMES | {"ecc.ssa"},
+    "ecc.ssa_halfagg": _BELOW_SCHEMES | {"ecc.ssa"},
 }
 
 
@@ -371,12 +373,14 @@ def test_the_layers_import_only_downwards() -> None:
 
 def test_the_layer_scan_finds_a_planted_import() -> None:
     """The scan resolves each import form to a unit, and the rule refuses it."""
-    known = {"ecc", "ecc.kdf", "ecc.hashes", "ecc.ecc", "ecc.ecc.dsa"}
-    source = "from ecc import kdf, name\nimport ecc.ecc.dsa as dsa\nimport json\n"
-    assert _package_imports("ecc.curves", True, source, known) == {
+    known = {"ecc", "ecc.kdf", "ecc.hashes", "ecc.curves", "ecc.curves.curve"}
+    source = (
+        "from ecc import kdf, name\nimport ecc.curves.curve as curve\nimport json\n"
+    )
+    assert _package_imports("ecc.dsa", False, source, known) == {
         "ecc.kdf",
         "ecc",
-        "ecc.ecc",
+        "ecc.curves",
     }
     assert _package_imports("ecc._utils", False, "import ecc\n", known) == {_ANY}
     assert _package_imports("ecc._utils", False, "import ecc as e\n", known) == {_ANY}
@@ -394,10 +398,12 @@ def test_the_layer_scan_finds_a_planted_import() -> None:
         "ecc.kdf": (False, "from ecc.hashes import tagged_hash\n"),
         "ecc.curves": (True, "from ecc.kdf import hkdf\n"),
         "ecc.exceptions": (False, "import ecc\n"),
-        "ecc.ecc": (True, "from ecc import hashes\n"),
+        "ecc.dsa": (False, "from ecc import hashes\n"),
+        "ecc.ssa": (False, "from ecc.dsa import Sig\n"),
     }
     assert _imports_the_rule_refuses(planted) == {
         "ecc.curves": ["ecc.kdf"],
         "ecc.exceptions": [_ANY],
         "ecc.hashes": ["ecc.kdf"],
+        "ecc.ssa": ["ecc.dsa"],
     }

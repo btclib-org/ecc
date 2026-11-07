@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the anti-exfil protocol of `ecc.ecc.ssa`.
+"""Tests for the anti-exfil protocol of `ecc.ssa`.
 
 bitcoin-core/secp256k1#1140 proposes the same handshake for
 `schnorrsig`, carrying over the ECDSA one BlockstreamResearch/secp256k1-zkp's
@@ -18,7 +18,7 @@ from hashlib import sha1, sha256
 
 import pytest
 
-from ecc.ecc import ssa
+from ecc import ssa
 from ecc.exceptions import EccValueError
 
 _PRV_KEY = bytes.fromhex("55" * 32)

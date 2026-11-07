@@ -36,7 +36,7 @@ asked one position at a time with the others left valid:
 Issue btclib-org/btclib#814 settled the second against issue
 btclib-org/btclib#745's "total over everything it is handed", and this is
 where the decision is held to. Issue btclib-org/btclib#2170 is where the
-third was carved out of the second, for the `ecc.ecc` verifications: a
+third was carved out of the second, for the schemes' verifications: a
 signature, a key or an opening whose size or encoding makes it impossible
 is refused there.
 
@@ -59,9 +59,9 @@ from typing import Any
 
 import pytest
 
+from ecc import dahlias, dleq, dsa, pedersen, ssa, ssa_halfagg
 from ecc.alias import INF
 from ecc.curves import bytes_from_point, mult, secp256k1
-from ecc.ecc import dahlias, dleq, dsa, pedersen, ssa, ssa_halfagg
 from ecc.hashes import reduce_to_hlen
 
 _Q = 12

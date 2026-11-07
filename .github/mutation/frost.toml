@@ -8,7 +8,7 @@
 # weighing reads from.
 
 [cosmic-ray]
-module-path = "src/ecc/ecc/frost.py"
+module-path = "src/ecc/frost.py"
 
 # the module's own file
 test-command = """python -m pytest -x -q -n0 -p no:randomly \
@@ -25,7 +25,7 @@ excluded-modules = []
 # other bitwise operator is `^`, over the nonce seed, which no filter
 # touches:
 #
-#   grep -n ' | ' src/ecc/ecc/frost.py
+#   grep -n ' | ' src/ecc/frost.py
 [cosmic-ray.filters.operators-filter]
 exclude-operators = ["core/ReplaceBinaryOperator_BitOr_.*"]
 

@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.frost` module.
+"""Tests for the `ecc.frost` module.
 
 The vectors are BIP445's own, every JSON file of
 `siv2r/bip-frost-signing`'s `python/vectors/`, vendored under
@@ -28,9 +28,9 @@ from typing import Any
 
 import pytest
 
+from ecc import frost, musig2, ssa
 from ecc.alias import Public
 from ecc.curves import bytes_from_point, mult, secp256k1
-from ecc.ecc import frost, musig2, ssa
 from ecc.exceptions import (
     EccException,
     EccTypeError,

@@ -339,10 +339,10 @@ def test_the_walk_reaches_what_it_claims() -> None:
     parameters are not all in the vocabulary.
     """
     assert _DRIVABLE["ecc.hashes.reduce_to_hlen"] == ["Octets"]
-    assert _DRIVABLE["ecc.ecc.dleq.generate_proof"] == ["Integer", "PubKey"]
+    assert _DRIVABLE["ecc.dleq.generate_proof"] == ["Integer", "PubKey"]
     # `ec` and `compressed` carry defaults and are not driven
     assert _DRIVABLE["ecc.curves.sec_point.bytes_from_point"] == ["Point"]
 
     assert "ecc.hashes._assert_valid_hf" not in _DRIVABLE
     # a required parameter the vocabulary cannot build: a signature object
-    assert "ecc.ecc.dsa.verify" not in _DRIVABLE
+    assert "ecc.dsa.verify" not in _DRIVABLE

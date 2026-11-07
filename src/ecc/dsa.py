@@ -26,7 +26,7 @@ caller who wants the nonce asks for ``grind=False`` and gets an error
 rather than a guess if they forget.
 
 ``sign`` also takes a value to commit to inside the nonce,
-sign-to-contract style (see ecc.ecc.commit_nonce for the tweak), and
+sign-to-contract style (see ecc.commit_nonce for the tweak), and
 the four ``anti_exfil_*`` functions here are the protocol that
 construction exists to support: the ECDSA Anti-Exfil Protocol, whose
 five steps and reasoning are in ``anti_exfil_host_commit``.
@@ -54,6 +54,11 @@ from ecc._utils import (
     is_integer,
 )
 from ecc.alias import BinaryData, HashF, Integer, JacPoint, Octets, Point, Public
+from ecc.commit_nonce import (
+    commit_entropy_,
+    commit_nonce_,
+    commit_point_var_,
+)
 from ecc.curves import (
     Curve,
     PreparedPoint,
@@ -74,12 +79,6 @@ from ecc.curves.curve import (
 )
 from ecc.curves.curve_group import _mult_jac_var
 from ecc.curves.sec_point import _sec_from_pub_key
-from ecc.ecc.commit_nonce import (
-    commit_entropy_,
-    commit_nonce_,
-    commit_point_var_,
-)
-from ecc.ecc.rfc6979_nonce import _rfc6979_nonce_, challenge_
 from ecc.exceptions import (
     EccRuntimeError,
     EccTypeError,
@@ -87,6 +86,7 @@ from ecc.exceptions import (
 )
 from ecc.hashes import _assert_valid_hf, reduce_to_hlen
 from ecc.number_theory import mod_inv, mod_inv_var
+from ecc.rfc6979_nonce import _rfc6979_nonce_, challenge_
 
 __all__ = [
     "Sig",
@@ -1001,7 +1001,7 @@ def sign_(
     commit_hash is a value to commit to inside the nonce, sign-to-contract
     style: the signature is an ordinary one, and the receipt returned
     beside it is what opens the commitment (see
-    ecc.ecc.commit_nonce). Keyword-only, and the only argument that
+    ecc.commit_nonce). Keyword-only, and the only argument that
     changes what is returned, so that neither is easy to pass by accident.
     A commitment derives its own nonce and cannot be given one: the
     derivation is where half of the scheme's security is.

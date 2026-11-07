@@ -109,7 +109,7 @@ class BorromeanRingError(EccRuntimeError):
     within that ring: an e-value landing on zero, and the point at
     infinity its one-in-n neighbour lands a ring's nonce or its `r` on
     instead, each happen at one ring and one position, and
-    `ecc.ecc.borromean.sign` and `assert_as_valid` already have both
+    `ecc.borromean.sign` and `assert_as_valid` already have both
     in hand at every one of their raises. Naming them is what tells a
     caller building on this primitive which key rejected the signature
     rather than only that the whole thing did.

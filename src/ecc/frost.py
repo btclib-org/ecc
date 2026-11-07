@@ -13,8 +13,8 @@ https://github.com/bitcoin/bips/pull/2070.
 FROST turns *t* of *n* participants into one signer: a threshold secret
 key is Shamir-shared among *n* participants at key generation, and any
 *t* of them can cooperatively produce a signature that verifies under a
-single x-only public key with `ecc.ecc.ssa` and with any other BIP340
-verifier -- the same output shape `ecc.ecc.musig2` produces for an
+single x-only public key with `ecc.ssa` and with any other BIP340
+verifier -- the same output shape `ecc.musig2` produces for an
 *n*-of-*n* group, with a chosen subset standing in for the whole group.
 
 **Key generation is out of scope, here as in the BIP.** This module
@@ -30,7 +30,7 @@ about how that key material came to exist. `btclib-org/btclib#2200` is
 where key generation is tracked: a trusted dealer, then ChillDKG, once
 BIP445 and BIP-FROST-DKG settle.
 
-The round shape mirrors `ecc.ecc.musig2`: a primitive per round and
+The round shape mirrors `ecc.musig2`: a primitive per round and
 no function that signs, because signing is interactive. Key material and nonces
 come from the caller, not from a session this module holds:
 
@@ -63,10 +63,10 @@ against its own partial signature without it, `partial_sig_verify`
 alone requiring the list because there is no other way to check a
 signature against a key it was not given.
 
-secp256k1 and sha256 are not parameters here, unlike everywhere else in
-`ecc.ecc`, for the reason `musig2`'s own docstring gives: BIP445 is
-defined for that pair alone, and a `Curve` argument would advertise a
-genericity no vector could check.
+secp256k1 and sha256 are not parameters here, unlike in `dsa` and `ssa`,
+for the reason `musig2`'s own docstring gives: BIP445 is defined for that
+pair alone, and a `Curve` argument would advertise a genericity no vector
+could check.
 
 The upper bound of 128 participants (`n <= 128`) is a security
 requirement and not a format one: FROST3's unforgeability proof assumes
@@ -80,9 +80,9 @@ margin; it is not raised by passing a larger *n* to any function here.
 The tags below are BIP445's own and disjoint from BIP327's: `BIP0445/aux`,
 `BIP0445/nonce`, `BIP0445/noncecoef` and `BIP0445/deterministic/nonce`.
 Only `BIP0340/challenge` is shared, and it is BIP340's, read the same way
-`musig2` reads it -- through `ecc.ecc.ssa.challenge_`.
+`musig2` reads it -- through `ecc.ssa.challenge_`.
 
-**Nothing here is shared with `ecc.ecc.musig2` by import**, though
+**Nothing here is shared with `ecc.musig2` by import**, though
 BIP445's own reference code says in its header that it is "copied or
 modified from" BIP327's: this module's tag bytes, several error
 messages (the tweak-range message among them) and the shape of
@@ -104,12 +104,12 @@ from dataclasses import dataclass, field
 from hashlib import sha256
 from typing import cast
 
+from ecc import ssa
 from ecc._utils import assert_type, bytes_from_octets, is_integer, is_octets
 from ecc.alias import INF, Octets, Point, Public
 from ecc.curves import mult, multi_mult_var, secp256k1
 from ecc.curves.curve import _sum_var, _tweak_add_var
 from ecc.curves.sec_point import bytes_from_point, point_from_octets_var
-from ecc.ecc import ssa
 from ecc.exceptions import (
     EccTypeError,
     EccValueError,
@@ -142,7 +142,7 @@ __all__ = [
 ]
 
 # BIP445's own tags: disjoint from BIP327's, so nothing here collides
-# with `ecc.ecc.musig2` even though several are folded the same way
+# with `ecc.musig2` even though several are folded the same way
 _AUX_TAG = b"BIP0445/aux"
 _NONCE_TAG = b"BIP0445/nonce"
 _NONCE_COEFF_TAG = b"BIP0445/noncecoef"
@@ -1198,7 +1198,7 @@ def partial_sig_agg(psigs: Sequence[Octets], session_ctx: SessionContext) -> ssa
 
     `musig2.partial_sig_agg`'s own reason for answering an `ssa.Sig`
     rather than 64 bytes: the result verifies under the x-only tweaked
-    threshold public key with `ecc.ecc.ssa.verify_` and with every
+    threshold public key with `ecc.ssa.verify_` and with every
     other BIP340 verifier, and handing back raw bytes would only make
     the caller parse them again to find out.
     """

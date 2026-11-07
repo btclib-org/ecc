@@ -7,24 +7,24 @@
 A KDF stretches one secret into keying data of the length a protocol
 asks for, under a hash function the caller chooses. `ansi_x9_63_kdf` is
 SEC 1's, one hash per block over a four-octet counter, and
-`ecc.ecc.dh.diffie_hellman` is the agreement built on it. `hkdf` is RFC
+`ecc.dh.diffie_hellman` is the agreement built on it. `hkdf` is RFC
 5869's, extract then expand, and it is the one piece of BIP324's key
 schedule this package implements: a construction over a hash rather than over
-a cipher, which is the near side of the line `ecc.ecc.ellswift` draws and
-`ecc.ecc.ecies` argues.
+a cipher, which is the near side of the line `ecc.ellswift` draws and
+`ecc.ecies` argues.
 
 Both are `hashlib` and `hmac` and nothing else: no elliptic curve, and
 no bitcoin.
 
 **Why they are here rather than beside the agreement that uses one** (issue
 btclib-org/btclib#1080). SEC 1 defines ANSI-X9.63-KDF in section 3.6.1 for the
-agreement of section 6.1, so `ecc.ecc.dh` is where it reads naturally, and with
-one KDF in the tree that costs nothing. HKDF has no such tie -- RFC 5869 has no
+agreement of section 6.1, so `ecc.dh` is where it reads naturally, and with one
+KDF in the tree that costs nothing. HKDF has no such tie -- RFC 5869 has no
 Diffie-Hellman in it, and nothing that wants HKDF here holds a public key -- so
-a drawer under `ecc.ecc` leaves either a KDF reached through a package of
-signature schemes or two KDFs in two places for the next one to have to choose
-between. One drawer, at the layer its contents belong to, is the answer to both;
-btclib-org/btclib's RELEASE_NOTES.md has the spellings it costs.
+a drawer among the schemes leaves either a KDF reached through a scheme or two
+KDFs in two places for the next one to have to choose between. One drawer, at
+the layer its contents belong to, is the answer to both; btclib-org/btclib's
+RELEASE_NOTES.md has the spellings it costs.
 """
 
 from __future__ import annotations

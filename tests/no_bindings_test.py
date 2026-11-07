@@ -61,7 +61,7 @@ from typing import Any
 import pytest
 
 import ecc
-from ecc import _libsecp256k1
+from ecc import _libsecp256k1, dsa, ssa
 from ecc._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
 from ecc.curves import (
     bytes_from_point,
@@ -73,7 +73,6 @@ from ecc.curves import (
     set_libsecp256k1_serving,
 )
 from ecc.curves.curve import CURVES
-from ecc.ecc import dsa, ssa
 from ecc.exceptions import EccException, EccValueError
 from tests import needs_bindings
 
@@ -125,7 +124,7 @@ sys.meta_path.insert(0, RefuseTheBindings())
 import ecc
 from ecc._libsecp256k1 import ENABLED, INSTALLED, NO_LIBSECP256K1
 from ecc.curves import curve, mult
-from ecc.ecc import dh, dsa, ellswift, ssa
+from ecc import dh, dsa, ellswift, ssa
 from ecc.exceptions import EccValueError
 
 assert "btclib_secp256k1" not in sys.modules, "the finder let the bindings in"
@@ -183,8 +182,8 @@ def test_the_package_answers_with_the_bindings_out_of_reach() -> None:
     The child imports guarded modules beyond the ones it then calls:
     `src/ecc/__init__.py` imports nothing eagerly, so `import
     ecc` is the metadata lookup and no module at all, and a
-    guard nothing imports is a guard nothing checks. `ecc.ecc.dh` and
-    `ecc.ecc.ellswift` are the two the calls below would not reach on their
+    guard nothing imports is a guard nothing checks. `ecc.dh` and
+    `ecc.ellswift` are the two the calls below would not reach on their
     own.
     """
     # the same question this process answers with the bindings serving
@@ -255,7 +254,7 @@ def test_the_environment_variable_is_an_initial_state_not_a_lock() -> None:
     """
     probe = (
         "from ecc._libsecp256k1 import dsa as bindings;"
-        "from ecc.ecc import dsa;"
+        "from ecc import dsa;"
         "from ecc.curves import is_libsecp256k1_serving as serving,"
         " set_libsecp256k1_serving as setter;"
         "calls = [];"
@@ -615,7 +614,7 @@ sys.meta_path.insert(0, RefuseTheBindings())
 
 from ecc._libsecp256k1 import INSTALLED
 from ecc.curves import curve, point_from_octets_var
-from ecc.ecc import dsa
+from ecc import dsa
 from ecc.exceptions import EccException
 
 assert "btclib_secp256k1" not in sys.modules, "the finder let the bindings in"

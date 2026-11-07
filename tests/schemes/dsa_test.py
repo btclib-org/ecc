@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.dsa` module."""
+"""Tests for the `ecc.dsa` module."""
 
 import copy
 import re
@@ -14,6 +14,7 @@ from typing import Any
 
 import pytest
 
+from ecc import dsa
 from ecc._libsecp256k1 import INSTALLED
 from ecc._libsecp256k1 import dsa as libsecp256k1_dsa
 from ecc._libsecp256k1 import ffi as libsecp256k1_ffi
@@ -35,8 +36,6 @@ from ecc.curves import (
 )
 from ecc.curves.curve import CURVES
 from ecc.curves.curve_group import CurveGroup, _mult, _mult_jac_var
-from ecc.ecc import dsa
-from ecc.ecc.rfc6979_nonce import challenge_
 from ecc.exceptions import (
     EccException,
     EccRuntimeError,
@@ -45,6 +44,7 @@ from ecc.exceptions import (
 )
 from ecc.hashes import reduce_to_hlen
 from ecc.number_theory import mod_inv_var
+from ecc.rfc6979_nonce import challenge_
 from tests import (
     HELD_KEYS,
     REFUSED_SCALARS,

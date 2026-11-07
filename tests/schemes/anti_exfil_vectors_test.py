@@ -33,8 +33,8 @@ from typing import Any
 
 import pytest
 
+from ecc import dsa, ssa
 from ecc.curves import point_from_octets_var, secp256k1
-from ecc.ecc import dsa, ssa
 from ecc.exceptions import EccValueError
 from tests import both_arms, load
 

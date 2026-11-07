@@ -33,12 +33,11 @@ from typing import Any
 
 import pytest
 
-from ecc import _libsecp256k1
+from ecc import _libsecp256k1, dahlias, dsa, ellswift, frost, musig2, pedersen, ssa
 from ecc.alias import Public
 from ecc.curves import curve_group, mult, secp256k1
 from ecc.curves.curve import PreparedPoint, is_libsecp256k1_serving
 from ecc.curves.sec_point import bytes_from_point
-from ecc.ecc import dahlias, dsa, ellswift, frost, musig2, pedersen, ssa
 from tests import module_names, needs_bindings
 from tests.curves.curve_test import no_bindings_anywhere
 

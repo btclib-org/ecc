@@ -55,6 +55,7 @@ from typing import Any
 
 import pytest
 
+from ecc import dsa, ellswift, frost, musig2, ssa
 from ecc._libsecp256k1 import INSTALLED
 from ecc.curves.curve import (
     Curve,
@@ -66,7 +67,6 @@ from ecc.curves.sec_point import (
     bytes_from_prv_key_int,
     point_from_octets_var,
 )
-from ecc.ecc import dsa, ellswift, frost, musig2, ssa
 from ecc.exceptions import EccTypeError
 
 _PACKAGE = Path(__file__).parents[1] / "src" / "ecc"
@@ -143,13 +143,13 @@ _KINDS = (
         {"prv_key_int": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.dsa.recover_sec_",
+        "ecc.dsa.recover_sec_",
         "compressed",
         dsa.recover_sec_,
         {"key_id": _KEY_ID, "msg_hash": _MSG_HASH, "sig": _RECOVERABLE},
     ),
     _Case(
-        "ecc.ecc.dsa.recover_sec",
+        "ecc.dsa.recover_sec",
         "compressed",
         dsa.recover_sec,
         {"key_id": _KEY_ID, "msg": _MSG, "sig": _RECOVERABLE},
@@ -157,67 +157,67 @@ _KINDS = (
     # `lower_s` chooses which of the two signatures is returned, `grind`
     # whether the nonce is searched until r is short
     _Case(
-        "ecc.ecc.dsa.sign_",
+        "ecc.dsa.sign_",
         "lower_s",
         dsa.sign_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.dsa.sign",
+        "ecc.dsa.sign",
         "lower_s",
         dsa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.dsa.sign_recoverable_",
+        "ecc.dsa.sign_recoverable_",
         "lower_s",
         dsa.sign_recoverable_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.dsa.sign_recoverable",
+        "ecc.dsa.sign_recoverable",
         "lower_s",
         dsa.sign_recoverable,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.dsa.anti_exfil_sign",
+        "ecc.dsa.anti_exfil_sign",
         "lower_s",
         dsa.anti_exfil_sign,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY, "rho": _MSG_HASH},
     ),
     _Case(
-        "ecc.ecc.dsa.sign_",
+        "ecc.dsa.sign_",
         "grind",
         dsa.sign_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.dsa.sign",
+        "ecc.dsa.sign",
         "grind",
         dsa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.dsa.Signer.sign_",
+        "ecc.dsa.Signer.sign_",
         "grind",
         dsa.Signer(_PRV_KEY).sign_,
         {"msg_hash": _MSG_HASH},
     ),
     _Case(
-        "ecc.ecc.dsa.Signer.sign",
+        "ecc.dsa.Signer.sign",
         "grind",
         dsa.Signer(_PRV_KEY).sign,
         {"msg": _MSG},
     ),
     _Case(
-        "ecc.ecc.musig2.apply_tweak_var",
+        "ecc.musig2.apply_tweak_var",
         "is_xonly",
         musig2.apply_tweak_var,
         {"key_agg_ctx": _KEY_AGG, "tweak": b"\x01" * 32},
     ),
     _Case(
-        "ecc.ecc.frost.apply_tweak_var",
+        "ecc.frost.apply_tweak_var",
         "is_xonly",
         frost.apply_tweak_var,
         {"tweak_ctx": _FROST_TWEAK_CTX, "tweak": b"\x01" * 32},
@@ -225,7 +225,7 @@ _KINDS = (
     # `initiating` chooses which encoding is the other party's, and so
     # which secret is computed
     _Case(
-        "ecc.ecc.ellswift.xdh",
+        "ecc.ellswift.xdh",
         "initiating",
         ellswift.xdh,
         {"ell_a": _ELL, "ell_b": _ELL, "prv_key": _PRV_KEY},
@@ -284,7 +284,7 @@ _TRUTHS = (
         reason="whether n*G is verified to be the point at infinity",
     ),
     _Case(
-        "ecc.ecc.dsa.Sig.parse",
+        "ecc.dsa.Sig.parse",
         "strict",
         dsa.Sig.parse,
         {"data": _DER_SIG},
@@ -293,7 +293,7 @@ _TRUTHS = (
         " parsed out of what both readings accept is one signature",
     ),
     _Case(
-        "ecc.ecc.dsa.sign_",
+        "ecc.dsa.sign_",
         "verify",
         dsa.sign_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
@@ -302,28 +302,28 @@ _TRUTHS = (
         " verification of what has already been computed",
     ),
     _Case(
-        "ecc.ecc.dsa.sign",
+        "ecc.dsa.sign",
         "verify",
         dsa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "ecc.ecc.dsa.Signer.sign_",
+        "ecc.dsa.Signer.sign_",
         "verify",
         dsa.Signer(_PRV_KEY).sign_,
         {"msg_hash": _MSG_HASH},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "ecc.ecc.dsa.Signer.sign",
+        "ecc.dsa.Signer.sign",
         "verify",
         dsa.Signer(_PRV_KEY).sign,
         {"msg": _MSG},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "ecc.ecc.ssa.sign_",
+        "ecc.ssa.sign_",
         "verify",
         ssa.sign_,
         {"msg": _MSG, "prv_key": _PRV_KEY},
@@ -332,21 +332,21 @@ _TRUTHS = (
         " verification of what has already been computed",
     ),
     _Case(
-        "ecc.ecc.ssa.sign",
+        "ecc.ssa.sign",
         "verify",
         ssa.sign,
         {"msg": _MSG, "prv_key": _PRV_KEY},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "ecc.ecc.ssa.Signer.sign_",
+        "ecc.ssa.Signer.sign_",
         "verify",
         ssa.Signer(_PRV_KEY).sign_,
         {"msg": _MSG},
         reason="whether the signature is checked before it is answered with",
     ),
     _Case(
-        "ecc.ecc.ssa.Signer.sign",
+        "ecc.ssa.Signer.sign",
         "verify",
         ssa.Signer(_PRV_KEY).sign,
         {"msg": _MSG},
@@ -464,12 +464,12 @@ def test_the_walk_reaches_what_it_claims() -> None:
     """
     found = _bool_parameters()
     # a function, a method, and a method of a class nested in a module
-    assert ("ecc.ecc.dsa.sign", "lower_s") in found
-    assert ("ecc.ecc.dsa.Signer.sign", "grind") in found
+    assert ("ecc.dsa.sign", "lower_s") in found
+    assert ("ecc.dsa.Signer.sign", "grind") in found
     assert ("ecc.curves.curve.Curve.__init__", "order_check") in found
 
     # the convention with a file of its own
     assert not [pair for pair in found if pair[1] == "check_validity"]
     # a private function, and a parameter of another type
-    assert ("ecc.ecc.musig2._flag", "is_xonly") not in found
+    assert ("ecc.musig2._flag", "is_xonly") not in found
     assert ("ecc.hashes.reduce_to_hlen", "hf") not in found

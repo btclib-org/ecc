@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.dahlias` module.
+"""Tests for the `ecc.dahlias` module.
 
 The vectors are BIP459's own, the csv files of `bip-0459/vectors/`,
 vendored under `tests/schemes/_data/bip459/`; `tests/_data/README.md`
@@ -14,7 +14,7 @@ verification carve-out covers a value of a declared size.
 
 Sessions are also built here by hand: round trips, the checks `sign`
 makes, and the failures BIP459 lists, those no vector reaches
-included. The x-only tweak is checked against `ecc.ecc.ssa`'s BIP341 tweaking.
+included. The x-only tweak is checked against `ecc.ssa`'s BIP341 tweaking.
 """
 
 from __future__ import annotations
@@ -25,9 +25,9 @@ from typing import Any
 
 import pytest
 
+from ecc import dahlias, ssa
 from ecc.alias import Public
 from ecc.curves import bytes_from_point, mult, secp256k1
-from ecc.ecc import dahlias, ssa
 from ecc.exceptions import (
     EccException,
     EccRuntimeError,

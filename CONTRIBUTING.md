@@ -368,8 +368,8 @@ mistake, it is a call mypy already refuses, and it leaves as an
 raises, 12 being a private key in this package and never a public one,
 where a well-formed public key that simply did not sign is False.
 
-**`ecc.ecc`'s verifications carve one case out of that**, as
-`ecc.ecc.musig2` and `ecc.ecc.frost` do: a value of a declared type whose
+**The schemes' verifications carve one case out of that**, as
+`ecc.musig2` and `ecc.frost` do: a value of a declared type whose
 size or encoding makes it impossible to read as a signature, a key, a
 digest or an opening raises rather than answering False. The function is
 not saying the signature is forged, it is saying it has no way to find out
@@ -390,7 +390,7 @@ reference reads the same way: `dleq_verify_proof` asserts
 asserts `len(m) == 32`, while `s >= GE.ORDER` and a challenge that does
 not match are its False.
 
-`ecc.ecc.dsa`'s malformed DER encoding is the one thing on the other side of
+`ecc.dsa`'s malformed DER encoding is the one thing on the other side of
 the line, and it is there because a measurement put it there rather than
 because the rule reaches it: its own wycheproof vectors ask that question
 over profiles built for it, and answer False.
@@ -524,7 +524,7 @@ context `partial_sig_verify` aggregates. Both names of the pair are in
 `__all__`, so it is an offer to skip work the caller has already paid
 for, not a way past the validation above: `sign_` checks its `msg_hash`
 as `sign` checks its `msg`. The two conventions are independent, and
-`ecc.ecc.dsa._assert_as_valid_` carries both.
+`ecc.dsa._assert_as_valid_` carries both.
 
 Publishing both names is what makes their agreement a promise rather than
 a tidiness. A keyword added to `verify` is added to `verify_` or to
@@ -1024,8 +1024,8 @@ for extra in "" "[secp256k1]" "[gmpy2]"; do
 import sys
 from importlib.metadata import requires, version
 import ecc
+from ecc import dsa
 from ecc.curves import is_libsecp256k1_serving, mult, secp256k1
-from ecc.ecc import dsa
 
 print(version(ecc.name), requires(ecc.name))
 assert ecc.__version__ == version(ecc.name)

@@ -24,7 +24,7 @@ constant time in the scalar. The derivation stays in python:
 
 - `diffie_hellman` below runs SEC 1's ANSI-X9.63-KDF over the
   x-coordinate, under the hash function the caller passed;
-- `ecc.ecc.ecies.derive_keys` hashes the *compressed point* with sha512 and
+- `ecc.ecies.derive_keys` hashes the *compressed point* with sha512 and
   cuts the 64 bytes three ways, which is BIE1's shape and not this one.
 
 So the verdict is not that the function is wrong: it is that a shared
@@ -32,7 +32,7 @@ secret is a protocol's own derivation, and only a protocol agreeing with
 libsecp256k1's default can hand the whole of it over. Neither of the two
 here does.
 
-`ecc.ecc.ellswift.xdh` hands its whole derivation over, through another
+`ecc.ellswift.xdh` hands its whole derivation over, through another
 function: libsecp256k1 ships BIP324's hash with `secp256k1_ellswift_xdh`,
 and `ellswift.xdh` of the bindings is that one call.
 """
@@ -43,7 +43,7 @@ from hashlib import sha256
 
 # the module and not the function it calls: `from ecc.kdf import
 # ansi_x9_63_kdf` would bind that name here too, leaving
-# `ecc.ecc.dh.ansi_x9_63_kdf` a live spelling of a function this
+# `ecc.dh.ansi_x9_63_kdf` a live spelling of a function this
 # module does not define, where `ecc.kdf` is to be the only place
 # it is defined
 from ecc import kdf

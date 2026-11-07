@@ -20,6 +20,7 @@ from typing import Any
 
 import pytest
 
+from ecc import dahlias, frost
 from ecc._utils import (
     bytes_from_octets,
     hex_string,
@@ -27,6 +28,7 @@ from ecc._utils import (
     is_integer,
 )
 from ecc.alias import Public
+from ecc.borromean import BorromeanSig
 from ecc.curves import (
     PreparedPoint,
     bytes_from_point,
@@ -35,16 +37,14 @@ from ecc.curves import (
     scalar_from_prv_key,
     secp256k1,
 )
-from ecc.ecc import dahlias, frost
-from ecc.ecc.borromean import BorromeanSig
-from ecc.ecc.dsa import recover_pub_key_, recover_sec_
-from ecc.ecc.dsa import sign as dsa_sign
-from ecc.ecc.ssa import challenge_ as ssa_challenge_
-from ecc.ecc.ssa import point_from_bip340pub_key_var
-from ecc.ecc.ssa import sign as ssa_sign
-from ecc.ecc.ssa import verify as ssa_verify
+from ecc.dsa import recover_pub_key_, recover_sec_
+from ecc.dsa import sign as dsa_sign
 from ecc.exceptions import EccTypeError
 from ecc.number_theory import mod_inv, mod_inv_batch_var, mod_inv_var
+from ecc.ssa import challenge_ as ssa_challenge_
+from ecc.ssa import point_from_bip340pub_key_var
+from ecc.ssa import sign as ssa_sign
+from ecc.ssa import verify as ssa_verify
 
 # the key is 1, so the x-only public key it verifies under is `secp256k1.G[0]`
 _SSA_SIG = ssa_sign(b"msg", 1)

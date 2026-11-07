@@ -14,9 +14,9 @@ for each task, following the setup and cleanup commands in
 
 Read [ASSURANCE_CASE.md](./ASSURANCE_CASE.md) and the *Limitations, not
 vulnerabilities* section of [SECURITY.md](./SECURITY.md) before changing
-`src/ecc/curves/` or `src/ecc/ecc/`: secp256k1 arithmetic goes to the
-bindings only where `curves.curve._libsecp256k1_serves` admits it, so a
-change there has two paths to keep right.
+`src/ecc/curves/` or a scheme module in `src/ecc/`: secp256k1 arithmetic
+goes to the bindings only where `curves.curve._libsecp256k1_serves`
+admits it, so a change there has two paths to keep right.
 
 Choose the least capable model that can reliably complete the task: use
 a fast model for straightforward execution, a reasoning-focused model

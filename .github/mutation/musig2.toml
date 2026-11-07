@@ -10,7 +10,7 @@
 # next weighing reads from.
 
 [cosmic-ray]
-module-path = "src/ecc/ecc/musig2.py"
+module-path = "src/ecc/musig2.py"
 
 # the module's own file
 test-command = """python -m pytest -x -q -n0 -p no:randomly \
@@ -25,7 +25,7 @@ excluded-modules = []
 # every `|` in the module is in an annotation, whose mutants are
 # equivalent under deferred annotation evaluation (PEP 649):
 #
-#   grep -n ' | ' src/ecc/ecc/musig2.py
+#   grep -n ' | ' src/ecc/musig2.py
 [cosmic-ray.filters.operators-filter]
 exclude-operators = ["core/ReplaceBinaryOperator_BitOr_.*"]
 

@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.musig2` module.
+"""Tests for the `ecc.musig2` module.
 
 The vectors are BIP327's own, all eight files of
 https://github.com/bitcoin/bips/tree/master/bip-0327/vectors, vendored
@@ -48,6 +48,7 @@ from typing import Any
 
 import pytest
 
+from ecc import frost, musig2, ssa
 from ecc._libsecp256k1 import INSTALLED
 from ecc.curves import (
     bytes_from_point,
@@ -55,7 +56,6 @@ from ecc.curves import (
     mult,
     secp256k1,
 )
-from ecc.ecc import frost, musig2, ssa
 from ecc.exceptions import (
     EccException,
     EccTypeError,

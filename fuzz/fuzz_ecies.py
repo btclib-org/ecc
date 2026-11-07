@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""An atheris harness fuzzing `ecc.ecc.ecies.Envelope`'s decoders.
+"""An atheris harness fuzzing `ecc.ecies.Envelope`'s decoders.
 
 A BIE1 envelope is written by whoever sends it and read by whoever
 receives it, and the MAC that says which of the two it is comes last:
@@ -28,7 +28,7 @@ propagates to atheris as the finding it is.
 
 No cipher is involved and none is needed: the ciphertext is opaque octets
 to this class, which is what lets an envelope be framed, parsed and
-MAC-checked by code that has no AES -- `src/ecc/ecc/ecies.py`'s
+MAC-checked by code that has no AES -- `src/ecc/ecies.py`'s
 own docstring is where that is argued. The seed corpus is one envelope
 built that way, in both forms: the octets `serialize` writes, and the
 base64 `b64encode` armors them in.
@@ -41,15 +41,15 @@ import sys
 
 import atheris
 
-from ecc.ecc.ecies import Envelope
+from ecc.ecies import Envelope
 from ecc.exceptions import EccException
 
 # tests/fuzz_corpus_test.py reads this by ast.literal_eval, never by
 # importing the module -- atheris below is CI-only and undeclared in
 # pyproject.toml, so the test must not execute this file
 ENTRY_POINTS = (
-    "ecc.ecc.ecies:Envelope.parse",
-    "ecc.ecc.ecies:Envelope.b64decode",
+    "ecc.ecies:Envelope.parse",
+    "ecc.ecies:Envelope.b64decode",
 )
 
 

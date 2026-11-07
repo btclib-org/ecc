@@ -10,7 +10,7 @@ paraphrase admits no byte comparison, so there is nothing for the weekly
 job to ask. What such a citation carries is decided by what it names. A
 file needs no revision -- the repository and the path keep their names,
 and a reader who opens it reads the reasoning upstream holds now, which
-is what a paraphrase sends them for -- and `ecc.ecc.dsa`'s
+is what a paraphrase sends them for -- and `ecc.dsa`'s
 anti-exfil docstrings cite `include/secp256k1_ecdsa_s2c.h` of
 BlockstreamResearch/secp256k1-zkp that way. A line needs one: a line
 number is the one thing that moves under a file that keeps its name, so
@@ -246,7 +246,7 @@ each file is as load-bearing as the valid half.
 
 What the files are measured against is `bip-0327/reference.py`, pinned
 separately at `9297c12729670d09f9149ec6d8bad967d8161bfe` (2025-10-03,
-the tip of that path): `src/ecc/ecc/musig2.py` follows it
+the tip of that path): `src/ecc/musig2.py` follows it
 function for function, and copies four of its error message strings
 verbatim because the `error.message` field of a case is compared byte
 for byte. That file is not vendored — it is an implementation, not data,
@@ -741,7 +741,7 @@ carries what should be raised -- which party contributed what, or the
 text of a plain value error -- and is checked against it, the same
 discipline the BIP327 entry above states.
 
-`src/ecc/ecc/frost.py` follows `python/frost_ref/signing.py`
+`src/ecc/frost.py` follows `python/frost_ref/signing.py`
 function for function, checked against it at
 `ba299badfbe647e670686de75578dd501a627028` rather than assumed from the
 BIP327 ancestry the reference's own header claims: several shapes that
@@ -1399,7 +1399,7 @@ behind  0 revisions; that commit is the tip of the path
 
 Verdict: **identical**. Key agreement, with the public key X.509-encoded
 rather than a bare point: the invalid-curve, twist and wrong-curve cases
-`ecc.ecc.dh` has no other vectors for.
+`ecc.dh` has no other vectors for.
 
 ### `tests/schemes/_data/ecdh_secp256k1_webcrypto_test.json`
 
@@ -1534,7 +1534,7 @@ The message a rewind also answers is left out,
 signed each entry with instead.
 
 That module asks for the octets back out, the range the header proves,
-the rings the value's digits index, `ecc.ecc.rangeproof.verify` against the
+the rings the value's digits index, `ecc.rangeproof.verify` against the
 commitment published beside each proof, and a rewind of every entry.
 The entries of
 `tests/schemes/_data/zkp_rangeproof_vectors.json` record a nonce of their
@@ -1578,7 +1578,7 @@ above. The arrays read the same in both, so the transcription's source is
 the code the bindings run.
 
 `tests/schemes/pedersen_test.py` is what reads it: the first array against
-`ecc.ecc.pedersen._shallue_van_de_woestijne` and the second against
+`ecc.pedersen._shallue_van_de_woestijne` and the second against
 `generator_from_seed`, at no blinding factor and at a zero one, which is
 the pair of calls upstream's own loop makes of each entry.
 
@@ -1620,7 +1620,7 @@ repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/ecdsa_s2c/tests_impl.h
 commit  6a01f71674cd3550e42d725420ddfb9e8571e223  2026-10-17
 blob    701b5ae56795a717b2e6b22f7e2ee349cfd3131d
-ours    ea9dfd46c3efa96ccc76bc68c6d3763c78b8a876
+ours    615abafd2d083477fa441ff48b3ec3586238e6b2
 pulled  2026-08-02, refreshed 2026-08-06, 2026-08-07, 2026-08-09,
         2026-08-13, 2026-08-14, 2026-09-10, 2026-09-26, 2026-10-20 and
         2026-11-06
@@ -1690,7 +1690,7 @@ arguments that produced it and what that library then said about it.
 It is here because `tests/schemes/rangeproof_test.py` would otherwise
 measure nothing in an unflagged build: the flagged extension those
 calls need is what a btclib-secp256k1 installed from its sdist with
-`BTCLIB_LIBSECP256K1_ZKP` has, and `ecc.ecc.rangeproof` reads a
+`BTCLIB_LIBSECP256K1_ZKP` has, and `ecc.rangeproof` reads a
 format no other vector file in this tree carries.
 
 **Recording another is this file's own arguments.** A rangeproof draws
@@ -1700,7 +1700,7 @@ from the caller's -- so `sign` called again with an entry's `blind`,
 byte for byte. `test_the_vectors_are_what_zkp_signs_today` is that
 check, so the procedure is a test rather than a note here, and it runs
 wherever the extension does. The same determinism makes the entries an
-oracle for what this package writes: `ecc.ecc.rangeproof.sign` builds a proof
+oracle for what this package writes: `ecc.rangeproof.sign` builds a proof
 from an entry's own `blind`, `value`, `nonce` and `sign arguments`, and
 `test_sign_writes_the_octets_zkp_signed` holds it to these octets
 wherever the suite runs, extension or not.
@@ -1746,8 +1746,8 @@ curve entry, and a synthetic scalar pair for the wide-element one:
 
 ```shell
 uv run --locked --with cryptography python - <<'EOF'
+from ecc import dsa
 from ecc.curves.curve import CURVES
-from ecc.ecc import dsa
 from cryptography.hazmat.primitives.asymmetric.utils import (
     encode_dss_signature)
 

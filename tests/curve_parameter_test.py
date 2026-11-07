@@ -69,6 +69,9 @@ from typing import Any
 
 import pytest
 
+from ecc import borromean, dsa, ellswift, pedersen, ssa
+from ecc.bip340_nonce import bip340_nonce_
+from ecc.commit_nonce import commit_nonce_, commit_point_var_
 from ecc.curves import CurveGroup, secp256k1
 from ecc.curves.curve import (
     Curve,
@@ -93,12 +96,9 @@ from ecc.curves.sec_point import (
     prv_key_tweak_add,
     scalar_from_prv_key,
 )
-from ecc.ecc import borromean, dsa, ellswift, pedersen, ssa
-from ecc.ecc.bip340_nonce import bip340_nonce_
-from ecc.ecc.commit_nonce import commit_nonce_, commit_point_var_
-from ecc.ecc.dh import diffie_hellman
-from ecc.ecc.rfc6979_nonce import challenge_, rfc6979_nonce_
+from ecc.dh import diffie_hellman
 from ecc.exceptions import EccTypeError
+from ecc.rfc6979_nonce import challenge_, rfc6979_nonce_
 
 _LIBRARY = Path(__file__).parents[1] / "src" / "ecc"
 
@@ -250,12 +250,12 @@ _CASES = (
         {"pub_key": _SEC},
     ),
     _Case(
-        "ecc.ecc.bip340_nonce.bip340_nonce_",
+        "ecc.bip340_nonce.bip340_nonce_",
         bip340_nonce_,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.borromean.sign",
+        "ecc.borromean.sign",
         borromean.sign,
         {
             "msg": _MSG,
@@ -266,7 +266,7 @@ _CASES = (
         },
     ),
     _Case(
-        "ecc.ecc.borromean.sign_",
+        "ecc.borromean.sign_",
         borromean.sign_,
         {
             "msg_hash": _MSG_HASH,
@@ -277,170 +277,170 @@ _CASES = (
         },
     ),
     _Case(
-        "ecc.ecc.borromean.verify",
+        "ecc.borromean.verify",
         borromean.verify,
         {"msg": _MSG, "sig": _BORROMEAN_SIG, "pubk_rings": _PUBK_RINGS},
     ),
     _Case(
-        "ecc.ecc.borromean.assert_as_valid",
+        "ecc.borromean.assert_as_valid",
         borromean.assert_as_valid,
         {"msg": _MSG, "sig": _BORROMEAN_SIG, "pubk_rings": _PUBK_RINGS},
     ),
     _Case(
-        "ecc.ecc.borromean.BorromeanSig.__init__",
+        "ecc.borromean.BorromeanSig.__init__",
         borromean.BorromeanSig,
         {"e0": _MSG_HASH, "s": [[1]]},
     ),
     _Case(
-        "ecc.ecc.commit_nonce.commit_nonce_",
+        "ecc.commit_nonce.commit_nonce_",
         commit_nonce_,
         {"commit_hash": _MSG_HASH, "nonce": _PRV_KEY, "tag": b"tag"},
     ),
     _Case(
-        "ecc.ecc.commit_nonce.commit_point_var_",
+        "ecc.commit_nonce.commit_point_var_",
         commit_point_var_,
         {"commit_hash": _MSG_HASH, "receipt": _PUB_KEY, "tag": b"tag"},
     ),
     _Case(
-        "ecc.ecc.dh.diffie_hellman",
+        "ecc.dh.diffie_hellman",
         diffie_hellman,
         {"dU": _PRV_KEY, "QV": _PUB_KEY_2, "size": 32},
     ),
     _Case(
-        "ecc.ecc.dsa.Sig.__init__",
+        "ecc.dsa.Sig.__init__",
         dsa.Sig,
         {"r": _DSA_SIG.r, "s": _DSA_SIG.s},
     ),
     _Case(
-        "ecc.ecc.dsa.Signer.__init__",
+        "ecc.dsa.Signer.__init__",
         dsa.Signer,
         {"prv_key": _PRV_KEY},
     ),
-    _Case("ecc.ecc.dsa.gen_keys", dsa.gen_keys, {"prv_key": _PRV_KEY}),
+    _Case("ecc.dsa.gen_keys", dsa.gen_keys, {"prv_key": _PRV_KEY}),
     # the same function with the key it draws itself, which is the branch
     # that reads n off the curve rather than reaching scalar_from_prv_key
     _Case(
-        "ecc.ecc.dsa.gen_keys",
+        "ecc.dsa.gen_keys",
         dsa.gen_keys,
         {"prv_key": None},
-        label="ecc.ecc.dsa.gen_keys(None)",
+        label="ecc.dsa.gen_keys(None)",
     ),
     _Case(
-        "ecc.ecc.dsa.sign_",
+        "ecc.dsa.sign_",
         dsa.sign_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
-    _Case("ecc.ecc.dsa.sign", dsa.sign, {"msg": _MSG, "prv_key": _PRV_KEY}),
+    _Case("ecc.dsa.sign", dsa.sign, {"msg": _MSG, "prv_key": _PRV_KEY}),
     _Case(
-        "ecc.ecc.dsa.sign_recoverable_",
+        "ecc.dsa.sign_recoverable_",
         dsa.sign_recoverable_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.dsa.sign_recoverable",
+        "ecc.dsa.sign_recoverable",
         dsa.sign_recoverable,
         {"msg": _MSG, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.dsa.anti_exfil_signer_commit",
+        "ecc.dsa.anti_exfil_signer_commit",
         dsa.anti_exfil_signer_commit,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY, "host_commitment": _MSG_HASH},
     ),
     _Case(
-        "ecc.ecc.dsa.anti_exfil_sign",
+        "ecc.dsa.anti_exfil_sign",
         dsa.anti_exfil_sign,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY, "rho": _MSG_HASH},
     ),
     _Case(
-        "ecc.ecc.ellswift.create",
+        "ecc.ellswift.create",
         ellswift.create,
         {"prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.ellswift.encode_var",
+        "ecc.ellswift.encode_var",
         ellswift.encode_var,
         {"pub_key": _PUB_KEY},
     ),
-    _Case("ecc.ecc.ellswift.decode_var", ellswift.decode_var, {"ell": _ELL}),
+    _Case("ecc.ellswift.decode_var", ellswift.decode_var, {"ell": _ELL}),
     _Case(
-        "ecc.ecc.ellswift.xdh",
+        "ecc.ellswift.xdh",
         ellswift.xdh,
         {"ell_a": _ELL, "ell_b": _ELL, "prv_key": _PRV_KEY, "initiating": True},
     ),
-    _Case("ecc.ecc.pedersen.second_generator", pedersen.second_generator),
+    _Case("ecc.pedersen.second_generator", pedersen.second_generator),
     _Case(
-        "ecc.ecc.pedersen.commit",
+        "ecc.pedersen.commit",
         pedersen.commit,
         {"r": 1, "v": 2, "gen": _GEN},
     ),
     _Case(
-        "ecc.ecc.pedersen.assert_as_valid",
+        "ecc.pedersen.assert_as_valid",
         pedersen.assert_as_valid,
         {"r": 1, "v": 2, "commitment": _COMMITMENT, "gen": _GEN},
     ),
     _Case(
-        "ecc.ecc.pedersen.verify",
+        "ecc.pedersen.verify",
         pedersen.verify,
         {"r": 1, "v": 2, "commitment": _COMMITMENT, "gen": _GEN},
     ),
     _Case(
-        "ecc.ecc.rfc6979_nonce.challenge_",
+        "ecc.rfc6979_nonce.challenge_",
         challenge_,
         {"msg_hash": _MSG_HASH},
     ),
     _Case(
-        "ecc.ecc.rfc6979_nonce.rfc6979_nonce_",
+        "ecc.rfc6979_nonce.rfc6979_nonce_",
         rfc6979_nonce_,
         {"msg_hash": _MSG_HASH, "prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.ssa.Sig.__init__",
+        "ecc.ssa.Sig.__init__",
         ssa.Sig,
         {"r": _SSA_SIG.r, "s": _SSA_SIG.s},
     ),
     _Case(
-        "ecc.ecc.ssa.Signer.__init__",
+        "ecc.ssa.Signer.__init__",
         ssa.Signer,
         {"prv_key": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.ssa.point_from_bip340pub_key_var",
+        "ecc.ssa.point_from_bip340pub_key_var",
         ssa.point_from_bip340pub_key_var,
         {"x_Q": _PUB_KEY[0]},
     ),
     _Case(
-        "ecc.ecc.ssa.pub_key_tweak_add_var",
+        "ecc.ssa.pub_key_tweak_add_var",
         ssa.pub_key_tweak_add_var,
         {"x_Q": _PUB_KEY[0], "t": _PRV_KEY},
     ),
     _Case(
-        "ecc.ecc.ssa.prv_key_tweak_add",
+        "ecc.ssa.prv_key_tweak_add",
         ssa.prv_key_tweak_add,
         {"prv_key": _PRV_KEY, "t": _PRV_KEY},
     ),
-    _Case("ecc.ecc.ssa.gen_keys", ssa.gen_keys, {"prv_key": _PRV_KEY}),
+    _Case("ecc.ssa.gen_keys", ssa.gen_keys, {"prv_key": _PRV_KEY}),
     _Case(
-        "ecc.ecc.ssa.gen_keys",
+        "ecc.ssa.gen_keys",
         ssa.gen_keys,
         {"prv_key": None},
-        label="ecc.ecc.ssa.gen_keys(None)",
+        label="ecc.ssa.gen_keys(None)",
     ),
     # ec and hf are required here, this being the prepared-challenge
     # spelling BIP340 verification is built on
     _Case(
-        "ecc.ecc.ssa.challenge_",
+        "ecc.ssa.challenge_",
         ssa.challenge_,
         {"msg": _MSG, "x_Q": _PUB_KEY[0], "x_K": _SSA_SIG.r, "hf": sha256},
     ),
-    _Case("ecc.ecc.ssa.sign_", ssa.sign_, {"msg": _MSG, "prv_key": _PRV_KEY}),
-    _Case("ecc.ecc.ssa.sign", ssa.sign, {"msg": _MSG, "prv_key": _PRV_KEY}),
+    _Case("ecc.ssa.sign_", ssa.sign_, {"msg": _MSG, "prv_key": _PRV_KEY}),
+    _Case("ecc.ssa.sign", ssa.sign, {"msg": _MSG, "prv_key": _PRV_KEY}),
     _Case(
-        "ecc.ecc.ssa.anti_exfil_signer_commit",
+        "ecc.ssa.anti_exfil_signer_commit",
         ssa.anti_exfil_signer_commit,
         {"msg": _MSG, "prv_key": _PRV_KEY, "host_commitment": _MSG_HASH},
     ),
     _Case(
-        "ecc.ecc.ssa.anti_exfil_sign",
+        "ecc.ssa.anti_exfil_sign",
         ssa.anti_exfil_sign,
         {"msg": _MSG, "prv_key": _PRV_KEY, "rho": _MSG_HASH},
     ),
@@ -558,13 +558,13 @@ def test_the_walk_reaches_what_it_claims() -> None:
     """
     found = _curve_parameters()
     # a defaulted ec, a required one, and a constructor's
-    assert "ecc.ecc.dsa.sign" in found
+    assert "ecc.dsa.sign" in found
     assert "ecc.curves.curve_group_f.find_all_points" in found
-    assert "ecc.ecc.dsa.Sig.__init__" in found
+    assert "ecc.dsa.Sig.__init__" in found
 
     # the guards themselves, which take an ec and are what the rest call
     assert "ecc.curves.curve._assert_valid_ec" not in found
     assert "ecc.curves.curve_group._assert_valid_ec" not in found
     # a function of another name, and one with no ec at all
-    assert "ecc.ecc.dsa.verify" not in found
+    assert "ecc.dsa.verify" not in found
     assert "ecc.hashes.reduce_to_hlen" not in found

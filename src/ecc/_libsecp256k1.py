@@ -81,7 +81,7 @@ from ecc.exceptions import EccRuntimeError
 # the environment variable that refuses the bindings without uninstalling
 # them, read once and here, when this module is first imported. `import
 # ecc` alone does not import it, the root importing lazily; the first
-# import of `ecc.curves`, of `ecc.ecc` or of a module under them does, so a
+# import of `ecc.curves`, of a module under it or of a scheme does, so a
 # caller settling the variable after that has settled it after this module
 # answered. The package's name as its prefix, and "set to ask for it": an
 # empty value is not set, so `ECC_NO_LIBSECP256K1=` leaves them
@@ -175,7 +175,7 @@ def _mismatch(exc: ImportError) -> ImportError | None:
 
 try:
     # `ffi` is the one object here that is not a wrapped call: issue
-    # btclib-org/btclib#1009 is why it is needed at all -- `ecc.ecc.dsa.Signer`
+    # btclib-org/btclib#1009 is why it is needed at all -- `ecc.dsa.Signer`
     # builds its own `unsigned char[32]` with it, to hold a private key in
     # memory this package can overwrite, the way `ssa.Signer` already can
     # through the keypair `ssa` itself builds. Nothing else here needs it,

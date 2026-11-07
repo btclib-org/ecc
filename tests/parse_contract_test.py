@@ -27,14 +27,14 @@ from typing import Any
 
 import pytest
 
-from ecc.ecc import ssa
-from ecc.ecc.borromean import BorromeanSig
-from ecc.ecc.rangeproof import RangeProof
+from ecc import ssa
+from ecc.borromean import BorromeanSig
 from ecc.exceptions import (
     EccRuntimeError,
     EccTypeError,
     EccValueError,
 )
+from ecc.rangeproof import RangeProof
 from tests import public_classes_with
 
 # what the package promises to raise, and the whole of it: a truncated
@@ -150,7 +150,7 @@ def test_a_fixed_size_object_reports_its_own_length() -> None:
 # a decision, which is the difference between an exclusion and an
 # oversight -- the test below fails on either
 _EXCLUDED = {
-    "ecc.ecc.borromean.BorromeanSig": (
+    "ecc.borromean.BorromeanSig": (
         "the wire format has no length of its own for the ring structure:"
         " e0 || s... is only as long as the caller's rsizes says it is,"
         " the same reason zkp's secp256k1_borromean_verify takes rsizes as"
@@ -162,14 +162,14 @@ _EXCLUDED = {
         " test_borromean_sig_parse_refuses_short_and_trailing_data, driven"
         " with the rsizes an actual pubk_rings carries"
     ),
-    "ecc.ecc.dsa.Sig": (
+    "ecc.dsa.Sig": (
         "the one parser here with a flag in front of the rule, and the flag"
         " is Bitcoin Core's: trailing octets are refused under `strict`"
         " alone, where IsValidSignatureEncoding is called, and refused in a"
         " stream as well -- no caller in this package reads a signature out"
         " of the middle of one. Sig.parse says so where it does it"
     ),
-    "ecc.ecc.ecies.Envelope": (
+    "ecc.ecies.Envelope": (
         "BIE1 writes the ciphertext between fixed offsets with no length in"
         " front of it, so what would trail the envelope is ciphertext and a"
         " truncation of it is a shorter message: the size rule it can be"

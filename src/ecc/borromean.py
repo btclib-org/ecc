@@ -86,7 +86,7 @@ exponent/mantissa/min-value/sign-bits header this module has no
 counterpart for, rebuilding its pubkey rings from that commitment
 where this module takes them as an explicit argument.
 
-`ecc.ecc.rangeproof` is that wrapping. `RangeProof.parse` takes the flags,
+`ecc.rangeproof` is that wrapping. `RangeProof.parse` takes the flags,
 the exponent, the mantissa, the `min_value`, the sign bits and the ring
 commitments of such a header, and holds the `e0` and the `s` values
 inside the proof as a `BorromeanSig` of this module's, and `sign` writes
@@ -94,17 +94,17 @@ one -- the digit decomposition, the ring commitments and the header
 included.
 
 It closes those rings on its own rather than through this module, and
-`ecc.ecc.rangeproof._borromean_sign` is where the differences are stated:
+`ecc.rangeproof._borromean_sign` is where the differences are stated:
 the ring convention above, the forged `s` values taken from the proof's
 own nonce chain where ``sign_`` draws them, and, in
-`ecc.ecc.rangeproof._challenge`, a challenge at or past n abandoning the
+`ecc.rangeproof._challenge`, a challenge at or past n abandoning the
 proof where this module reduces it. What the rings are signed over is
 a rangeproof's own: the value commitment, the generator, the proof's
 header and the ring commitments it states, with no pubkey ring in the
 preimage, where `_get_msg_format` below hashes the caller's rings into
 the caller's message.
 
-`ecc.ecc.rangeproof`'s own `_borromean_verify` is the verifying walk.
+`ecc.rangeproof`'s own `_borromean_verify` is the verifying walk.
 Separating it from `assert_as_valid` below are the ring convention, the
 challenge at or past n, that preimage, and the challenges themselves: a
 rangeproof rewind consumes the per-key challenges the walk produces,
@@ -531,7 +531,7 @@ def _sign_scalars(
 
     # both sequences are scalars and neither was read as one. Step 2 took
     # `sign_keys[i]` as it came, so a key of 0, of n, or of q + n signed where
-    # every other signer in `ecc.ecc` refuses all three -- q + n silently the
+    # every other signer in this package refuses all three -- q + n silently the
     # same key as q, the reduction being that line's own `% ec.n` -- and the
     # octets and hex spellings `Integer` names left Python's `OverflowError` for
     # a key and its `TypeError` for a nonce, neither of them anything this
@@ -606,10 +606,10 @@ def sign_(
 
     A rangeproof is where a preimage of that shape comes from: it is
     the value commitment, the generator and the proof's own header,
-    with no pubkey ring in it at all, and `ecc.ecc.rangeproof` rebuilds the
+    with no pubkey ring in it at all, and `ecc.rangeproof` rebuilds the
     rings from that commitment instead. It closes its own rings rather
     than calling this, for the reasons
-    `ecc.ecc.rangeproof._borromean_sign` gives; what stands between a
+    `ecc.rangeproof._borromean_sign` gives; what stands between a
     signature written here and one `secp256k1_borromean_verify` takes
     is the module docstring above.
 
@@ -755,7 +755,7 @@ def _assert_structurally_valid_(
     octets are a signature of that shape or they are no signature at
     all, and `BorromeanSig.parse` is where that is read. A buffer of
     another length is then the same unanswerable question a 63-octet
-    BIP340 signature is in `ecc.ecc.ssa`, and it is refused rather than
+    BIP340 signature is in `ecc.ssa`, and it is refused rather than
     reported as rings that failed to close.
 
     `check_validity=False` leaves the value half where it belongs: each
@@ -768,7 +768,7 @@ def _assert_structurally_valid_(
     A `BorromeanSig` argument is handed back untouched. Its octets were never
     read, so there is no encoding of one to be wrong; its shape against
     `pubk_rings` is a disagreement between two arguments rather than a property
-    of either, which is the line `ecc.ecc.ssa`'s own batch check draws, and it
+    of either, which is the line `ecc.ssa`'s own batch check draws, and it
     stays False.
 
     A field of the wrong type is refused by `BorromeanSig.assert_valid` as an
@@ -776,7 +776,7 @@ def _assert_structurally_valid_(
     of another width is False: a signature does not say which hash function
     made it.
 
-    The message is not asked here, as in `ecc.ecc.dsa` and `ecc.ecc.ssa`: it is
+    The message is not asked here, as in `ecc.dsa` and `ecc.ssa`: it is
     what the signature is verified about, and issue btclib-org/btclib#814 is
     where that was settled.
     """

@@ -23,10 +23,10 @@ Do not use it where Y comes from somebody who need not know y.
 compressed points; s_a = k^-1 (m + r*x) a scalar, r being the x-coordinate
 of R modulo n; and (e, s), the 64-octet proof that R_a and R share the
 discrete logarithm k over G and Y. The proof is not BIP374's
-(`ecc.ecc.dleq`): its tag, its challenge input and its encoding
+(`ecc.dleq`): its tag, its challenge input and its encoding
 are the specification's, which is libsecp256k1-zkp's, so it lives here.
 The curve, secp256k1, and the hash, sha256, are not arguments, as in
-`ecc.ecc.dleq`.
+`ecc.dleq`.
 
 **Nonces** follow libsecp256k1-zkp's `ecdsa_adaptor` module
 (`src/modules/ecdsa_adaptor/main_impl.h`), the specification leaving
@@ -58,7 +58,7 @@ from ecc.curves import (
     secp256k1,
 )
 from ecc.curves.sec_point import point_from_octets_var
-from ecc.ecc.dsa import Sig
+from ecc.dsa import Sig
 from ecc.exceptions import EccRuntimeError, EccValueError
 from ecc.hashes import tagged_hash
 from ecc.number_theory import mod_inv, mod_inv_var

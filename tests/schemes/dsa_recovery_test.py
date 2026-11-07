@@ -19,9 +19,9 @@ from typing import Any
 
 import pytest
 
+from ecc import dsa
 from ecc.curves import mult
 from ecc.curves.sec_point import bytes_from_point
-from ecc.ecc import dsa
 from tests import b58decode, both_arms, load, vector_id
 
 _CORE: dict[str, Any] = load("schemes", "_data", "bitcoin_core_compact_vectors.json")

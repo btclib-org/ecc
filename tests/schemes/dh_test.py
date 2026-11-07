@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.dh` module."""
+"""Tests for the `ecc.dh` module."""
 
 from collections.abc import Callable
 from hashlib import sha1, sha256
@@ -10,10 +10,11 @@ from typing import Any
 
 import pytest
 
+from ecc import dh, dsa
 from ecc._libsecp256k1 import shared_point as libsecp256k1_shared_point
 from ecc.curves import bytes_from_point, curve, mult
 from ecc.curves.curve import CURVES
-from ecc.ecc import dh, diffie_hellman, dsa
+from ecc.dh import diffie_hellman
 from ecc.exceptions import (
     EccException,
     EccRuntimeError,
@@ -193,7 +194,7 @@ def test_a_normal_dU_reaches_the_bindings(monkeypatch: pytest.MonkeyPatch) -> No
         calls.append(prvkey)
         return libsecp256k1_shared_point(pubkey_bytes, prvkey)
 
-    monkeypatch.setattr("ecc.ecc.dh.libsecp256k1_shared_point", record)
+    monkeypatch.setattr("ecc.dh.libsecp256k1_shared_point", record)
 
     a, _A = dsa.gen_keys()  # Alice
     _b, B = dsa.gen_keys()  # Bob

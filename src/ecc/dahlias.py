@@ -8,9 +8,9 @@ https://github.com/bitcoin/bips/blob/master/bip-0459.mediawiki
 
 Each of *u* signers signs its own 32-byte message under its own x-only
 key, and the signers jointly produce one 64-byte signature for the
-ordered list of (public key, message) pairs. Unlike `ecc.ecc.musig2`, no
+ordered list of (public key, message) pairs. Unlike `ecc.musig2`, no
 key is aggregated: `verify` takes the whole list, and the signature
-verifies with nothing else. It does not verify with `ecc.ecc.ssa`.
+verifies with nothing else. It does not verify with `ecc.ssa`.
 
 Signing is interactive, so this module offers one function per step:
 
@@ -36,7 +36,7 @@ secret key and the x-only key that goes in the list, and
 `plain_tweak_pub_key_var` and `xonly_tweak_pub_key_var` answer the
 tweaked key from the public key alone.
 
-secp256k1 and sha256 are not parameters, as in `ecc.ecc.musig2`: BIP459
+secp256k1 and sha256 are not parameters, as in `ecc.musig2`: BIP459
 is defined for that pair alone.
 """
 
@@ -47,6 +47,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from hashlib import sha256
 
+from ecc import ssa
 from ecc._utils import assert_type, bytes_from_octets, is_integer, is_octets
 from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import (
@@ -58,7 +59,6 @@ from ecc.curves import (
 )
 from ecc.curves.curve import _sum_var, _tweak_add_var
 from ecc.curves.sec_point import bytes_from_point, point_from_octets_var
-from ecc.ecc import ssa
 from ecc.exceptions import (
     EccRuntimeError,
     EccTypeError,

@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.ssa_adaptor` module.
+"""Tests for the `ecc.ssa_adaptor` module.
 
 The vectors are `test_schnorr_adaptor_spec_vectors` of the
 `schnorr_adaptor` module BlockstreamResearch/secp256k1-zkp#299
@@ -17,9 +17,9 @@ from typing import Any
 
 import pytest
 
+from ecc import ssa, ssa_adaptor
 from ecc.curves import CURVES, bytes_from_point, mult, point_from_pub_key
 from ecc.curves import secp256k1 as ec
-from ecc.ecc import ssa, ssa_adaptor
 from ecc.exceptions import EccException, EccValueError
 from tests import (
     REFUSED_AUX,

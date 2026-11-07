@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.ellswift` module.
+"""Tests for the `ecc.ellswift` module.
 
 Two BIP324 vector files pin the map itself, which is deterministic, and
 the key agreement columns of a third pin `xdh`. `create` and `encode` are
@@ -21,13 +21,13 @@ from typing import Any
 
 import pytest
 
+from ecc import ellswift
 from ecc._libsecp256k1 import ellswift as libsecp256k1_ellswift
 from ecc.alias import Public
 from ecc.curves import mult, secp256k1
 from ecc.curves.curve import CURVES, Curve
 from ecc.curves.sec_point import bytes_from_point
-from ecc.ecc import ellswift
-from ecc.ecc.ellswift import _xswiftec_inv_var, _xswiftec_var
+from ecc.ellswift import _xswiftec_inv_var, _xswiftec_var
 from ecc.exceptions import EccException, EccValueError
 from ecc.number_theory import mod_sqrt_var
 from tests import (

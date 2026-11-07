@@ -2,7 +2,7 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.ecies` module.
+"""Tests for the `ecc.ecies` module.
 
 **This file drives an AES-128, and it is here because tests are not
 shipped.** `tests/__init__.py` has why a test writes its own block
@@ -25,9 +25,9 @@ from typing import Any
 
 import pytest
 
+from ecc import ecies
 from ecc.alias import Point
 from ecc.curves import bytes_from_point, curve, mult, secp256k1
-from ecc.ecc import ecies
 from ecc.exceptions import (
     EccException,
     EccRuntimeError,

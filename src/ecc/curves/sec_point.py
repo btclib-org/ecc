@@ -377,8 +377,8 @@ def _sec_from_pub_key(pub_key: PubKey, ec: Curve) -> bytes:
     signature under them, to tweak a taproot key with them, or to multiply them
     by a scalar for a shared point, hands them to a call whose own parse is that
     same proof: the two together lift one x twice, which is issue
-    btclib-org/btclib#887. `ecc.ecc.dsa.verify_` is one such caller and
-    `ecc.ecc.ecies.derive_keys` another, the second through
+    btclib-org/btclib#887. `ecc.dsa.verify_` is one such caller and
+    `ecc.ecies.derive_keys` another, the second through
     `_mult_sec_compressed` below rather than directly.
 
     So this is that conversion with the proof left out, and it is private
@@ -430,7 +430,7 @@ def _mult_sec(sec: bytes, m: int, ec: Curve) -> Point:
     limitations name both steps.
 
     The octets need not be proved a point first -- `_sec_from_pub_key` hands
-    them in unproven, the same trade `ecc.ecc.dsa` makes for its own delegated
+    them in unproven, the same trade `ecc.dsa` makes for its own delegated
     calls (issue btclib-org/btclib#887) -- because the call below is the proof:
     the bindings' own parse refuses what is not a point, and what they decline
     falls through to the lift, whose `point_from_octets_var` is that same
@@ -454,7 +454,7 @@ def _mult_sec_compressed(sec: bytes, m: int, ec: Curve) -> bytes:
     Where the bindings serve, they write the 33 octets themselves, so no
     Python of this package reads the product before the caller does:
     neither `_point_from_sec`, nor `bytes_from_point`'s `require_on_curve`
-    and its choice of the prefix from y. `ecc.ecc.ecies.derive_keys` hashes
+    and its choice of the prefix from y. `ecc.ecies.derive_keys` hashes
     a shared secret this way.
 
     m is required to be in 1..n-1, as a private key is: the product of a
@@ -478,7 +478,7 @@ def mult_pub_key(m: Integer, pub_key: PubKey, ec: Curve = secp256k1) -> Point:
     point of the curve to the multiplication's own parse. What it is for
     is an ECDH-shaped computation, whose key is the other party's and
     arrives as octets: a shared secret of BIP352 is one, and
-    `ecc.ecc.ecies.derive_keys`, through `_mult_sec_compressed`, another.
+    `ecc.ecies.derive_keys`, through `_mult_sec_compressed`, another.
 
     The scalar is reduced mod n, and a key that is no point of the curve
     is refused.

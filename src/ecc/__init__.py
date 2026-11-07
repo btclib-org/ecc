@@ -59,12 +59,30 @@ except PackageNotFoundError:
 
 __all__ = [
     "alias",
+    "bip340_nonce",
+    "borromean",
+    "commit_nonce",
     "curves",
-    "ecc",
+    "dahlias",
+    "dh",
+    "dlc_oracle",
+    "dleq",
+    "dsa",
+    "ecdsa_adaptor",
+    "ecies",
+    "ellswift",
     "exceptions",
+    "frost",
     "hashes",
     "kdf",
+    "musig2",
     "number_theory",
+    "pedersen",
+    "rangeproof",
+    "rfc6979_nonce",
+    "ssa",
+    "ssa_adaptor",
+    "ssa_halfagg",
 ]
 
 

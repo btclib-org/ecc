@@ -16,6 +16,7 @@ from typing import Any
 
 import pytest
 
+from ecc import dsa, musig2, ssa
 from ecc._libsecp256k1 import ENABLED
 from ecc.alias import INF
 from ecc.curves import (
@@ -26,7 +27,6 @@ from ecc.curves import (
     secp256k1,
     set_libsecp256k1_serving,
 )
-from ecc.ecc import dsa, musig2, ssa
 from ecc.exceptions import (
     EccRuntimeError,
     EccTypeError,

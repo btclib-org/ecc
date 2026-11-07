@@ -2,15 +2,15 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the `ecc.ecc.dsa` module."""
+"""Tests for the `ecc.dsa` module."""
 
 import pytest
 
+from ecc import dsa
 from ecc._libsecp256k1 import dsa as libsecp256k1_dsa
 from ecc.curves import secp256k1
 from ecc.curves.curve import CURVES
-from ecc.ecc import dsa
-from ecc.ecc.dsa import Sig
+from ecc.dsa import Sig
 from ecc.exceptions import EccValueError
 from tests import both_arms, load, needs_bindings
 

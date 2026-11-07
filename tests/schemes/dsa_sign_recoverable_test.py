@@ -11,8 +11,8 @@ other than the bindings is in `tests/_data/README.md`, in its entry for
 
 import pytest
 
+from ecc import dsa
 from ecc.curves import mult
-from ecc.ecc import dsa
 from tests import both_arms
 from tests.schemes.dsa_recovery_test import CORE_HASH, CORE_PARAMS, core_vector
 

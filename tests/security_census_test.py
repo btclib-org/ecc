@@ -44,15 +44,15 @@ _PUBLIC_VALUES = {
     "ecc.curves.curve.TweakChain.__init__": "a public base point",
     "ecc.curves.curve.TweakChain.point": "a public tweak of that point",
     "ecc.curves.sec_point.PubKeyTweakChain.__init__": "a public key",
-    "ecc.ecc.dsa.recover_pub_key_": "a signature and a message hash",
-    "ecc.ecc.dsa.recover_pub_keys_": "a signature and a message hash",
-    "ecc.ecc.dsa.recover_sec_": "a signature and a message hash",
-    "ecc.ecc.ssa.anti_exfil_sign": (
+    "ecc.dsa.recover_pub_key_": "a signature and a message hash",
+    "ecc.dsa.recover_pub_keys_": "a signature and a message hash",
+    "ecc.dsa.recover_sec_": "a signature and a message hash",
+    "ecc.ssa.anti_exfil_sign": (
         "its key reaches `bip340_nonce_` and its nonce `commit_nonce_`; its"
         " own dispatches are handed public values only, x-coordinates to"
         " lift and its signature to verify"
     ),
-    "ecc.ecc.ssa.anti_exfil_signer_commit": (
+    "ecc.ssa.anti_exfil_signer_commit": (
         "its key reaches `bip340_nonce_`; its own dispatches are handed"
         " public values only, x-coordinates to lift"
     ),
@@ -250,14 +250,14 @@ def test_the_walk_finds_the_entries_it_is_written_for() -> None:
     entries = _entries()
     assert {
         "ecc.curves.curve.mult",
-        "ecc.ecc.ecies.derive_keys",
-        "ecc.ecc.dsa.Signer.sign_",
-        "ecc.ecc.pedersen.commit",
+        "ecc.ecies.derive_keys",
+        "ecc.dsa.Signer.sign_",
+        "ecc.pedersen.commit",
     } <= entries
-    assert "ecc.ecc.musig2.sign" not in entries
+    assert "ecc.musig2.sign" not in entries
     census = _census()
-    assert _named("ecc.ecc.dsa.Signer.__init__", census)
+    assert _named("ecc.dsa.Signer.__init__", census)
     # named above the items, as an example and as a shared helper
-    assert not _named("ecc.ecc.dsa.gen_keys", census)
+    assert not _named("ecc.dsa.gen_keys", census)
     assert not _named("ecc.curves.sec_point.scalar_from_prv_key", census)
-    assert not _named("ecc.ecc.dsa.sign_", {("ssa", "sign_")})
+    assert not _named("ecc.dsa.sign_", {("ssa", "sign_")})

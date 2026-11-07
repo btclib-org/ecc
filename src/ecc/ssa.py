@@ -50,7 +50,7 @@ bytes, 64 on secp256k1 -- not the loosely specified ASN.1 DER of
 ECDSA.
 
 ``sign_`` also takes a value to commit to inside the nonce,
-sign-to-contract style (see ecc.ecc.commit_nonce for the tweak), and
+sign-to-contract style (see ecc.commit_nonce for the tweak), and
 the ``anti_exfil_*`` functions here are the protocol that construction
 exists to support: the handshake bitcoin-core/secp256k1#1140 proposes
 for BIP340, whose five steps and reasoning are in
@@ -84,6 +84,12 @@ from ecc._utils import (
     is_octets,
 )
 from ecc.alias import BinaryData, HashF, Integer, JacPoint, Octets, Point, Public
+from ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
+from ecc.commit_nonce import (
+    commit_entropy_,
+    commit_nonce_,
+    commit_point_var_,
+)
 from ecc.curves import (
     Curve,
     PreparedPoint,
@@ -104,12 +110,6 @@ from ecc.curves.curve import (
     mult,
 )
 from ecc.curves.sec_point import _scalar_from_tweak
-from ecc.ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
-from ecc.ecc.commit_nonce import (
-    commit_entropy_,
-    commit_nonce_,
-    commit_point_var_,
-)
 from ecc.exceptions import (
     EccRuntimeError,
     EccTypeError,
@@ -714,7 +714,7 @@ def sign_(
     commit_hash is a value to commit to inside the nonce, sign-to-contract
     style: the signature is an ordinary BIP340 one, and the receipt
     returned beside it is what opens the commitment (see
-    ecc.ecc.commit_nonce). Keyword-only, and the only argument that
+    ecc.commit_nonce). Keyword-only, and the only argument that
     changes what is returned, so that neither is easy to pass by accident.
     A commitment does not displace aux: it joins it, both of them
     reaching the nonce as BIP340's auxiliary randomness.
