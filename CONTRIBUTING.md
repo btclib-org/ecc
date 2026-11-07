@@ -474,6 +474,7 @@ gate, so a new one is a prefix or a decision somebody wrote down.
 
 - `assert_*` refuses and returns `None`, and is the reason half of the
   pair above.
+- `validate_*` refuses and returns `None`, as `assert_*` does.
 - `is_*` answers a `bool` about a value, and is total over the declared
   types.
 - `verify*` answers a `bool` about a signature or a proof, on the same
@@ -481,17 +482,22 @@ gate, so a new one is a prefix or a decision somebody wrote down.
 - `check_*` answers a `bool` **and refuses what cannot be an answer** --
   the one prefix that warns a caller it still needs an `except`.
 
+No `async def` carries one of these prefixes, and that is gated: a call
+without `await` answers a coroutine, which is true, so
+`if obj.is_ready():` always passes and an unawaited `validate_x()`
+refuses nothing.
+
 A converter is named for what it returns -- `bytes_from_octets`,
 `point_from_octets_var` -- and a query for what it answers.
 
 **A member that takes nothing but `self` is a `@property`**, whatever it
 answers, and that is gated too: it is read off the object rather than
 called. What is *not* a read is exempt by shape rather than by a list of
-names: `assert_*` refuses, and a property that refuses is a trap, since
-reading `obj.assert_valid` evaluates the method and throws it away;
-`to_*` hands back a new object. The one exemption named individually is
-`alias.HashObject`'s `digest`, `hexdigest` and `copy`, because hashlib
-calls them that way.
+names: `assert_*` and `validate_*` refuse, and a property that refuses
+is a trap, since reading `obj.assert_valid` evaluates the method and
+throws it away; `to_*` hands back a new object. The one exemption named
+individually is `alias.HashObject`'s `digest`, `hexdigest` and `copy`,
+because hashlib calls them that way.
 
 **`check_validity` is a parameter and not one of those prefixes**: there
 `check` is a verb governing an object — "check the validity" — where a

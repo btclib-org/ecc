@@ -5,10 +5,10 @@
 """The gate for what a public function's name promises about its answer.
 
 CONTRIBUTING.md's "Every public function validates its inputs" states the
-vocabulary: `assert_*` refuses and returns None, `is_*` and `verify*`
-answer a bool about a value of a declared type, and `check_*` answers a
-bool *and* refuses what cannot be an answer -- the one prefix that warns
-a caller it still needs an `except`.
+vocabulary: `assert_*` and `validate_*` refuse and return None, `is_*`
+and `verify*` answer a bool about a value of a declared type, and
+`check_*` answers a bool *and* refuses what cannot be an answer -- the
+one prefix that warns a caller it still needs an `except`.
 
 A prefix that says several things says nothing, which is what issue
 btclib-org/btclib#814 found of `check_`, and a vocabulary kept as a habit
@@ -34,11 +34,14 @@ _LIBRARY = Path(__file__).parents[1] / "src" / "ecc"
 # what each prefix promises the return type is. `verify` is matched anywhere in
 # the name and not only at the front: `batch_verify_`, `partial_sig_verify` and
 # `anti_exfil_host_verify` are verifications, and reading the front alone is
-# what left them out of issue btclib-org/btclib#814's first census
+# what left them out of issue btclib-org/btclib#814's first census. The others
+# are matched at the front only, the underscore included, so a `validated_x`
+# promises nothing
 _PROMISED: dict[str, str] = {
     "assert_": "None",
     "check_": "bool",
     "is_": "bool",
+    "validate_": "None",
     "verify": "bool",
 }
 
@@ -62,10 +65,8 @@ def _return_type(returns: ast.expr) -> str:
     `True` or `False` at runtime (PEP 742), the same as the `bool` it
     replaced on `_utils.is_octets` -- so a name promising `bool` is kept
     to that promise by one, and this is the one place the annotation is
-    read for both censuses below. The caller's own `node.returns is not
-    None` already established what this takes, `ast.expr` rather than
-    `ast.FunctionDef` so mypy narrows it there instead of losing the
-    check across the call.
+    read for both censuses below. The walks' own `node.returns is not
+    None` narrows `returns` before it is passed, here and to `_answer`.
     """
     unparsed = ast.unparse(returns)
     if unparsed.startswith("TypeIs["):
@@ -73,8 +74,49 @@ def _return_type(returns: ast.expr) -> str:
     return unparsed
 
 
-def _named() -> dict[str, str]:
-    """Return every public function whose name promises a return type.
+_Function = ast.FunctionDef | ast.AsyncFunctionDef
+
+
+_COROUTINE = "Coroutine["
+
+
+def _answer(node: _Function, returns: ast.expr) -> str:
+    """Return what a call to the function answers, as `_return_type` reads it.
+
+    An `async def` answers a coroutine, whatever its annotation, and a
+    coroutine keeps no prefix's promise: CONTRIBUTING.md's "Every public
+    function validates its inputs" says why.
+    """
+    answer = _return_type(returns)
+    if isinstance(node, ast.AsyncFunctionDef):
+        return f"{_COROUTINE}{answer}]"
+    return answer
+
+
+def _named_in(module: str, source: str) -> dict[str, list[str]]:
+    """Map each public name of a module that promises a type to its answers.
+
+    A name defined twice, in two classes or in two branches of an `if`,
+    lists both answers, each as `_answer` reads it, so neither hides the
+    other.
+    """
+    found: dict[str, list[str]] = {}
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, _Function) or node.name.startswith("_"):
+            continue
+        if _promised_by(node.name) is None:
+            continue
+        # every function of this package is annotated, mypy running
+        # strict over it, so an unannotated one is a state the tree
+        # does not reach
+        assert node.returns is not None
+        answer = _answer(node, node.returns)
+        found.setdefault(f"{module}.{node.name}", []).append(answer)
+    return found
+
+
+def _named() -> dict[str, list[str]]:
+    """Map every public function whose name promises a type, as `_named_in`.
 
     Methods included, a property being one: an `is_` read off an object
     promises a bool as much as a module-level one does.
@@ -83,21 +125,17 @@ def _named() -> dict[str, str]:
     package module, which is what `input_validation_test.py`'s walk does
     and is importable either way: one spelling across the two gates.
     """
-    found: dict[str, str] = {}
+    found: dict[str, list[str]] = {}
     for path in sorted(_LIBRARY.rglob("*.py")):
         module = ".".join(path.relative_to(_LIBRARY.parent).with_suffix("").parts)
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.FunctionDef) or node.name.startswith("_"):
-                continue
-            if _promised_by(node.name) is None:
-                continue
-            # every function of this package is annotated, mypy running
-            # strict over it, so an unannotated one is a state the tree
-            # does not reach
-            assert node.returns is not None
-            found[f"{module}.{node.name}"] = _return_type(node.returns)
+        found |= _named_in(module, path.read_text(encoding="utf-8"))
     return found
+
+
+def _breaks_its_promise(dotted: str, returns: list[str]) -> bool:
+    """Return whether a definition under the name breaks its promise."""
+    promised = _promised_by(dotted.rpartition(".")[2])
+    return any(returned != promised for returned in returns)
 
 
 # an argument-less member of a public class is a read, and a read is a
@@ -105,12 +143,13 @@ def _named() -> dict[str, str]:
 # rather than by a list of names -- which is what keeps the rule from
 # needing one (issue btclib-org/btclib#814):
 #
-# - `assert_*` refuses, and a property that refuses is a trap: reading
-#   `obj.assert_valid` evaluates the method and throws it away
+# - `assert_*` and `validate_*` refuse, and a property that refuses is a
+#   trap: reading `obj.assert_valid` evaluates the method and throws it
+#   away
 # - `to_*` converts, and hands back a new object rather than a read of
 #   this one
 # - `wipe` is an action with a side effect
-_NOT_A_READ = ("assert_", "to_")
+_NOT_A_READ = ("assert_", "to_", "validate_")
 _AN_ACTION = frozenset({"wipe"})
 
 # hashlib's own API, mirrored in a Protocol, and hashlib draws the line
@@ -140,60 +179,97 @@ def _is_a_read(decorated: set[str]) -> bool:
     )
 
 
+def _is_not_a_read(dotted: str) -> bool:
+    """Return whether a member's name says it is not a read."""
+    name = dotted.rpartition(".")[2]
+    return (
+        name.startswith(_NOT_A_READ) or name in _AN_ACTION or dotted in _MIRRORS_HASHLIB
+    )
+
+
+def _class_members_in(module: str, source: str) -> dict[str, bool]:
+    """Return every argument-less member of a public class of a module.
+
+    The key is the member's dotted path, each enclosing class and function
+    included, so two nested classes of one name are two keys.
+    """
+    found: dict[str, bool] = {}
+
+    def record(cls: ast.ClassDef, prefix: str) -> None:
+        for node in cls.body:
+            if not isinstance(node, ast.FunctionDef) or node.name.startswith("_"):
+                continue
+            decorated = {ast.unparse(d) for d in node.decorator_list}
+            if {"staticmethod", "classmethod"} & decorated:
+                continue
+            # no filter for a `@x.setter`: one takes the value it
+            # sets, so the argument count below excludes it already
+            arguments = [
+                a.arg
+                for a in [
+                    *node.args.posonlyargs,
+                    *node.args.args,
+                    *node.args.kwonlyargs,
+                ]
+                if a.arg != "self"
+            ]
+            if arguments or node.args.vararg or node.args.kwarg:
+                continue
+            found[f"{prefix}{cls.name}.{node.name}"] = _is_a_read(decorated)
+
+    # every node is visited, with the dotted path of the classes and
+    # functions around it, as `public_parameter_test.py`'s walk does
+    def visit(node: ast.AST, prefix: str) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, ast.ClassDef) and not child.name.startswith("_"):
+                record(child, prefix)
+            if isinstance(child, ast.ClassDef | _Function):
+                visit(child, f"{prefix}{child.name}.")
+            else:
+                visit(child, prefix)
+
+    visit(ast.parse(source), f"{module}.")
+    return found
+
+
 def _class_members() -> dict[str, bool]:
     """Return every argument-less member of a public class, property or not.
 
     A property is a class thing, so a module-level function is out of
     scope however few arguments it takes. Methods of a private class
-    are out too: a private class is not API.
+    are out too: a private class is not API. So is an `async def`: its
+    caller awaits it, which makes it a call.
     """
     found: dict[str, bool] = {}
     for path in sorted(_LIBRARY.rglob("*.py")):
         module = ".".join(path.relative_to(_LIBRARY.parent).with_suffix("").parts)
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        for cls in ast.walk(tree):
-            if not isinstance(cls, ast.ClassDef) or cls.name.startswith("_"):
-                continue
-            for node in cls.body:
-                if not isinstance(node, ast.FunctionDef) or node.name.startswith("_"):
-                    continue
-                decorated = {ast.unparse(d) for d in node.decorator_list}
-                if {"staticmethod", "classmethod"} & decorated:
-                    continue
-                # no filter for a `@x.setter`: one takes the value it
-                # sets, so the argument count below excludes it already
-                arguments = [
-                    a.arg
-                    for a in [
-                        *node.args.posonlyargs,
-                        *node.args.args,
-                        *node.args.kwonlyargs,
-                    ]
-                    if a.arg != "self"
-                ]
-                if arguments or node.args.vararg or node.args.kwarg:
-                    continue
-                key = f"{module}.{cls.name}.{node.name}"
-                found[key] = _is_a_read(decorated)
+        found |= _class_members_in(module, path.read_text(encoding="utf-8"))
+    return found
+
+
+def _public_bools_in(module: str, source: str) -> set[str]:
+    """Return every public function of a module that answers a bool.
+
+    The dotted name drops the class, as `_named` above does: a method and
+    a module function of one name are one entry, which is the spelling
+    `input_validation_test.py` uses too. The gate below reads the name
+    alone, so one entry judges every definition under it.
+    """
+    found: set[str] = set()
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, _Function) or node.name.startswith("_"):
+            continue
+        if node.returns is not None and _answer(node, node.returns) == "bool":
+            found.add(f"{module}.{node.name}")
     return found
 
 
 def _public_bools() -> list[str]:
-    """Return every public function that answers a bool, however named.
-
-    The dotted name drops the class, as `_named` above does: a method and
-    a module function of one name are one entry, which is the spelling
-    `input_validation_test.py` uses too.
-    """
-    found: list[str] = []
+    """Return every public function that answers a bool, however named."""
+    found: set[str] = set()
     for path in sorted(_LIBRARY.rglob("*.py")):
         module = ".".join(path.relative_to(_LIBRARY.parent).with_suffix("").parts)
-        tree = ast.parse(path.read_text(encoding="utf-8"))
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.FunctionDef) or node.name.startswith("_"):
-                continue
-            if node.returns is not None and _return_type(node.returns) == "bool":
-                found.append(f"{module}.{node.name}")
+        found |= _public_bools_in(module, path.read_text(encoding="utf-8"))
     return sorted(found)
 
 
@@ -206,7 +282,7 @@ _CLASS_MEMBERS = _class_members()
 def test_the_name_says_what_the_answer_is(dotted: str) -> None:
     """The rule, over every public name that carries one of the prefixes."""
     promised = _promised_by(dotted.rpartition(".")[2])
-    assert _NAMED[dotted] == promised, (
+    assert not _breaks_its_promise(dotted, _NAMED[dotted]), (
         f"{dotted} returns {_NAMED[dotted]} where its name promises {promised}"
     )
 
@@ -216,18 +292,131 @@ def test_the_walk_reaches_what_it_claims() -> None:
 
     A walk that found nothing would pass the test above.
     """
-    assert _NAMED["ecc.curves.curve_group.is_on_curve"] == "bool"
-    assert _NAMED["ecc.dsa.verify_"] == "bool"
-    assert _NAMED["ecc.ssa.batch_verify"] == "bool"
-    assert _NAMED["ecc.dsa.assert_as_valid"] == "None"
+    assert _NAMED["ecc.curves.curve_group.is_on_curve"] == ["bool"]
+    assert _NAMED["ecc.dsa.verify_"] == ["bool"]
+    assert _NAMED["ecc.ssa.batch_verify"] == ["bool"]
+    assert _NAMED["ecc.dsa.assert_as_valid"] == ["None"]
+    assert _NAMED["ecc.frost.validate_threshold_info"] == ["None"]
     # `TypeIs` read as the bool it answers
-    assert _NAMED["ecc._utils.is_octets"] == "bool"
+    assert _NAMED["ecc._utils.is_octets"] == ["bool"]
     # a method
-    assert _NAMED["ecc.dsa.assert_valid"] == "None"
+    assert _NAMED["ecc.dsa.assert_valid"] == ["None"]
 
     # a private name, and a name that promises nothing
     assert "ecc.hashes._assert_valid_hf" not in _NAMED
     assert "ecc._utils.bytes_from_octets" not in _NAMED
+
+
+# a `validate_` that refuses, one that answers a bool, an `async def` one
+# annotated as refusing, and two names that carry the word without the
+# prefix: not followed by an underscore, and not at the front
+_VALIDATE_CONTROL = """
+def validate_refusal(a: int) -> None: ...
+def validate_answer(a: int) -> bool: ...
+async def validate_later(a: int) -> None: ...
+def validated_name(a: str) -> str: ...
+def revalidate_cache(a: str) -> str: ...
+"""
+
+
+def test_a_validate_answering_a_bool_breaks_its_promise() -> None:
+    """The rule fails a `validate_` that answers a bool, or a coroutine.
+
+    The tree's own `validate_` functions all refuse, so the rule above
+    never fails on one: this source holds the cases that must.
+    """
+    named = _named_in("control", _VALIDATE_CONTROL)
+    assert named == {
+        "control.validate_refusal": ["None"],
+        "control.validate_answer": ["bool"],
+        "control.validate_later": ["Coroutine[None]"],
+    }
+    broken = {d for d, returns in named.items() if _breaks_its_promise(d, returns)}
+    assert broken == {"control.validate_answer", "control.validate_later"}
+
+
+# a name defined twice, in two classes and in two branches of an `if`,
+# the definition that breaks the rule first, where the second would
+# overwrite it; a property of a nested class, defined once; two nested
+# classes of one name under two outer classes; a class inside a function;
+# an `async def` taking only `self`, which `_named_in` records as the
+# coroutine it answers, and which `_public_bools_in` and
+# `_class_members_in` do not record; and an `async def` under each other
+# prefix but `validate_`, which `_VALIDATE_CONTROL` holds, each annotated
+# as its prefix promises
+_REDEFINED_CONTROL = """
+class Block:
+    def is_final(self) -> bool: ...
+    async def is_ready(self) -> bool: ...
+class Tx:
+    @property
+    def is_final(self) -> bool: ...
+class Outer:
+    class Inner:
+        @property
+        def is_inner(self) -> bool: ...
+class Left:
+    class Node:
+        @property
+        def depth(self) -> int: ...
+class Right:
+    class Node:
+        def depth(self) -> int: ...
+def f() -> None:
+    class K:
+        @property
+        def size(self) -> int: ...
+if TYPE_CHECKING:
+    def verify_tx(a: int) -> int: ...
+else:
+    def verify_tx(a: int) -> bool: ...
+async def assert_later(a: int) -> None: ...
+async def check_later(a: int) -> bool: ...
+async def verify_later(a: int) -> bool: ...
+"""
+
+
+def test_a_second_definition_hides_no_first() -> None:
+    """No definition of a name hides another one.
+
+    `_named_in` lists each definition once, and `_public_bools_in` keeps
+    the name, which is all it judges. `_named_in` records an `async def`
+    as a coroutine, which breaks the promise of its prefix; the other
+    walks do not record it. The tree holds no prefixed name whose
+    definitions disagree, and no `async def`: this source holds both.
+    """
+    named = _named_in("control", _REDEFINED_CONTROL)
+    assert named == {
+        "control.is_final": ["bool", "bool"],
+        "control.is_ready": ["Coroutine[bool]"],
+        "control.is_inner": ["bool"],
+        "control.verify_tx": ["int", "bool"],
+        "control.assert_later": ["Coroutine[None]"],
+        "control.check_later": ["Coroutine[bool]"],
+        "control.verify_later": ["Coroutine[bool]"],
+    }
+    broken = {d for d, returns in named.items() if _breaks_its_promise(d, returns)}
+    assert broken == {
+        "control.is_ready",
+        "control.verify_tx",
+        "control.assert_later",
+        "control.check_later",
+        "control.verify_later",
+    }
+
+    assert _public_bools_in("control", _REDEFINED_CONTROL) == {
+        "control.is_final",
+        "control.is_inner",
+        "control.verify_tx",
+    }
+    assert _class_members_in("control", _REDEFINED_CONTROL) == {
+        "control.Block.is_final": False,
+        "control.Tx.is_final": True,
+        "control.Outer.Inner.is_inner": True,
+        "control.Left.Node.depth": True,
+        "control.Right.Node.depth": False,
+        "control.f.K.size": True,
+    }
 
 
 def test_check_says_one_thing() -> None:
@@ -243,7 +432,7 @@ def test_check_says_one_thing() -> None:
 
 @pytest.mark.parametrize("dotted", _PUBLIC_BOOLS)
 def test_every_public_bool_is_named_by_the_vocabulary(dotted: str) -> None:
-    """A bool carries one of the four prefixes.
+    """A bool carries one of the prefixes.
 
     What this closes is the gap the prefixes alone leave: they promise a
     shape to a caller who sees one, and say nothing about a bool that
@@ -266,8 +455,7 @@ def test_an_argument_less_member_is_read_not_called(dotted: str) -> None:
     What is not a read is here by shape and not by a list of names, which
     is what keeps this rule from needing one.
     """
-    name = dotted.rpartition(".")[2]
-    if name.startswith(_NOT_A_READ) or name in _AN_ACTION or dotted in _MIRRORS_HASHLIB:
+    if _is_not_a_read(dotted):
         assert not _CLASS_MEMBERS[dotted], (
             f"{dotted} is a @property and its name says it is not a read:"
             " rename it, or drop the decorator"
@@ -287,3 +475,25 @@ def test_the_walk_reaches_every_shape_of_member() -> None:
     assert _CLASS_MEMBERS["ecc.dsa.Sig.assert_valid"] is False
     assert _CLASS_MEMBERS["ecc.dsa.Signer.wipe"] is False
     assert _CLASS_MEMBERS["ecc.alias.HashObject.digest"] is False
+
+
+# a refusal that takes nothing but `self`, which the tree's own
+# `validate_` functions do not, beside a read
+_MEMBER_CONTROL = """
+class Spend:
+    def validate_inputs(self) -> None: ...
+    @property
+    def fee(self) -> int: ...
+"""
+
+
+def test_a_validate_member_is_not_a_read() -> None:
+    """A self-only `validate_` member stays a method, as an `assert_` does."""
+    members = _class_members_in("control", _MEMBER_CONTROL)
+    assert members == {
+        "control.Spend.validate_inputs": False,
+        "control.Spend.fee": True,
+    }
+    # the gate above fails a member whose shape and name disagree
+    broken = {d for d in members if _is_not_a_read(d) == members[d]}
+    assert not broken
