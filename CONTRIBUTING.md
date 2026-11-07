@@ -1097,6 +1097,12 @@ and a database rather than a `uv run`.
 cadence*](https://github.com/btclib-org/.github#the-set-and-its-cadence)
 says why it is a pull request's check and not a local gate.
 
+Touching a Python file makes a pull request responsible for Sourcery's
+findings anywhere in it, not only on the lines it changes: that section
+says which files the check reads. Each finding is fixed, or skipped as
+that section says. A writer who cannot run Sourcery locally reads each
+of those files whole, for the rules `.sourcery.yaml` leaves on.
+
 ### What gates a merge, and what only reports
 
 `lint.yml`, `test.yml`, `docs.yml` and `sourcery.yml` produce the
