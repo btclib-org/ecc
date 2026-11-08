@@ -9,6 +9,31 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.11.8
+
+- **The schemes are top-level modules of `ecc`, and `ecc.ecc` is
+  removed** (closes #482). `import ecc.ecc` and `from ecc.ecc import dsa`
+  raise `ImportError`, and no alias is kept.
+    - `from ecc.ecc import dsa` becomes `from ecc import dsa`, and
+      `ecc.ecc.dsa.sign` becomes `ecc.dsa.sign`. The same holds for each
+      module `ecc.ecc` published.
+    - `from ecc.ecc import diffie_hellman` becomes
+      `from ecc.dh import diffie_hellman`.
+    - `from ecc.ecc import second_generator` becomes
+      `from ecc.pedersen import second_generator`.
+
+  Act on it if you import from `ecc.ecc`: change the import as above.
+
+  Act on it if you install btclib, btclib-wallet, bip32-descriptors or
+  btclib-node. Their latest releases on PyPI import `ecc.ecc` and set no
+  upper bound on `ecc`, so a fresh install resolves this release, and their
+  modules that import `ecc.ecc` raise `ImportError` when imported. Pin
+  `ecc<2026.11.8` until that package releases the move
+  (btclib-org/btclib#2954, btclib-org/btclib-wallet#729,
+  btclib-org/bip32-descriptors#139, btclib-org/btclib-node#2242).
+
+`CHANGELOG.md`'s own `v2026.11.8` section has the rest.
+
 ## v2026.11.7
 
 - **Variable-time integer parameters are typed `ecc.alias.Public`**

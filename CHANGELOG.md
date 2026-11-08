@@ -23,6 +23,41 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.11.8
+
+### The schemes are top-level modules of `ecc`, and `ecc.ecc` is removed
+
+`from ecc import dsa` imports a scheme, and `ecc.ecc.dsa.sign` becomes
+`ecc.dsa.sign`. `diffie_hellman` and `second_generator` are imported
+from `ecc.dh` and `ecc.pedersen` (closes #482).
+
+### The tests read more of the source
+
+`tests/public_parameter_test.py` walks `_var` functions at any depth,
+`*args` and `**kwargs` included (closes #483). `tests/name_contract_test.py`
+takes btclib's walks, with `validate_` and `async def` (closes #490).
+
+### The README links its own files absolutely
+
+They resolve on PyPI, and the documentation keeps them local
+(issue btclib-org/.github#1851).
+
+### The README's status badges move to a closing Status section
+
+(issue btclib-org/.github#1856)
+
+### CONTRIBUTING.md takes btclib-org/.github's shared part
+
+(issue btclib-org/.github#2088)
+
+### A pull request owns Sourcery's findings in every file it touches
+
+CONTRIBUTING.md says so (closes #476).
+
+### REVIEWING.md asks a reviewer to search the tree for each new sentence's fact
+
+(closes #475)
+
 ## v2026.11.7
 
 ### Variable-time integer parameters are typed `ecc.alias.Public`
