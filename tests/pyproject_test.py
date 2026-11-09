@@ -4,7 +4,7 @@
 
 """Each extra and the group beside it name the same requirement.
 
-Section 1 of the organization standard: where a package is both an extra
+Section 1 of the organization's standard: where a package is both an extra
 and a group, the specifier is written twice, and a test refuses the day
 the two disagree. The extra is what an install from the index resolves,
 the group what every `uv sync` of this tree does, so a floor raised in one

@@ -3,7 +3,7 @@
 Elliptic curve arithmetic, and the signature, key-agreement and
 commitment schemes built on it, in typed Python.
 
-<!-- Section 2 of btclib-org/.github's README.md says which badges sit here. -->
+<!-- Section 2 of the organization's standard says which badges sit here. -->
 [![PyPI version](https://img.shields.io/pypi/v/ecc.svg?logo=pypi)](https://pypi.org/project/ecc/)
 [![GitHub release](https://img.shields.io/github/v/release/btclib-org/ecc.svg)](https://github.com/btclib-org/ecc/releases)
 [![development status](https://img.shields.io/pypi/status/ecc.svg)](https://pypi.org/project/ecc/)
@@ -174,7 +174,7 @@ what it intends to do, and what it deliberately does not, is its
 
 ## Status
 
-<!-- Section 2 of btclib-org/.github's README.md says which badges sit here. -->
+<!-- Section 2 of the organization's standard says which badges sit here. -->
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/btclib-org/ecc/main.svg)](https://results.pre-commit.ci/latest/github/btclib-org/ecc/main)
 [![lint workflow status](https://github.com/btclib-org/ecc/actions/workflows/lint.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/lint.yml?query=branch%3Amain)
 [![test workflow status](https://github.com/btclib-org/ecc/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/btclib-org/ecc/actions/workflows/test.yml?query=branch%3Amain)

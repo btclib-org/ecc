@@ -19,7 +19,7 @@ the number goes, the lists stay -- they are the fact the number
 summarized -- and the Summary carries the `git ls-files` command that
 derives it on demand.
 
-Section 9 of the organization standard states the rule this module
+Section 9 of the organization's standard states the rule this module
 enforces: never state how many of anything a file holds. Its one
 exception is a count of what upstream published, which pins a vendored
 file rather than measuring this tree. Everything below is an application

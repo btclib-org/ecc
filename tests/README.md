@@ -13,7 +13,7 @@ same measurement the `coverage` job makes, and it answers against
 that leaves part of the suite behind, `-k`, `-m`, `--deselect`,
 `--ignore`, `--ignore-glob` or `--lf` — prints the report without the
 threshold: `coverage_fail_under` in `tests/conftest.py` is where that
-happens, and section 8 of [the organization standard][std] names the
+happens, and section 8 of [the organization's standard][std] names the
 set.
 
 ```shell
@@ -24,13 +24,14 @@ runs the suite without measuring anything.
 
 ## Convention tests
 
-Section 7 of [the organization standard][std] lists conventions a suite
-can turn into a red test, and a repository needs the ones its own prose
-states rather than all of them. So which of them this repository tests
-is declared here, in two halves that together account for every one of
-them: the table below and the "Not tested here" line under it. One row
-per module, so a convention answered by more than one file is named once
-per file, and `conventions_test.py` asserts the declaration is true.
+Section 7 of [the organization's standard][std] lists conventions a
+suite can turn into a red test, and a repository needs the ones its own
+prose states rather than all of them. So which of them this repository
+tests is declared here, in two halves that together account for every
+one of them: the table below and the "Not tested here" line under it.
+One row per module, so a convention answered by more than one file is
+named once per file, and `conventions_test.py` asserts the declaration
+is true.
 
 | convention | tested in |
 | --- | --- |

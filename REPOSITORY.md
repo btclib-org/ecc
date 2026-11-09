@@ -5,12 +5,13 @@ setting; writing code does not need it. `AGENTS.md` points here, keeping
 configuration detail out of ordinary coding tasks.
 
 The branch rules and the repository settings live *outside* the
-repository. What is recorded is the settings the organization standard
-asks about — the ones section 16's checklist sets on a new repository,
-the ones a section of the standard states a rule for, and the ones a
-behaviour it describes rests on — together with whatever a call quoted
-for one of those answers alongside it. That is this file's scope, and
-*What this file passes over* at the foot says what falls outside it.
+repository. What is recorded is the settings the organization's
+standard asks about — the ones section 16's checklist sets on a new
+repository, the ones a section of the standard states a rule for, and
+the ones a behaviour it describes rests on — together with whatever a
+call quoted for one of those answers alongside it. That is this file's
+scope, and *What this file passes over* at the foot says what falls
+outside it.
 
 The topics and `.homepage` have a second form in the tree —
 `pyproject.toml`'s `keywords` and its `[project.urls]` field of that

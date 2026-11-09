@@ -80,7 +80,7 @@ jobs:
   # the cheapest job in the workflow, and the one that decides whether the rest
   # of it runs: a pull request that edits only prose changes nothing the jobs
   # below read. The event handling and the decision are btclib-org/.github's,
-  # called at a tagged commit (section 10 of btclib-org/.github's README.md);
+  # called at a tagged commit (section 10 of the organization's standard);
   # what stays here is which files are this tree's own prose
   changes:
     name: Decide whether the jobs below have anything to check

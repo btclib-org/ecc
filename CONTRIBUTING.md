@@ -1144,8 +1144,8 @@ which is the reliance `REVIEWING.md` provides for.
 
 Which workflows that last row covers is
 `grep -n 'uses: \./\.github/workflows/' .github/workflows/release.yml`,
-not a list here. Which day each of the rest runs is section 10 of
-[the organization standard](https://github.com/btclib-org/.github), and
+not a list here. Which day each of the rest runs is section 10 of [the
+organization's standard](https://github.com/btclib-org/.github), and
 not this file's to restate.
 
 The `test` row and the `lint`, `docs` row run one image on one interpreter:
