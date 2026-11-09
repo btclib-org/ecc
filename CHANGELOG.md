@@ -27,9 +27,7 @@ more line to edit at every release.
 
 ### The schemes are top-level modules of `ecc`, and `ecc.ecc` is removed
 
-`from ecc import dsa` imports a scheme, and `ecc.ecc.dsa.sign` becomes
-`ecc.dsa.sign`. `diffie_hellman` and `second_generator` are imported
-from `ecc.dh` and `ecc.pedersen` (closes #482).
+(closes #482)
 
 ### The tests read more of the source
 
