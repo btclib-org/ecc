@@ -744,12 +744,12 @@ def _is_x_coordinate_var(x: Public, ec: Curve) -> bool:
     libsecp256k1's own shape, `secp256k1_ge_x_on_curve_var` being
     `secp256k1_fe_is_square_var` of x^3 + ax + b and nothing else.
 
-    A bool rather than an exception, because the value that names itself
-    in an error message is the caller's and not this x: dsa.Sig's
-    congruence check tries every x congruent to r and reports r. That is
-    also what keeps the refusal cheap, where _y_even_var below cannot: half
-    of the field elements are not x-coordinates, and the symbol costs the
-    same for those as for the others.
+    A bool rather than an exception, because the refusal is the caller's:
+    dsa.Sig's congruence check tries every x congruent to r, and its
+    refusal is about r, not about any x it tried. That is also what keeps
+    the refusal cheap, where _y_even_var below cannot: half of the field
+    elements are not x-coordinates, and the symbol costs the same for
+    those as for the others.
     """
     octets = _x_octets(x, ec)
     if octets is not None:

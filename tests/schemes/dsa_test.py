@@ -19,7 +19,6 @@ from ecc._libsecp256k1 import INSTALLED
 from ecc._libsecp256k1 import dsa as libsecp256k1_dsa
 from ecc._libsecp256k1 import ffi as libsecp256k1_ffi
 from ecc._libsecp256k1 import recovery as libsecp256k1_recovery
-from ecc._utils import hex_string
 from ecc.alias import INF, JacPoint, Point, Public
 from ecc.curves import (
     Curve,
@@ -46,6 +45,7 @@ from ecc.hashes import reduce_to_hlen
 from ecc.number_theory import mod_inv_var
 from ecc.rfc6979_nonce import challenge_
 from tests import (
+    HELD_KEY_SPELLINGS,
     HELD_KEYS,
     REFUSED_SCALARS,
     Sha256FirstByte,
@@ -65,7 +65,7 @@ from tests.curves.curve_test import (
     no_bindings_anywhere,
     secp256k1_bis,
 )
-from tests.secret_free import assert_secret_free
+from tests.secret_free import assert_secret_free, chained, text_of
 
 _KEYS = key_pair_spellings()
 pub_key_point = _KEYS.Q
@@ -176,29 +176,29 @@ def test_signature() -> None:
 
     sig_invalid = dsa.Sig(sig.ec.p, sig.s, check_validity=False)
     assert not dsa.verify(msg, Q, sig_invalid)
-    err_msg = "scalar r not in 1..n-1: "
+    err_msg = "scalar r not in 1..n-1$"
     with pytest.raises(EccValueError, match=err_msg):
         dsa.assert_as_valid(msg, Q, sig_invalid)
 
     sig_invalid = dsa.Sig(sig.r, sig.ec.p, check_validity=False)
     assert not dsa.verify(msg, Q, sig_invalid)
-    err_msg = "scalar s not in 1..n-1: "
+    err_msg = "scalar s not in 1..n-1$"
     with pytest.raises(EccValueError, match=err_msg):
         dsa.assert_as_valid(msg, Q, sig_invalid)
 
     # the boundary itself, not `ec.p` (a different, larger prime): `< n`
     # weakened to `<= n` would still refuse `ec.p` and miss `n` exactly
-    with pytest.raises(EccValueError, match="scalar r not in 1..n-1: "):
+    with pytest.raises(EccValueError, match="scalar r not in 1..n-1$"):
         dsa.Sig(sig.ec.n, sig.s)
-    with pytest.raises(EccValueError, match="scalar s not in 1..n-1: "):
+    with pytest.raises(EccValueError, match="scalar s not in 1..n-1$"):
         dsa.Sig(sig.r, sig.ec.n)
 
     # the lower boundary too, zero and not one below it: `0 < r`/`0 < s`
     # weakened to `-1 <` would accept the one value this rule excludes
     # that ssa.Sig's own 0..n-1 does not
-    with pytest.raises(EccValueError, match="scalar r not in 1..n-1: "):
+    with pytest.raises(EccValueError, match="scalar r not in 1..n-1$"):
         dsa.Sig(0, sig.s)
-    with pytest.raises(EccValueError, match="scalar s not in 1..n-1: "):
+    with pytest.raises(EccValueError, match="scalar s not in 1..n-1$"):
         dsa.Sig(sig.r, 0)
 
     err_msg = "private key not in 1..n-1"
@@ -3057,7 +3057,7 @@ def test_verify_answers_false_for_a_well_formed_signature_that_is_wrong() -> Non
             b"\xfd\xfc\x00",
             (
                 "EccValueError",
-                "non-canonical DER length: 252 encoded in 3 bytes",
+                "non-canonical DER length of 3 bytes",
             ),
             id="two octets non-canonical",
         ),
@@ -3068,12 +3068,12 @@ def test_verify_answers_false_for_a_well_formed_signature_that_is_wrong() -> Non
         ),
         pytest.param(
             b"\xfe\x01\x00\x00\x02",
-            ("EccValueError", "DER length too big: 02000001, max is 02000000"),
+            ("EccValueError", "DER length too big: max is 02000000"),
             id="four octets past the cap",
         ),
         pytest.param(
             b"\xff" + bytes(8),
-            ("EccValueError", "non-canonical DER length: 0 encoded in 9 bytes"),
+            ("EccValueError", "non-canonical DER length of 9 bytes"),
             id="eight octets non-canonical",
         ),
     ],
@@ -3112,9 +3112,9 @@ def test_strict_parsing_refuses_any_long_form_length(size_octet: int) -> None:
     round trip `strict` promises.
     """
     data = bytes([size_octet]) + bytes(0x80)
-    err_msg = f"invalid DER length: long form {hex_string(size_octet)}"
+    err_msg = "invalid DER length: long form"
     err_msg += ", strict parsing requires the short form below 0x80"
-    with pytest.raises(EccValueError, match=re.escape(err_msg)):
+    with pytest.raises(EccValueError, match=re.escape(err_msg) + "$"):
         dsa._parse_der_value(BytesIO(data), True)
 
 
@@ -3168,9 +3168,9 @@ def test_strict_parsing_refuses_the_der_sequence_at_71_octets() -> None:
     body += b"\x02" + bytes([len(s_bytes)]) + s_bytes
     assert len(body) == 71
     der = b"\x30" + bytes([len(body)]) + body
-    err_msg = f"invalid DER sequence length: {len(body)} octets of r,s data"
-    err_msg += ", max is 70 for secp256k1"
-    with pytest.raises(EccValueError, match=re.escape(err_msg)):
+    err_msg = "invalid DER sequence length: max is 70 octets of r,s data"
+    err_msg += " for secp256k1"
+    with pytest.raises(EccValueError, match=re.escape(err_msg) + "$"):
         dsa.Sig.parse(der, strict=True, check_validity=False)
 
 
@@ -3358,6 +3358,87 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
     with pytest.raises(EccException) as refused:
         call(secret)
     assert_secret_free(refused.value, spellings)
+
+
+# A key handed to `Sig.parse` where a signature belongs: each case puts its
+# bytes in the field one refusal reads, a hash type byte after a bare key
+# included. The key above the group order is what r or s out of range is.
+_KEY = HELD_KEYS["bytes"]
+_OVER_N, _OVER_N_SPELLINGS = refused_secret("bytes")
+_TAG_30 = "invalid compound header: not the DER sequence tag 30"
+_TAG_02 = "invalid value header: not the integer element tag 02"
+_LONG = "invalid DER length: long form"
+_LONG += ", strict parsing requires the short form below 0x80"
+
+# name: (encoding, strict, the refused field's octets, message)
+_DER_REFUSALS: dict[str, tuple[bytes, bool, bytes, str]] = {
+    "sequence tag": (_KEY + b"\x01", True, _KEY[:1], _TAG_30),
+    "r integer tag": (b"\x30\x20" + _KEY, True, _KEY[:1], _TAG_02),
+    "s integer tag": (b"\x30\x23\x02\x01\x01" + _KEY, True, _KEY[:1], _TAG_02),
+    "sequence length long form": (b"\x30" + _KEY[1:], True, _KEY[1:2], _LONG),
+    "r length long form": (b"\x30\x20\x02" + _KEY[1:], True, _KEY[1:2], _LONG),
+    "length too big": (
+        b"\x30\xfe" + _KEY[:4],
+        False,
+        _KEY[:4],
+        "DER length too big: max is 02000000",
+    ),
+    "length non-canonical": (
+        b"\x30\xff" + _KEY[:4] + bytes(4),
+        False,
+        _KEY[:4],
+        "non-canonical DER length of 9 bytes",
+    ),
+    "sequence over 70 octets": (
+        b"\x30" + _KEY[3:4] + (_KEY * 4)[: _KEY[3]],
+        True,
+        _KEY[3:4],
+        "invalid DER sequence length: max is 70 octets of r,s data for secp256k1",
+    ),
+    "r no x-coordinate": (
+        b"\x30\x25\x02\x20" + _KEY + b"\x02\x01\x01",
+        True,
+        _KEY,
+        "r is not (congruent to) a valid x-coordinate",
+    ),
+    "r not below n": (
+        b"\x30\x26\x02\x21\x00" + _OVER_N + b"\x02\x01\x01",
+        True,
+        _OVER_N,
+        "scalar r not in 1..n-1",
+    ),
+    "s not below n": (
+        b"\x30\x26\x02\x01\x01\x02\x21\x00" + _OVER_N,
+        True,
+        _OVER_N,
+        "scalar s not in 1..n-1",
+    ),
+}
+
+
+@pytest.mark.parametrize("name", _DER_REFUSALS)
+@both_arms
+def test_a_refused_der_encoding_prints_no_byte_of_it(name: str) -> None:
+    """Each refusal names the field and what it should hold, not what it holds.
+
+    `assert_secret_free` looks for pieces of 6 bytes, and for a shorter
+    secret whole, so the field's value is also looked for in both byte
+    orders, and each of its bytes as a word of hex and as `0x` and its hex,
+    the way a tag or a length is printed.
+    """
+    data, strict, field, err_msg = _DER_REFUSALS[name]
+    with pytest.raises(EccValueError) as refused:
+        dsa.Sig.parse(data, strict=strict)
+    assert str(refused.value) == err_msg
+    secrets_fed = _OVER_N_SPELLINGS if field == _OVER_N else HELD_KEY_SPELLINGS
+    values = [int.from_bytes(field, order) for order in ("big", "little")]
+    spellings = [f"{value:x}" for value in values] + [str(v) for v in values]
+    assert_secret_free(refused.value, [*secrets_fed, *spellings])
+    for e in chained(refused.value):
+        text = text_of(e)
+        for byte in field:
+            assert f"0x{byte:02x}" not in text
+            assert re.search(rf"\b{byte:02x}\b", text) is None
 
 
 @pytest.mark.parametrize("kind", HELD_KEYS)

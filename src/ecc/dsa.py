@@ -172,6 +172,10 @@ _MAX_SIZE = 0x02000000
 # docstring above already gives as secp256k1's widest signature body
 _MAX_SIG_DATA_SIZE = 70
 
+# No refusal below prints the octets it read or the r and s it refused: a
+# value refused as a signature may be a key put in the wrong place (section 7
+# of the btclib-org standard, *A refusal carries no secret*).
+
 
 def _parse_der_size(stream: BytesIO, strict: bool) -> int:
     """Return the size in front of a DER element.
@@ -195,7 +199,7 @@ def _parse_der_size(stream: BytesIO, strict: bool) -> int:
         raise EccValueError("not enough binary data for DER length")
     size = prefix[0]
     if strict and size >= 0x80:
-        err_msg = f"invalid DER length: long form {hex_string(size)}"
+        err_msg = "invalid DER length: long form"
         err_msg += ", strict parsing requires the short form below 0x80"
         raise EccValueError(err_msg)
     if size in _WIDE_SIZE_PREFIXES:
@@ -205,12 +209,10 @@ def _parse_der_size(stream: BytesIO, strict: bool) -> int:
             raise EccValueError("not enough binary data for DER length")
         size = int.from_bytes(data, byteorder="little", signed=False)
         if size < minimum:
-            err_msg = f"non-canonical DER length: {size} encoded in {width + 1} bytes"
+            err_msg = f"non-canonical DER length of {width + 1} bytes"
             raise EccValueError(err_msg)
     if size > _MAX_SIZE:
-        err_msg = (
-            f"DER length too big: {hex_string(size)}, max is {hex_string(_MAX_SIZE)}"
-        )
+        err_msg = f"DER length too big: max is {hex_string(_MAX_SIZE)}"
         raise EccValueError(err_msg)
     return size
 
@@ -234,8 +236,8 @@ def _parse_der_value(stream: BytesIO, strict: bool) -> bytes:
 def _deserialize_scalar(sig_data_stream: BytesIO, strict: bool) -> int:
     marker = sig_data_stream.read(1)
     if marker != _DER_SCALAR_MARKER:
-        err_msg = f"invalid value header: {marker.hex()}"
-        err_msg += f", instead of integer element {_DER_SCALAR_MARKER.hex()}"
+        err_msg = "invalid value header: not the integer element tag "
+        err_msg += _DER_SCALAR_MARKER.hex()
         raise EccValueError(err_msg)
 
     scalar_bytes = _parse_der_value(sig_data_stream, strict)
@@ -364,9 +366,7 @@ class Sig:
 
         # r is a scalar, fail if r is not in [1, n-1]
         if not 0 < self.r < self.ec.n:
-            err_msg = "scalar r not in 1..n-1: "
-            err_msg += f"'{hex_string(self.r)}'" if self.r > 0xFFFFFFFF else f"{self.r}"
-            raise EccValueError(err_msg)
+            raise EccValueError("scalar r not in 1..n-1")
 
         # ensure r is congruent to a valid x-coordinate.
         # r is a scalar, i.e. reduced mod n, so it does not name the
@@ -384,15 +384,11 @@ class Sig:
             else:
                 r += self.ec.n
         if congruence_not_found:
-            err_msg = "r is not (congruent to) a valid x-coordinate: "
-            err_msg += f"'{hex_string(self.r)}'" if self.r > 0xFFFFFFFF else f"{self.r}"
-            raise EccValueError(err_msg)
+            raise EccValueError("r is not (congruent to) a valid x-coordinate")
 
         # s is a scalar, fail if s is not in [1, n-1]
         if not 0 < self.s < self.ec.n:
-            err_msg = "scalar s not in 1..n-1: "
-            err_msg += f"'{hex_string(self.s)}'" if self.s > 0xFFFFFFFF else f"{self.s}"
-            raise EccValueError(err_msg)
+            raise EccValueError("scalar s not in 1..n-1")
 
     def serialize(self, *, check_validity: bool = True) -> bytes:
         """Serialize an ECDSA signature to strict ASN.1 DER representation."""
@@ -441,8 +437,8 @@ class Sig:
         # 0x30, then data-size, 0x02, r-size, r, 0x02, s-size, s
         marker = stream.read(1)
         if marker != _DER_SIG_MARKER:
-            err_msg = f"invalid compound header: {marker.hex()}"
-            err_msg += f", instead of DER sequence tag {_DER_SIG_MARKER.hex()}"
+            err_msg = "invalid compound header: not the DER sequence tag "
+            err_msg += _DER_SIG_MARKER.hex()
             raise EccValueError(err_msg)
 
         # then data-size, 0x02, r-size, r, 0x02, s-size, s
@@ -453,8 +449,8 @@ class Sig:
         # size equation allows: a single check per field does not bound
         # the sum of them
         if strict and len(sig_data) > _MAX_SIG_DATA_SIZE:
-            err_msg = f"invalid DER sequence length: {len(sig_data)} octets of "
-            err_msg += f"r,s data, max is {_MAX_SIG_DATA_SIZE} for secp256k1"
+            err_msg = f"invalid DER sequence length: max is {_MAX_SIG_DATA_SIZE}"
+            err_msg += " octets of r,s data for secp256k1"
             raise EccValueError(err_msg)
 
         # then 0x02, r-size, r, 0x02, s-size, s
