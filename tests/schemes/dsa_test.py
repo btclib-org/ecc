@@ -3415,6 +3415,18 @@ _DER_REFUSALS: dict[str, tuple[bytes, bool, bytes, str]] = {
         _OVER_N,
         "scalar s not in 1..n-1",
     ),
+    "r negative": (
+        b"\x30\x24\x02\x1f" + _KEY[1:] + b"\x02\x01\x01",
+        True,
+        _KEY[1:],
+        "invalid negative scalar",
+    ),
+    "r padded twice": (
+        b"\x30\x26\x02\x21\x00" + _KEY + b"\x02\x01\x01",
+        True,
+        b"\x00" + _KEY,
+        "invalid 'highest bit set' padding",
+    ),
 }
 
 
@@ -3425,10 +3437,9 @@ def test_a_refused_der_encoding_prints_no_byte_of_it(name: str) -> None:
 
     `assert_secret_free` looks for pieces of 6 bytes, and for a shorter
     secret whole, so the field's value is also looked for in both byte
-    orders, and each of its bytes as a word of hex, as `0x` and its hex,
-    the way a tag or a length is printed, as the escape a `repr` of bytes
-    writes for it, and as its own `repr`, which shows a printable byte as
-    its character.
+    orders, and each of its bytes as a word of hex or of decimal, as `0x`
+    and its hex, the way a tag or a length is printed, as the escape a
+    `repr` of bytes writes for it, and as its own `repr`.
     """
     data, strict, field, err_msg = _DER_REFUSALS[name]
     with pytest.raises(EccValueError) as refused:
@@ -3445,6 +3456,7 @@ def test_a_refused_der_encoding_prints_no_byte_of_it(name: str) -> None:
             assert f"\\x{byte:02x}" not in text
             assert repr(bytes([byte])).lower() not in text
             assert re.search(rf"\b{byte:02x}\b", text) is None
+            assert re.search(rf"\b{byte}\b", text) is None
 
 
 @pytest.mark.parametrize("kind", HELD_KEYS)
