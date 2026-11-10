@@ -862,7 +862,7 @@ Verdict: **identical but for a trailing newline**, which the
 repo      mllwchrry/bip-frost-dkg
 path      python/chilldkg_ref/chilldkg.py
 ref       remove-dkgoutput
-commit    773bc4dfb9c979b699ea7920f1a550f395ee734a  2026-10-12
+commit    f0d913b4a019cbb71ec437a1b4b46afd89b6c13b  2026-11-09
 blob      21c0ac32d009e143a7dfe50a7de53deea8c17f80
 ours      29042b15f45de75883e1054ff52cd3f901db1184
 program   ChillDKG's reference, python/chilldkg_ref/ at that commit
@@ -898,13 +898,20 @@ touching `chilldkg.py`. So the weekly check reports a revision of that
 pull request that changes `chilldkg.py`; one that changes only the rest
 of the program goes unreported.
 
+A force-push that rewrites the commit touching `chilldkg.py` is reported
+too, whatever it changes. Such a force-push moved `commit` from
+`773bc4dfb9c979b699ea7920f1a550f395ee734a`, the head the file was
+recorded at and the commit its `source` names. `python/chilldkg_ref/` is
+the same tree at both.
+
 Before writing the file, the program asserted that every participant
 finalized with the coordinator's threshold info and recovery data; that
 BIP445's own `validate_threshold_info`, in `bip445_threshold_info.py` at
-the same commit, accepts that threshold info; that `recover_public` and
-`recover_secshare` give back the same threshold info, session parameters
-and secret shares from the recovery data; and that each secret share is
-below the group order and is the discrete log of its public share.
+the commit `source` names, accepts that threshold info; that
+`recover_public` and `recover_secshare` give back the same threshold
+info, session parameters and secret shares from the recovery data; and
+that each secret share is below the group order and is the discrete log
+of its public share.
 
 `tests/schemes/frost_test.py` reads `t`, `n`, `secshares` and
 `threshold_info`. The host keys and the recovery data are kept, so that
