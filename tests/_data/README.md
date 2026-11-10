@@ -899,10 +899,10 @@ pull request that changes `chilldkg.py`; one that changes only the rest
 of the program goes unreported.
 
 A force-push that rewrites the commit touching `chilldkg.py` is reported
-too, whatever it changes. Such a force-push moved `commit` from
-`773bc4dfb9c979b699ea7920f1a550f395ee734a`, the head the file was
-recorded at and the commit its `source` names. `python/chilldkg_ref/` is
-the same tree at both.
+too, whatever it changes. The file's `source` names
+`773bc4dfb9c979b699ea7920f1a550f395ee734a`, the head it was recorded at;
+`commit` is a force-push of that head, and `python/chilldkg_ref/` is the
+same tree at both.
 
 Before writing the file, the program asserted that every participant
 finalized with the coordinator's threshold info and recovery data; that
