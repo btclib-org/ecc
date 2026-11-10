@@ -3112,8 +3112,10 @@ def test_strict_parsing_refuses_any_long_form_length(size_octet: int) -> None:
     round trip `strict` promises.
     """
     data = bytes([size_octet]) + bytes(0x80)
-    err_msg = "invalid DER length: long form"
-    err_msg += ", strict parsing requires the short form below 0x80"
+    err_msg = (
+        "invalid DER length: long form"
+        ", strict parsing requires the short form below 0x80"
+    )
     with pytest.raises(EccValueError, match=re.escape(err_msg) + "$"):
         dsa._parse_der_value(BytesIO(data), True)
 
@@ -3168,8 +3170,7 @@ def test_strict_parsing_refuses_the_der_sequence_at_71_octets() -> None:
     body += b"\x02" + bytes([len(s_bytes)]) + s_bytes
     assert len(body) == 71
     der = b"\x30" + bytes([len(body)]) + body
-    err_msg = "invalid DER sequence length: max is 70 octets of r,s data"
-    err_msg += " for secp256k1"
+    err_msg = "invalid DER sequence length: max is 70 octets of r,s data for secp256k1"
     with pytest.raises(EccValueError, match=re.escape(err_msg) + "$"):
         dsa.Sig.parse(der, strict=True, check_validity=False)
 
@@ -3367,8 +3368,9 @@ _KEY = HELD_KEYS["bytes"]
 _OVER_N, _OVER_N_SPELLINGS = refused_secret("bytes")
 _TAG_30 = "invalid compound header: not the DER sequence tag 30"
 _TAG_02 = "invalid value header: not the integer element tag 02"
-_LONG = "invalid DER length: long form"
-_LONG += ", strict parsing requires the short form below 0x80"
+_LONG = (
+    "invalid DER length: long form, strict parsing requires the short form below 0x80"
+)
 
 # name: (encoding, strict, the refused field's octets, message)
 _DER_REFUSALS: dict[str, tuple[bytes, bool, bytes, str]] = {
@@ -3419,12 +3421,13 @@ _DER_REFUSALS: dict[str, tuple[bytes, bool, bytes, str]] = {
 @pytest.mark.parametrize("name", _DER_REFUSALS)
 @both_arms
 def test_a_refused_der_encoding_prints_no_byte_of_it(name: str) -> None:
-    """Each refusal names the field and what it should hold, not what it holds.
+    """No refusal prints a byte of the field it refused.
 
     `assert_secret_free` looks for pieces of 6 bytes, and for a shorter
     secret whole, so the field's value is also looked for in both byte
-    orders, and each of its bytes as a word of hex and as `0x` and its hex,
-    the way a tag or a length is printed.
+    orders, and each of its bytes as a word of hex, as `0x` and its hex,
+    the way a tag or a length is printed, and as the escape a `repr` of
+    bytes writes for it.
     """
     data, strict, field, err_msg = _DER_REFUSALS[name]
     with pytest.raises(EccValueError) as refused:
@@ -3438,6 +3441,7 @@ def test_a_refused_der_encoding_prints_no_byte_of_it(name: str) -> None:
         text = text_of(e)
         for byte in field:
             assert f"0x{byte:02x}" not in text
+            assert f"\\x{byte:02x}" not in text
             assert re.search(rf"\b{byte:02x}\b", text) is None
 
 

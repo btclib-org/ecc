@@ -199,8 +199,10 @@ def _parse_der_size(stream: BytesIO, strict: bool) -> int:
         raise EccValueError("not enough binary data for DER length")
     size = prefix[0]
     if strict and size >= 0x80:
-        err_msg = "invalid DER length: long form"
-        err_msg += ", strict parsing requires the short form below 0x80"
+        err_msg = (
+            "invalid DER length: long form"
+            ", strict parsing requires the short form below 0x80"
+        )
         raise EccValueError(err_msg)
     if size in _WIDE_SIZE_PREFIXES:
         width, minimum = _WIDE_SIZE_PREFIXES[size]
