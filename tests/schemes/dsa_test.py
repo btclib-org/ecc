@@ -3426,8 +3426,9 @@ def test_a_refused_der_encoding_prints_no_byte_of_it(name: str) -> None:
     `assert_secret_free` looks for pieces of 6 bytes, and for a shorter
     secret whole, so the field's value is also looked for in both byte
     orders, and each of its bytes as a word of hex, as `0x` and its hex,
-    the way a tag or a length is printed, and as the escape a `repr` of
-    bytes writes for it.
+    the way a tag or a length is printed, as the escape a `repr` of bytes
+    writes for it, and as its own `repr`, which shows a printable byte as
+    its character.
     """
     data, strict, field, err_msg = _DER_REFUSALS[name]
     with pytest.raises(EccValueError) as refused:
@@ -3442,6 +3443,7 @@ def test_a_refused_der_encoding_prints_no_byte_of_it(name: str) -> None:
         for byte in field:
             assert f"0x{byte:02x}" not in text
             assert f"\\x{byte:02x}" not in text
+            assert repr(bytes([byte])).lower() not in text
             assert re.search(rf"\b{byte:02x}\b", text) is None
 
 
