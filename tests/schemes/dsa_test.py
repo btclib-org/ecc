@@ -49,6 +49,7 @@ from tests import (
     HELD_KEYS,
     REFUSED_SCALARS,
     Sha256FirstByte,
+    assert_no_byte_of,
     assert_repr_secret_free,
     both_arms,
     key_pair_spellings,
@@ -65,7 +66,7 @@ from tests.curves.curve_test import (
     no_bindings_anywhere,
     secp256k1_bis,
 )
-from tests.secret_free import assert_secret_free, chained, text_of
+from tests.secret_free import assert_secret_free
 
 _KEYS = key_pair_spellings()
 pub_key_point = _KEYS.Q
@@ -3433,30 +3434,13 @@ _DER_REFUSALS: dict[str, tuple[bytes, bool, bytes, str]] = {
 @pytest.mark.parametrize("name", _DER_REFUSALS)
 @both_arms
 def test_a_refused_der_encoding_prints_no_byte_of_it(name: str) -> None:
-    """No refusal prints a byte of the field it refused.
-
-    `assert_secret_free` looks for pieces of 6 bytes, and for a shorter
-    secret whole, so the field's value is also looked for in both byte
-    orders, and each of its bytes as a word of hex or of decimal, as `0x`
-    and its hex, the way a tag or a length is printed, as the escape a
-    `repr` of bytes writes for it, and as its own `repr`.
-    """
+    """No refusal prints a byte of the field it refused."""
     data, strict, field, err_msg = _DER_REFUSALS[name]
     with pytest.raises(EccValueError) as refused:
         dsa.Sig.parse(data, strict=strict)
     assert str(refused.value) == err_msg
     secrets_fed = _OVER_N_SPELLINGS if field == _OVER_N else HELD_KEY_SPELLINGS
-    values = [int.from_bytes(field, order) for order in ("big", "little")]
-    spellings = [f"{value:x}" for value in values] + [str(v) for v in values]
-    assert_secret_free(refused.value, [*secrets_fed, *spellings])
-    for e in chained(refused.value):
-        text = text_of(e)
-        for byte in field:
-            assert f"0x{byte:02x}" not in text
-            assert f"\\x{byte:02x}" not in text
-            assert repr(bytes([byte])).lower() not in text
-            assert re.search(rf"\b{byte:02x}\b", text) is None
-            assert re.search(rf"\b{byte}\b", text) is None
+    assert_no_byte_of(refused.value, field, secrets_fed)
 
 
 @pytest.mark.parametrize("kind", HELD_KEYS)

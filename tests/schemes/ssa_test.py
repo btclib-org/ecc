@@ -40,10 +40,12 @@ from ecc.hashes import reduce_to_hlen
 from ecc.number_theory import mod_inv_var
 from ecc.pedersen import second_generator
 from tests import (
+    HELD_KEY_SPELLINGS,
     HELD_KEYS,
     REFUSED_AUX,
     REFUSED_SCALARS,
     Sha256FirstByte,
+    assert_no_byte_of,
     assert_repr_secret_free,
     b58decode,
     b58encode,
@@ -119,24 +121,24 @@ def test_signature() -> None:
     # phrased by Sig rather than by a lift it does not take (issue
     # btclib-org/btclib#622): "x-coordinate not in 0..p-1" is ec.y's, reached
     # through _y_even_var, and a predicate has no such message to pass on
-    err_msg = "r is not a valid x-coordinate: "
+    err_msg = "r is not a valid x-coordinate$"
     with pytest.raises(EccValueError, match=err_msg):
         ssa.assert_as_valid(msg, x_Q, sig_invalid)
 
     sig_invalid = ssa.Sig(sig.r, sig.ec.p, check_validity=False)
     assert not ssa.verify(msg, x_Q, sig_invalid)
-    err_msg = "scalar s not in 0..n-1: "
+    err_msg = "scalar s not in 0..n-1$"
     with pytest.raises(EccValueError, match=err_msg):
         ssa.assert_as_valid(msg, x_Q, sig_invalid)
 
     # the boundary itself, not `ec.p` (a different, larger prime): `< n`
     # weakened to `<= n` would still refuse `ec.p` and miss `n` exactly
-    with pytest.raises(EccValueError, match="scalar s not in 0..n-1: "):
+    with pytest.raises(EccValueError, match="scalar s not in 0..n-1$"):
         ssa.Sig(sig.r, sig.ec.n)
 
     # the lower boundary too: `0 <= s` weakened to `-1 <= s` would accept
     # a scalar one below the range BIP340's own zero-lower-bound allows
-    with pytest.raises(EccValueError, match="scalar s not in 0..n-1: "):
+    with pytest.raises(EccValueError, match="scalar s not in 0..n-1$"):
         ssa.Sig(sig.r, -1)
 
     # `serialize`'s own default, not the constructor's: an invalid Sig
@@ -144,7 +146,7 @@ def test_signature() -> None:
     # to serialize at the default, and only there does check_validity=False
     # let it through
     sig_invalid = ssa.Sig(sig.r, sig.ec.n, sig.ec, check_validity=False)
-    with pytest.raises(EccValueError, match="scalar s not in 0..n-1: "):
+    with pytest.raises(EccValueError, match="scalar s not in 0..n-1$"):
         sig_invalid.serialize()
     assert sig_invalid.serialize(check_validity=False)
 
@@ -249,12 +251,11 @@ def test_refusing_an_r_takes_no_square_root(
     """The r of a signature is refused by a predicate, not by a lift.
 
     Refusing through a lift costs more than verifying: `_y_even_var` falls
-    back to `ec.y_even_var` for an x the bindings reject, that being where the
-    message naming the value comes from, so a bad r would pay the whole Python
-    square root, several times what verifying a good signature costs (issue
-    btclib-org/btclib#622). Half of the field elements are no x-coordinate and
-    cost nothing to produce, so that would be the expensive answer for the
-    cheap input.
+    back to `ec.y_even_var` for an x the bindings reject, so a bad r would pay
+    the whole Python square root, several times what verifying a good
+    signature costs (issue btclib-org/btclib#622). Half of the field elements
+    are no x-coordinate and cost nothing to produce, so that would be the
+    expensive answer for the cheap input.
 
     mod_sqrt_var is patched to raise rather than timed: what is asserted is
     a refusal that reaches no square root, on this machine and on a loaded
@@ -272,7 +273,7 @@ def test_refusing_an_r_takes_no_square_root(
         )
 
     monkeypatch.setattr(curve_group, "mod_sqrt_var", refuse)
-    with pytest.raises(EccValueError, match="r is not a valid x-coordinate: "):
+    with pytest.raises(EccValueError, match="r is not a valid x-coordinate$"):
         ssa.Sig(r, 1)
 
 
@@ -803,7 +804,7 @@ def test_batch_and_single_verification_agree_about_a_non_canonical_s(
 
     assert not ssa.verify(msgs[-1], Qs[-1], sigs[-1])
     assert not ssa.batch_verify(msgs, Qs, sigs)
-    err_msg = "scalar s not in 0..n-1: "
+    err_msg = "scalar s not in 0..n-1$"
     with pytest.raises(EccValueError, match=err_msg):
         ssa.assert_batch_as_valid(msgs, Qs, sigs)
 
@@ -2309,6 +2310,41 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
     with pytest.raises(EccException) as refused:
         call(secret)
     assert_secret_free(refused.value, spellings)
+
+
+# A key handed to `Sig.parse` where a signature belongs: each case puts its
+# bytes in the field one refusal reads. s is fed a key above n, the only key
+# s refuses.
+_KEY = HELD_KEYS["bytes"]
+_OVER_N, _OVER_N_SPELLINGS = refused_secret("bytes")
+_G_X = secp256k1.G[0].to_bytes(32, "big")
+
+# name: (encoding, the refused field's octets, message)
+_SIG_REFUSALS: dict[str, tuple[bytes, bytes, str]] = {
+    "r no x-coordinate": (
+        _KEY + bytes(31) + b"\x01",
+        _KEY,
+        "r is not a valid x-coordinate",
+    ),
+    "r above n, no x-coordinate": (
+        _OVER_N + bytes(31) + b"\x01",
+        _OVER_N,
+        "r is not a valid x-coordinate",
+    ),
+    "s not below n": (_G_X + _OVER_N, _OVER_N, "scalar s not in 0..n-1"),
+}
+
+
+@pytest.mark.parametrize("name", _SIG_REFUSALS)
+@both_arms
+def test_a_refused_signature_prints_no_byte_of_it(name: str) -> None:
+    """No refusal prints a byte of the field it refused."""
+    data, field, err_msg = _SIG_REFUSALS[name]
+    with pytest.raises(EccValueError) as refused:
+        ssa.Sig.parse(data)
+    assert str(refused.value) == err_msg
+    secrets_fed = _OVER_N_SPELLINGS if field == _OVER_N else HELD_KEY_SPELLINGS
+    assert_no_byte_of(refused.value, field, secrets_fed)
 
 
 @pytest.mark.parametrize("kind", HELD_KEYS)

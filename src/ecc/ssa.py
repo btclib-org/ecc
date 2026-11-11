@@ -77,7 +77,6 @@ from ecc._utils import (
     assert_type,
     bytes_from_octets,
     bytesio_from_binarydata,
-    hex_string,
     int_from_bits,
     int_from_integer,
     is_integer,
@@ -195,18 +194,21 @@ class Sig:
         # both fields below are read against it
         _assert_valid_ec(self.ec)
 
+        # Neither refusal below prints r or s: a value refused as a signature
+        # may be a key put in the wrong place (section 7 of the btclib-org
+        # standard, *A refusal carries no secret*).
+
         # r is a field element, fail if r is not a valid x-coordinate. The
         # question is existence: BIP340 fixes the y even, and verification
         # recomputes the point from the scalars rather than lifting this r, so
         # _is_x_coordinate_var and not _y_even_var (issue
         # btclib-org/btclib#622). The delegated lift is cheap on the accepting
         # path, so the reason is the refusing one: _y_even_var falls back to
-        # ec.y_even_var for an x the bindings refuse -- that being where the
-        # message naming the value comes from -- so refusing through it costs
-        # the whole Python square root, several times what verifying a good
-        # signature costs. That expensive answer is the one an attacker picks,
-        # half of the field elements being no x-coordinate and costing nothing
-        # to produce.
+        # ec.y_even_var for an x the bindings refuse, so refusing through it
+        # costs the whole Python square root, several times what verifying a
+        # good signature costs. That expensive answer is the one an attacker
+        # picks, half of the field elements being no x-coordinate and costing
+        # nothing to produce.
         #
         # A bool leaves the message here, which is where it belongs: r is
         # this signature's, and "invalid x-coordinate" does not say which
@@ -214,15 +216,11 @@ class Sig:
         # same reason, with the congruence this one has no use for -- r
         # is a field element here, not a scalar reduced mod n
         if not _is_x_coordinate_var(Public(self.r), self.ec):
-            err_msg = "r is not a valid x-coordinate: "
-            err_msg += f"'{hex_string(self.r)}'" if self.r > 0xFFFFFFFF else f"{self.r}"
-            raise EccValueError(err_msg)
+            raise EccValueError("r is not a valid x-coordinate")
 
         # s is a scalar, fail if s is not in [0, n-1]
         if not 0 <= self.s < self.ec.n:
-            err_msg = "scalar s not in 0..n-1: "
-            err_msg += f"'{hex_string(self.s)}'" if self.s > 0xFFFFFFFF else f"{self.s}"
-            raise EccValueError(err_msg)
+            raise EccValueError("scalar s not in 0..n-1")
 
     def serialize(self, *, check_validity: bool = True) -> bytes:
         """Return BIP340's fixed-size r || s, 64 bytes on secp256k1."""

@@ -38,7 +38,7 @@ from typing import Any, NamedTuple
 import pytest
 
 import ecc
-from tests.secret_free import assert_secret_free
+from tests.secret_free import assert_secret_free, chained, text_of
 
 _TESTS_DIR = Path(__file__).parent
 
@@ -417,6 +417,39 @@ def assert_repr_secret_free(
     `assert_secret_free` reads an exception, so the two texts go in one.
     """
     assert_secret_free(Exception(repr(obj), str(obj)), secrets)
+
+
+def assert_no_byte_of(
+    exc: BaseException, field: bytes, secrets: list[str | bytes]
+) -> None:
+    """Assert that a refusal prints no part of a field, in the spellings below.
+
+    `assert_secret_free` looks for pieces of 6 bytes, and for a shorter
+    secret whole, so the field's value is also looked for in both byte
+    orders, and each run of 2 to 5 of its bytes as hex, in either order and
+    inside any word. Each byte is looked for as a word of hex or of
+    decimal, as `0x` and its hex, the way a tag or a length is printed, as
+    the escape a `repr` of bytes writes for it, and as its own `repr`.
+    """
+    values = [int.from_bytes(field, order) for order in ("big", "little")]
+    spellings = [f"{value:x}" for value in values] + [str(v) for v in values]
+    assert_secret_free(exc, [*secrets, *spellings])
+    runs = {
+        spelled
+        for size in range(2, 6)
+        for i in range(len(field) - size + 1)
+        for spelled in (field[i : i + size].hex(), field[i : i + size][::-1].hex())
+    }
+    for e in chained(exc):
+        text = text_of(e)
+        for run in runs:
+            assert run not in text
+        for byte in field:
+            assert f"0x{byte:02x}" not in text
+            assert f"\\x{byte:02x}" not in text
+            assert repr(bytes([byte])).lower() not in text
+            assert re.search(rf"\b{byte:02x}\b", text) is None
+            assert re.search(rf"\b{byte}\b", text) is None
 
 
 # What a test asking the flagged `btclib_secp256k1.zkp` extension for the right
