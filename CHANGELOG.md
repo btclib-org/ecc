@@ -23,6 +23,50 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.11.11
+
+### Error messages carry no byte of a value refused as a signature
+
+`dsa.Sig`, `ssa.Sig` and `borromean.BorromeanSig` say what is wrong
+without printing the value (closes #495, closes #503, closes #511).
+
+### The tests read more of the source
+
+`tests/name_contract_test.py` reads a method under a statement of a class
+body (closes #493), and its vocabulary walks skip functions nested in
+functions (closes #502).
+
+### A run that leaves `.github/scripts` unmeasured is refused
+
+(closes #489)
+
+### The vendored pins say where they stand
+
+The ChillDKG pin moves to the force-pushed head `f0d913b4` (closes #496),
+and `tests/_data/README.md` says the BIP327 reference pin is behind the
+tip of its path (closes #508).
+
+### `pypi-install.yml` drops its `ecc.ecc` fallback
+
+(closes #488)
+
+### The calls of btclib-org/.github name the commit of its tag `v2026.11.10`
+
+(#498)
+
+### hypothesis moves
+
+(#499)
+
+### The pre-commit hooks move
+
+btclib-org/.github's hooks from v2026.11.2 to v2026.11.10, with zizmor,
+ruff and uv-pre-commit (#500).
+
+### The tree names the organization's standard as section 11 asks
+
+(#497, issue btclib-org/.github#2137)
+
 ## v2026.11.8
 
 ### The schemes are top-level modules of `ecc`, and `ecc.ecc` is removed
