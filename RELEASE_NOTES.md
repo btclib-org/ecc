@@ -34,18 +34,11 @@ before upgrading, rather than a digit.
   Act on it if your code matches these messages: match the text before
   the colon, since the text after it changed.
 
-  Act on it if you log these errors: a log written with any release up
-  to v2026.11.8 can hold bytes of a key that was refused as a signature.
-  Search it for the r and s messages followed by the value: upper-case
-  hex digits in quoted groups of 8 separated by spaces, the first group
-  possibly shorter, as in `'FFFFFFFF FFFFFFFF …'`, or a decimal number
-  for a value up to 0xFFFFFFFF. The DER messages of `dsa.Sig.parse`
-  printed the bytes they read unquoted: a tag as two lower-case hex
-  digits, as in `invalid compound header: 1f, …`, a long-form length
-  octet as two upper-case hex digits, a wide length in upper-case hex
-  with its bytes reversed, as in
-  `DER length too big: 88796A5B 4C3D2E1F, …`, and a non-canonical
-  length in decimal.
+  Act on it if you log these errors: in a log written with any release
+  up to v2026.11.8, a refusal of the functions listed above may be
+  followed by bytes of the refused value, in hex or in decimal. Treat
+  each such line as possibly holding key material, and find them by the
+  text of each message before its colon.
 
 `CHANGELOG.md`'s own `v2026.11.11` section has the rest.
 
