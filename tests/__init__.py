@@ -428,9 +428,10 @@ def assert_no_byte_of(
     shorter secret whole, so the field's value is also looked for in both
     byte orders, and each shorter run of 2 or more of its bytes as hex, in
     either order and inside any word. Each byte is looked for as a word of
-    hex or of decimal, as `0x` and its hex, the way a tag or a length is
-    printed, as the escape a `repr` of bytes writes for it, and as its own
-    `repr`.
+    hex or of decimal, as `0x` and its two hex digits, the way a tag or a
+    length is printed, as the word `hex` writes for it, which has one digit
+    below 0x10, as the escape a `repr` of bytes writes for it, and as its
+    own `repr`.
     """
     values = [int.from_bytes(field, order) for order in ("big", "little")]
     spellings = [f"{value:x}" for value in values] + [str(v) for v in values]
@@ -447,6 +448,7 @@ def assert_no_byte_of(
             assert run not in text
         for byte in field:
             assert f"0x{byte:02x}" not in text
+            assert re.search(rf"\b0x{byte:x}\b", text) is None
             assert f"\\x{byte:02x}" not in text
             assert repr(bytes([byte])).lower() not in text
             assert re.search(rf"\b{byte:02x}\b", text) is None
