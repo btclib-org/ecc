@@ -252,13 +252,16 @@ verbatim because the `error.message` field of a case is compared byte
 for byte. That file is not vendored — it is an implementation, not data,
 and this package's is the one under test.
 
-The pin is behind the tip of that path. The later commits there,
-`ccb5415095c5b096abc9bd72384a6db4b7c34bce` and
-`4f9567fd60021cb7dea032250ab241cd68d9ff91`, change no result of a
-function `src/ecc/musig2.py` follows: `sign` passes `int.from_bytes` a
-`bytes` copy of a `bytearray` slice, which gives the same integer, and
-the file's self-test draws its `extra_in` from `secrets` instead of a
-clock.
+The pin is behind the tip of that path.
+`gh api 'repos/bitcoin/bips/commits?path=bip-0327/reference.py'` lists
+the commits that touch it, newest first, and those above the pin are
+the ones to read. `ccb5415095c5b096abc9bd72384a6db4b7c34bce` and
+`4f9567fd60021cb7dea032250ab241cd68d9ff91` change no result of a
+function `src/ecc/musig2.py` follows. The first has `sign` pass its
+helper `int_from_bytes`, which is `int.from_bytes(b, byteorder="big")`,
+a `bytes` copy of a `bytearray` slice, which gives the same integer.
+The second has the file's self-test draw its `extra_in` from `secrets`
+instead of a clock.
 
 ### `tests/schemes/_data/key_sort_vectors.json`
 
