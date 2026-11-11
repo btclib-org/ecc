@@ -151,7 +151,7 @@ def _mismatch(exc: ImportError) -> ImportError | None:
     reword, and the caller re-raises it as it came.
     """
     if exc.name != _BINDINGS_MODULE and not (exc.name or "").startswith(
-        _BINDINGS_MODULE + "."
+        f"{_BINDINGS_MODULE}."
     ):
         return None
     try:

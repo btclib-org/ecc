@@ -216,7 +216,8 @@ def _sliding_window_table(Q: JacPoint, ec: CurveGroup, w: int) -> list[JacPoint]
         P = ec._double_jac(P)
     T = [P]
     for _ in range(1, pow(2, w - 1)):
-        T.append(ec._add_jac(T[-1], Q))
+        P = ec._add_jac(P, Q)
+        T.append(P)
     return T
 
 

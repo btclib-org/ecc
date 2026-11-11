@@ -823,16 +823,15 @@ def test_the_nonce_chain_writes_the_ring_commitments_a_proof_states(
     sign_key_idx = proof.sign_key_idx(vector["value"])
     scale = 10 ** max(proof.exp, 0)
 
-    heads = []
     factors = list(chain.blinding_factors)
     factors[-1] = (factors[-1] + int(vector["blind"], 16)) % secp256k1.n
-    for i, (sec, digit) in enumerate(zip(factors, sign_key_idx, strict=True)):
-        heads.append(
-            secp256k1.add_aff_var(
-                mult(sec, secp256k1.G, secp256k1),
-                mult(digit * scale << 2 * i, second_generator(), secp256k1),
-            )
+    heads = [
+        secp256k1.add_aff_var(
+            mult(sec, secp256k1.G, secp256k1),
+            mult(digit * scale << 2 * i, second_generator(), secp256k1),
         )
+        for i, (sec, digit) in enumerate(zip(factors, sign_key_idx, strict=True))
+    ]
 
     stated = [_bytes_from_point_var(head, _RANGEPROOF_TAG) for head in heads[:-1]]
     assert tuple(int.from_bytes(o[1:], "big") for o in stated) == proof.ring_commitments
@@ -1340,7 +1339,7 @@ def test_a_proof_refuses_a_value_that_is_no_integer(value: Any) -> None:
         (what, value)
         for what in ["exp", "mantissa", "min_value"]
         for value in _NOT_INTEGERS
-        if not (what == "min_value" and value is None)
+        if what != "min_value" or value is not None
     ],
     ids=repr,
 )
@@ -1376,9 +1375,9 @@ _LAST_RING = "ring commitment 2"
         for method in ["serialize", "pubk_rings_var", "nonce_chain", "sign_key_idx"]
         for what in ["exp", "mantissa", "min_value", "ring commitment 0", _LAST_RING]
         for value in _NOT_INTEGERS
-        if not (what == "min_value" and value is None)
+        if what != "min_value" or value is not None
         # the last two do not read the ring commitments
-        if not (method in ("nonce_chain", "sign_key_idx") and "ring" in what)
+        if method not in ("nonce_chain", "sign_key_idx") or "ring" not in what
     ],
     ids=repr,
 )
@@ -1484,7 +1483,7 @@ _NOT_INTEGER_FIELDS = [*_NOT_INTEGERS, 0.0, ""]
         (what, value)
         for what in ["exp", "mantissa", "min_value"]
         for value in _NOT_INTEGER_FIELDS
-        if not (what == "min_value" and value is None)
+        if what != "min_value" or value is not None
     ],
     ids=repr,
 )
