@@ -875,7 +875,7 @@ path      python/chilldkg_ref/chilldkg.py
 ref       remove-dkgoutput
 commit    f0d913b4a019cbb71ec437a1b4b46afd89b6c13b  2026-11-09
 blob      21c0ac32d009e143a7dfe50a7de53deea8c17f80
-ours      29042b15f45de75883e1054ff52cd3f901db1184
+ours      d2c536227962692afcf8dfcdf83dafb5657c00d1
 program   ChillDKG's reference, python/chilldkg_ref/ at that commit
 calls     for each session (t, n), with
           rand(x, i) = sha256(seed + "|" + f"{t}|{n}|{x}|{i}"):
@@ -892,7 +892,7 @@ calls     for each session (t, n), with
             coordinator_finalize(cstate, pmsgs2)
             for each participant i:
               participant_finalize(state2[i], cmsg2)
-recorded  2026-10-26
+recorded  2026-11-11
 behind    0 revisions; that commit is the tip of the path
 ```
 
@@ -910,10 +910,7 @@ pull request that changes `chilldkg.py`; one that changes only the rest
 of the program goes unreported.
 
 A force-push that rewrites the commit touching `chilldkg.py` is reported
-too, whatever it changes. The file's `source` names
-`773bc4dfb9c979b699ea7920f1a550f395ee734a`, the head it was recorded at;
-`commit` is a force-push of that head, and `python/chilldkg_ref/` is the
-same tree at both.
+too, whatever it changes.
 
 Before writing the file, the program asserted that every participant
 finalized with the coordinator's threshold info and recovery data; that
