@@ -31,7 +31,13 @@ from ecc.exceptions import (
     EccTypeError,
     EccValueError,
 )
-from tests import REFUSED_SCALARS, both_arms, needs_zkp, refused_secret
+from tests import (
+    REFUSED_SCALARS,
+    assert_no_byte_of,
+    both_arms,
+    needs_zkp,
+    refused_secret,
+)
 from tests.curves.curve_test import low_card_curves
 from tests.secret_free import assert_secret_free
 
@@ -191,15 +197,14 @@ def test_borromean_sig_assert_valid_holds_s_to_0_n() -> None:
     """
     ec = secp256k1
     Q1 = mult(1, ec.G, ec)
-    with pytest.raises(EccValueError, match="scalar s not in 0..n-1"):
+    err_msg = r"scalar s not in 0..n-1 \(ring 0, position 0\)$"
+    with pytest.raises(EccValueError, match=err_msg):
         BorromeanSig((0).to_bytes(32, "big"), [[ec.n]], ec)
 
     sig = BorromeanSig((0).to_bytes(32, "big"), [[ec.n]], ec, check_validity=False)
-    with pytest.raises(
-        EccValueError, match=r"scalar s not in 0..n-1.*ring 0, position 0"
-    ):
+    with pytest.raises(EccValueError, match=err_msg):
         sig.assert_valid()
-    with pytest.raises(EccValueError, match="scalar s not in 0..n-1"):
+    with pytest.raises(EccValueError, match=err_msg):
         sig.serialize()
     # and the octets the flag still writes, which is the other way out of
     # `serialize`'s `if check_validity:` and the one no other test takes:
@@ -1028,3 +1033,31 @@ def test_a_refusal_carries_no_secret(name: str, kind: str) -> None:
     with pytest.raises(EccException) as refused:
         call(secret)
     assert_secret_free(refused.value, spellings)
+
+
+# A key handed to `BorromeanSig.parse` where a signature belongs: each case
+# puts its bytes in one s. s is fed a key above n, the only key s refuses.
+_OVER_N, _OVER_N_SPELLINGS = refused_secret("bytes")
+
+# name: (ring sizes, the index of the refused s among them, message)
+_S_REFUSALS: dict[str, tuple[list[int], int, str]] = {
+    "first s": ([1], 0, "scalar s not in 0..n-1 (ring 0, position 0)"),
+    "a later ring and position": (
+        [2, 3],
+        4,
+        "scalar s not in 0..n-1 (ring 1, position 2)",
+    ),
+}
+
+
+@pytest.mark.parametrize("name", _S_REFUSALS)
+@both_arms
+def test_a_refused_s_prints_no_byte_of_it(name: str) -> None:
+    """No refusal prints a byte of the s it refused."""
+    rsizes, index, err_msg = _S_REFUSALS[name]
+    s_values = [bytes(32)] * sum(rsizes)
+    s_values[index] = _OVER_N
+    with pytest.raises(EccValueError) as refused:
+        BorromeanSig.parse(bytes(32) + b"".join(s_values), rsizes)
+    assert str(refused.value) == err_msg
+    assert_no_byte_of(refused.value, _OVER_N, _OVER_N_SPELLINGS)

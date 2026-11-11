@@ -130,7 +130,6 @@ from ecc._utils import (
     assert_no_trailing,
     bytes_from_octets,
     bytesio_from_binarydata,
-    hex_string,
     int_from_bits,
     is_integer,
     is_octets,
@@ -332,12 +331,12 @@ class BorromeanSig:
                     msg = f"s must be int, not {type(value).__name__}"
                     msg += f" (ring {i}, position {j})"
                     raise EccTypeError(msg)
+                # the ring and the position say which s failed, and no
+                # byte of it is printed: a value refused as a signature may
+                # be a key put in the wrong place (section 7 of the
+                # btclib-org standard, *A refusal carries no secret*)
                 if not 0 <= value < self.ec.n:
-                    err_msg = "scalar s not in 0..n-1: "
-                    err_msg += (
-                        f"'{hex_string(value)}'" if value > 0xFFFFFFFF else f"{value}"
-                    )
-                    err_msg += f" (ring {i}, position {j})"
+                    err_msg = f"scalar s not in 0..n-1 (ring {i}, position {j})"
                     raise EccValueError(err_msg)
 
     def serialize(self, *, check_validity: bool = True) -> bytes:
