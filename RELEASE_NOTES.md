@@ -24,15 +24,22 @@ before upgrading, rather than a digit.
     - `borromean.BorromeanSig.assert_valid`, which `BorromeanSig.parse`
       reaches, printed the whole s it refused.
 
-  Each message now names the field and what it should hold, and keeps its
-  prefix: `scalar s not in 0..n-1: '0x…'` becomes `scalar s not in
-  0..n-1`. The exception is still `EccValueError`.
+  Each message now says what is wrong without printing the value:
+  `scalar s not in 0..n-1: 'FFFFFFFF …'` becomes `scalar s not in
+  0..n-1`. Each keeps the text before its colon, except
+  `non-canonical DER length: 5 encoded in 3 bytes`, which becomes
+  `non-canonical DER length of 3 bytes`. The exception is still
+  `EccValueError`.
 
-  Act on it if your code matches these messages: match the prefix, since
-  the text after it changed.
+  Act on it if your code matches these messages: match the text before
+  the colon, since the text after it changed.
 
   Act on it if you log these errors: a log written with any release up
   to v2026.11.8 can hold bytes of a key that was refused as a signature.
+  Search it for these messages followed by the value: upper-case hex
+  digits in quoted groups of 8 separated by spaces, the first group
+  possibly shorter, as in `'FFFFFFFF FFFFFFFF …'`, or a decimal number
+  for a value up to 0xFFFFFFFF.
 
 `CHANGELOG.md`'s own `v2026.11.11` section has the rest.
 

@@ -27,8 +27,8 @@ more line to edit at every release.
 
 ### Error messages carry no byte of a value refused as a signature
 
-`dsa.Sig`, `ssa.Sig` and `borromean.BorromeanSig` name the field and
-what it should hold (closes #495, closes #503, closes #511).
+`dsa.Sig`, `ssa.Sig` and `borromean.BorromeanSig` say what is wrong
+without printing the value (closes #495, closes #503, closes #511).
 
 ### The tests read more of the source
 
