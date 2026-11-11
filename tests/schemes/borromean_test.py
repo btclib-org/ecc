@@ -240,6 +240,27 @@ def test_borromean_sig_refuses_no_rings() -> None:
         BorromeanSig.parse((0).to_bytes(32, "big"))
 
 
+def test_parse_refuses_rsizes_that_are_no_iterable_of_ints() -> None:
+    """Issue btclib-org/ecc#515: a wrong-typed `rsizes` is an `EccTypeError`."""
+    e0 = (0).to_bytes(32, "big")
+
+    # no iterable at all
+    for not_iterable in (None, 3):
+        with pytest.raises(EccTypeError, match="rsizes must be an iterable of ints"):
+            BorromeanSig.parse(e0, not_iterable)  # type: ignore[arg-type]
+
+    # an item that is no int, in the first ring and in a later one
+    for ring_sizes, index, kind in (
+        ([True], 0, "bool"),
+        (["a"], 0, "str"),
+        ([1.0], 0, "float"),
+        ([1, True], 1, "bool"),
+    ):
+        match = rf"rsizes\[{index}\] must be int, not {kind}"
+        with pytest.raises(EccTypeError, match=match):
+            BorromeanSig.parse(e0, ring_sizes)  # type: ignore[arg-type]
+
+
 def test_challenge_hash_matches_zkps_preimage_order() -> None:
     """`_hash`'s preimage order, pinned against secp256k1-zkp's by hand.
 

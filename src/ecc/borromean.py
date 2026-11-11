@@ -245,6 +245,28 @@ def _rings_from(s: object) -> tuple[Iterable[object], ...]:
     return rings
 
 
+def _rsizes_from(rsizes: object) -> tuple[int, ...]:
+    """Return the ring sizes of rsizes, refusing what is no iterable of ints.
+
+    Asked before `BorromeanSig.parse` reads a scalar: a non-iterable `rsizes`
+    would raise a bare TypeError at `enumerate`, and a ring size that is no int
+    one at `range` -- each the builtin `TypeError` where the contract of
+    `tests/serialization_boundary_test.py` asks for an `EccTypeError`. The
+    parameter is `object` because that is what a caller may hand over, whatever
+    the signature declares, and `is_integer` is what refuses a `bool`, which
+    `range(True)` would otherwise read as the ring size one.
+    """
+    if not isinstance(rsizes, Iterable):
+        msg = f"rsizes must be an iterable of ints, not {type(rsizes).__name__}"
+        raise EccTypeError(msg)
+    sizes = tuple(rsizes)
+    for i, rsize in enumerate(sizes):
+        if not is_integer(rsize):
+            msg = f"rsizes[{i}] must be int, not {type(rsize).__name__}"
+            raise EccTypeError(msg)
+    return sizes
+
+
 @dataclass(frozen=True, init=False)
 class BorromeanSig:
     """A borromean ring signature: e0 and one s per ring member.
@@ -388,12 +410,16 @@ class BorromeanSig:
         refuses one, so a caller who leaves `rsizes` out and hands over
         real octets is refused too, either there or by the trailing
         bytes those octets still carry.
+
+        An `rsizes` that is not an iterable of ints, a `bool` ring size
+        included, is refused with an `EccTypeError` naming `rsizes` and
+        the index.
         """
         stream = bytesio_from_binarydata(data)
         e0 = read_exactly(stream, sha256().digest_size, "borromean e0")
 
         s = []
-        for i, rsize in enumerate(rsizes):
+        for i, rsize in enumerate(_rsizes_from(rsizes)):
             ring = []
             for j in range(rsize):
                 what = f"borromean s (ring {i}, position {j})"
