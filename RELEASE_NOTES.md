@@ -36,10 +36,16 @@ before upgrading, rather than a digit.
 
   Act on it if you log these errors: a log written with any release up
   to v2026.11.8 can hold bytes of a key that was refused as a signature.
-  Search it for these messages followed by the value: upper-case hex
-  digits in quoted groups of 8 separated by spaces, the first group
+  Search it for the r and s messages followed by the value: upper-case
+  hex digits in quoted groups of 8 separated by spaces, the first group
   possibly shorter, as in `'FFFFFFFF FFFFFFFF …'`, or a decimal number
-  for a value up to 0xFFFFFFFF.
+  for a value up to 0xFFFFFFFF. The DER messages of `dsa.Sig.parse`
+  printed the bytes they read unquoted: a tag as two lower-case hex
+  digits, as in `invalid compound header: 1f, …`, a long-form length
+  octet as two upper-case hex digits, a wide length in upper-case hex
+  with its bytes reversed, as in
+  `DER length too big: 88796A5B 4C3D2E1F, …`, and a non-canonical
+  length in decimal.
 
 `CHANGELOG.md`'s own `v2026.11.11` section has the rest.
 
