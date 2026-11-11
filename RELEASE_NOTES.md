@@ -9,6 +9,33 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.11.11
+
+- **Error messages no longer carry bytes of a value refused as a
+  signature, which may be a private key passed in the wrong place**
+  (closes #495, closes #503, closes #511). In v2026.11.8 the
+  `EccValueError` message printed bytes of it:
+    - `dsa.Sig.parse` printed the DER tags it found, the length octets,
+      the size a long length announced and the length of the r,s data,
+      and `dsa.Sig.assert_valid`, which `parse` reaches, printed the whole
+      r or s it refused;
+    - `ssa.Sig.assert_valid`, which `ssa.Sig.parse` reaches, printed the
+      whole r or s it refused;
+    - `borromean.BorromeanSig.assert_valid`, which `BorromeanSig.parse`
+      reaches, printed the whole s it refused.
+
+  Each message now names the field and what it should hold, and keeps its
+  prefix: `scalar s not in 0..n-1: '0x…'` becomes `scalar s not in
+  0..n-1`. The exception is still `EccValueError`.
+
+  Act on it if your code matches these messages: match the prefix, since
+  the text after it changed.
+
+  Act on it if you log these errors: a log written with any release up
+  to v2026.11.8 can hold bytes of a key that was refused as a signature.
+
+`CHANGELOG.md`'s own `v2026.11.11` section has the rest.
+
 ## v2026.11.8
 
 - **The schemes are top-level modules of `ecc`, and `ecc.ecc` is
