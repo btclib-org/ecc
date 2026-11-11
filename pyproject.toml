@@ -262,6 +262,9 @@ package = ["src/ecc"]
 # with the harnesses it builds, which fuzz.yml reads and nothing installed
 # from the sdist runs
 git-only = [
+    # the bestpractices.dev answers, which nothing installed from the
+    # sdist reads
+    ".bestpractices.json",
     ".claude/",
     ".clusterfuzzlite/",
     ".gitattributes",

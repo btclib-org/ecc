@@ -140,8 +140,12 @@ repos:
       - id: pretty-format-json
         name: pretty-format-json (in place fixes)
         args: [--autofix, --indent=4, --no-sort-keys]
+        # .bestpractices.json stays byte for byte as the --seed mode of
+        # btclib-org/.github's .github/scripts/bestpractices.py writes it:
+        # two spaces, sorted keys
         exclude: |
           (?x)^(\.vscode/
+            |\.bestpractices\.json$
             |tests/([^/]+/)?_data/(?!rfc6979\.json))
       - id: check-merge-conflict
       - id: check-vcs-permalinks
