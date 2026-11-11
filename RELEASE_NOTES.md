@@ -32,7 +32,9 @@ before upgrading, rather than a digit.
   `EccValueError`.
 
   Act on it if your code matches these messages: match the text before
-  the colon, since the text after it changed.
+  the colon, since the text after it changed. For
+  `non-canonical DER length`, match that text itself, which both the old
+  and the new form start with.
 
   Act on it if you log these errors: in a log written with any release
   up to v2026.11.8, a refusal of the functions listed above may be
