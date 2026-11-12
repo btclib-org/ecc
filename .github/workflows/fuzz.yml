@@ -35,8 +35,8 @@ name: fuzz
 # docs/running-clusterfuzzlite/github_actions.md calls batch fuzzing on
 # each push "not recommended", and with `fuzz-seconds: 3600` below one run
 # per push would queue faster than an hour-long job drains.
-# `workflow_dispatch` is what runs the batch by hand, before a release
-# rather than waiting for the scheduled run.
+# `workflow_dispatch` is what runs the batch on a pull request's own
+# branch where section 10's `fuzz` entry asks for it.
 on:
   schedule:
     # section 10's calendar in btclib-org/.github, and not this file's to

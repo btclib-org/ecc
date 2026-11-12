@@ -1140,7 +1140,7 @@ which is the reliance `REVIEWING.md` provides for.
 | `scorecard` | weekly, push to main | — |
 | `links` | weekly | — |
 | `mutation` | weekly | the `.github/mutation/` profiles |
-| `fuzz` | weekly, and by hand before a release | — |
+| `fuzz` | weekly | — |
 | `vendored-vectors` | weekly | the pin ledger |
 | `py-arm-authority` | weekly, push to main | the arm table |
 | `pypi-install` | weekly, a release | what PyPI serves |
