@@ -89,7 +89,7 @@ class _Package:
                     q
                     for q in self.functions
                     if self.owner[q] == module
-                    and (q == prefix or q.startswith(prefix + "."))
+                    and (q == prefix or q.startswith(f"{prefix}."))
                     and (
                         not q.rsplit(".", 1)[1].startswith("_")
                         or q.endswith(".__init__")
@@ -130,14 +130,14 @@ class _Package:
         target = f"{module}.{name}"
         visited = set()
         while (
-            target not in self.functions and target + ".__init__" not in self.functions
+            target not in self.functions and f"{target}.__init__" not in self.functions
         ):
             source, _, local = target.rpartition(".")
             if target in visited or local not in self.imports.get(source, {}):
                 return None
             visited.add(target)
             target = self.imports[source][local]
-        return target if target in self.functions else target + ".__init__"
+        return target if target in self.functions else f"{target}.__init__"
 
     def callees(self, qualified: str) -> set[str]:
         """Return the package functions a function names in its body."""

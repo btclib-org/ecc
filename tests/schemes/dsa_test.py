@@ -3117,7 +3117,7 @@ def test_strict_parsing_refuses_any_long_form_length(size_octet: int) -> None:
         "invalid DER length: long form"
         ", strict parsing requires the short form below 0x80"
     )
-    with pytest.raises(EccValueError, match=re.escape(err_msg) + "$"):
+    with pytest.raises(EccValueError, match=f"{re.escape(err_msg)}$"):
         dsa._parse_der_value(BytesIO(data), True)
 
 
@@ -3172,7 +3172,7 @@ def test_strict_parsing_refuses_the_der_sequence_at_71_octets() -> None:
     assert len(body) == 71
     der = b"\x30" + bytes([len(body)]) + body
     err_msg = "invalid DER sequence length: max is 70 octets of r,s data for secp256k1"
-    with pytest.raises(EccValueError, match=re.escape(err_msg) + "$"):
+    with pytest.raises(EccValueError, match=f"{re.escape(err_msg)}$"):
         dsa.Sig.parse(der, strict=True, check_validity=False)
 
 

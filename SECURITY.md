@@ -460,7 +460,7 @@ package is used to teach and to prototype as much as to build:
 - `rangeproof.rewind` on the Python arm takes time that depends on the value
     it recovers: `rangeproof._value_encoding_var` at
     `return position, int.from_bytes(tmp[24:32], "big")`
-    (`src/ecc/rangeproof.py:1605`) returns early, at a position
+    (`src/ecc/rangeproof.py:1607`) returns early, at a position
     set by a digit of that value, which its `_var` suffix says
 - a sign-to-contract commitment is the signer's to open, and opening it
     twice over one message is safe only because the committed value
