@@ -223,6 +223,11 @@ def _issue_body(mismatches: list[str]) -> str:
 
 
 def _open_issue_number(title: str) -> str | None:
+    """Return the open issue whose title is exactly `title`, if any.
+
+    The search matches the title as a phrase, so it also finds a longer
+    title that holds it. Only an exact title is this script's issue.
+    """
     result = subprocess.run(  # noqa: S603
         [
             _GH,
@@ -233,14 +238,15 @@ def _open_issue_number(title: str) -> str | None:
             "--search",
             f'"{title}" in:title',
             "--json",
-            "number",
+            "number,title",
         ],
         capture_output=True,
         check=True,
         encoding="utf-8",
     )
     issues = json.loads(result.stdout)
-    return str(issues[0]["number"]) if issues else None
+    numbers = [str(issue["number"]) for issue in issues if issue["title"] == title]
+    return numbers[0] if numbers else None
 
 
 def report(title: str, mismatches: list[str]) -> None:
