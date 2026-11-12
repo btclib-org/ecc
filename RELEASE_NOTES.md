@@ -11,25 +11,11 @@ before upgrading, rather than a digit.
 
 ## v2026.11.12
 
-- **`borromean.BorromeanSig.parse` refuses an `rsizes` that is not an
-  iterable of ints with `EccTypeError`** (closes #515). In v2026.11.11 a
-  non-iterable `rsizes`, or a ring size of another type without
-  `__index__`, raised a builtin `TypeError`. A `bool` ring size, or one
-  that is not an `int` but has `__index__`, such as a numpy integer, was
-  read as an int: `True` as a ring of one. An `rsizes` with
-  `__getitem__` and no `__iter__` was read as a sequence. Each is now
-  refused with a message naming `rsizes`, and the ring's index for a
-  ring size.
+### `BorromeanSig.parse` refuses an `rsizes` that is not an iterable of ints
 
-  Act on it if you catch `EccException` or `EccTypeError`: these
-  refusals now reach that handler. `EccTypeError` is a `TypeError`, so a
-  handler of `TypeError` still catches them.
-
-  Act on it if you pass a numpy integer, a `bool` or any other value
-  that is not an `int` as a ring size: pass an `int`.
-
-  Act on it if your `rsizes` has `__getitem__` and no `__iter__`: pass
-  a list or a tuple.
+It raises `EccTypeError`, a `TypeError`, and refuses a numpy integer or a `bool`
+as a ring size, and an `rsizes` with no `__iter__`. Pass a list or a tuple of
+`int` (closes #515).
 
 `CHANGELOG.md`'s own `v2026.11.12` section has the rest.
 
