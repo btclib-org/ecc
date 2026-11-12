@@ -24,7 +24,7 @@ from __future__ import annotations
 import string
 from collections.abc import Iterable
 from io import BytesIO
-from typing import Any, BinaryIO
+from typing import Any, BinaryIO, TypeVar, overload
 
 from typing_extensions import TypeIs
 
@@ -57,6 +57,41 @@ NoneOneOrMoreInt = int | Iterable[int] | None
 # never yields a candidate from a hang into a refusal.
 _MAX_NONCE_ATTEMPTS = 256
 
+_T = TypeVar("_T")
+_U = TypeVar("_U")
+_V = TypeVar("_V")
+
+
+@overload
+def _has_type(value: object, expected: type[_T]) -> TypeIs[_T]: ...
+
+
+@overload
+def _has_type(
+    value: object, expected: tuple[type[_T], type[_U], type[_V]]
+) -> TypeIs[_T | _U | _V]: ...
+
+
+# what the two above do not match, and mypy narrows nothing on: an
+# abstract base class, which mypy takes as no `type[...]`, and a union
+@overload
+def _has_type(value: object, expected: object) -> bool: ...
+
+
+def _has_type(value: object, expected: Any) -> bool:
+    """Return whether a value's own class is `expected` or a subclass of it.
+
+    `isinstance` reads the value's `__class__`, which an object can set
+    to a class it is not: `unittest.mock.Mock(spec=bytes)` claims to be
+    bytes, and would then leave a coercion as a built-in error, or as an
+    answer. `type()` answers the class the object is. `expected` is what
+    `issubclass` takes: one class, an abstract base class a class is
+    registered with included, a union, or a tuple of them.
+
+    Every type test of this module is asked through it.
+    """
+    return issubclass(type(value), expected)
+
 
 def _assert_byte_shaped(octets: bytes | bytearray | memoryview) -> None:
     """Refuse a memoryview whose layout or format is not plain bytes.
@@ -78,7 +113,7 @@ def _assert_byte_shaped(octets: bytes | bytearray | memoryview) -> None:
     a signed `"b"` view or a `"c"` one (bytes objects, not ints) would still
     pass.
     """
-    if not isinstance(octets, memoryview):
+    if not _has_type(octets, memoryview):
         return
     if not octets.c_contiguous:
         err_msg = "invalid octets: non-contiguous memoryview"
@@ -86,6 +121,24 @@ def _assert_byte_shaped(octets: bytes | bytearray | memoryview) -> None:
     if octets.format != "B":
         err_msg = f"invalid octets: memoryview format {octets.format!r} instead of 'B'"
         raise EccValueError(err_msg)
+
+
+def _copy_bytes(octets: bytes | bytearray | memoryview) -> bytes:
+    """Return the octets a buffer holds, read by its base type's own methods.
+
+    `bytes()` of a bytes or bytearray subclass calls its `__bytes__`, and
+    from Python 3.12 that of a bytearray subclass calls its `__buffer__`,
+    so a subclass would decide what is read. No class can subclass
+    `memoryview`.
+
+    `bytes.__bytes__` of a `bytes` is the object itself, so the arm every
+    `Octets` parameter of the library runs through allocates nothing.
+    """
+    if _has_type(octets, bytes):
+        return bytes.__bytes__(octets)
+    if _has_type(octets, bytearray):
+        return bytes(bytearray.copy(octets))
+    return bytes(octets)
 
 
 def bytes_from_octets(octets: Octets, out_size: NoneOneOrMoreInt = None) -> bytes:
@@ -110,7 +163,7 @@ def bytes_from_octets(octets: Octets, out_size: NoneOneOrMoreInt = None) -> byte
     exception contract at the one place every `Octets` parameter passes,
     rather than left to whichever consumer trips over it first.
     """
-    if isinstance(octets, str):  # hex string
+    if _has_type(octets, str):  # hex string
         # `bytes.fromhex` raises a bare ValueError -- the same class the
         # contract promises, so what was lost is only that it came from
         # here. This is the one coercion every `Octets` parameter of the
@@ -122,13 +175,10 @@ def bytes_from_octets(octets: Octets, out_size: NoneOneOrMoreInt = None) -> byte
             octets = bytes.fromhex(octets)
         except ValueError as e:
             raise EccValueError(f"invalid hex string: {e}") from e
-    elif isinstance(octets, (bytes, bytearray, memoryview)):
+    elif _has_type(octets, (bytes, bytearray, memoryview)):
         _assert_byte_shaped(octets)
-        # the copy that makes the annotation true (issue
-        # btclib-org/btclib#1255). `bytes(b)` is `b` itself where `b` is already
-        # `bytes`, which is what nearly every call passes, so the arm every
-        # `Octets` parameter of the library runs through allocates nothing
-        octets = bytes(octets)
+        # the copy that makes the annotation true (issue btclib-org/btclib#1255)
+        octets = _copy_bytes(octets)
     else:
         # what is neither went through untouched and reached whatever the
         # caller went on to do with it: `len` of a tuple of 33 ints is 33,
@@ -143,12 +193,12 @@ def bytes_from_octets(octets: Octets, out_size: NoneOneOrMoreInt = None) -> byte
     # whatever is left would refuse a float with a bare TypeError about
     # iteration -- a complaint about the wrong thing, and from underneath
     # the library rather than through its exception contract
-    if isinstance(out_size, int):
+    if _has_type(out_size, int):
         sizes: tuple[int, ...] = (out_size,)
-    elif isinstance(out_size, Iterable):
+    elif _has_type(out_size, Iterable):
         sizes = tuple(out_size)
     else:
-        err_msg = f"invalid output size type: {type(out_size).__name__}"  # type: ignore[unreachable]
+        err_msg = f"invalid output size type: {type(out_size).__name__}"
         raise EccTypeError(err_msg)
 
     for size in sizes:
@@ -179,10 +229,10 @@ def str_from_string(s: String, what: str) -> str:
     Nothing is stripped and nothing is lowered: which of those is right
     is the caller's to know.
     """
-    if isinstance(s, str):
+    if _has_type(s, str):
         return s
 
-    if not isinstance(s, (bytes, bytearray, memoryview)):
+    if not _has_type(s, (bytes, bytearray, memoryview)):
         # what is neither went through untouched, to fail on `len` or on
         # a method of str that the value does not have -- a complaint
         # about a builtin rather than about the argument
@@ -190,7 +240,7 @@ def str_from_string(s: String, what: str) -> str:
         raise EccTypeError(err_msg)
 
     try:
-        return bytes(s).decode("ascii")
+        return _copy_bytes(s).decode("ascii")
     except UnicodeDecodeError as e:
         # the UnicodeDecodeError holds the whole input and names the
         # refused byte: raised here it would chain both, so the position
@@ -211,7 +261,7 @@ def bytesio_from_binarydata(stream: BinaryData) -> BytesIO:
     accepting one here would only move the failure. `read_exactly` is
     the one that takes a `BinaryIO`, and its docstring says why.
     """
-    if isinstance(stream, BytesIO):
+    if _has_type(stream, BytesIO):
         return stream
 
     # the refusal of what is neither a stream nor octets is
@@ -260,7 +310,7 @@ def assert_no_trailing(data: BinaryData, stream: BytesIO, what: str) -> None:
     Bitcoin Core splits the two the same way, between `Unserialize` and
     `DecodeRawPSBT`'s "extra data after PSBT".
     """
-    if isinstance(data, BytesIO):
+    if _has_type(data, BytesIO):
         return
 
     if trailing := stream.read():
@@ -284,12 +334,12 @@ def is_integer(value: Any) -> bool:
     number written down, `True` is a different type that Python's
     inheritance makes indistinguishable from one.
 
-    `isinstance` and not `type(value) is int`, so an `IntEnum` -- what issue
+    `_has_type` and not `type(value) is int`, so an `IntEnum` -- what issue
     btclib-org/btclib#273 asks about for the sighash types -- and any other
     deliberate integer subclass stay integers. `bool` is the one subclass
     excluded, and by name.
     """
-    return isinstance(value, int) and not isinstance(value, bool)
+    return _has_type(value, int) and not _has_type(value, bool)
 
 
 def is_octets(value: Any) -> TypeIs[Octets]:
@@ -311,13 +361,14 @@ def is_octets(value: Any) -> TypeIs[Octets]:
     this instead without losing the narrowing mypy strict mode otherwise
     needs the tuple for (issue btclib-org/btclib#1433).
     """
-    return isinstance(value, Octets)
+    return _has_type(value, Octets)
 
 
 def assert_type(value: Any, expected: Any, what: str) -> None:
     """Refuse a value of a type the signature does not declare.
 
-    `expected` is what `isinstance` takes: one type, or a tuple of them.
+    `expected` is what `issubclass` takes: one type, or a tuple of them.
+    The value's own class is what is tested, as `_has_type` says.
     `bytes_from_octets` and `str_from_string` are the two coercions this
     library has, and each refuses what it cannot convert; this is the
     refusal for a position that takes neither -- a `bool` flag deciding
@@ -330,7 +381,7 @@ def assert_type(value: Any, expected: Any, what: str) -> None:
     the check reachable: mypy proves the argument cannot be wrong, and
     the caller who has not run mypy is who this is for.
     """
-    if not isinstance(value, expected):
+    if not _has_type(value, expected):
         raise EccTypeError(f"invalid {what} type: {type(value).__name__}")
 
 
@@ -389,8 +440,8 @@ def int_from_integer(i: Integer) -> int:
     discriminate it from a valid hex-string
     (e.g. "0b11011110101011011011111011101111").
     """
-    if isinstance(i, int):
-        # `is_integer` and not the `isinstance` above: a bool is an int to
+    if _has_type(i, int):
+        # `is_integer` and not the `_has_type` above: a bool is an int to
         # Python and is not a number to this library, which is the rule issue
         # btclib-org/btclib#326 gave every integer field and issue
         # btclib-org/btclib#1206 found the key path without. Here rather than at
@@ -400,7 +451,7 @@ def int_from_integer(i: Integer) -> int:
             raise EccTypeError(f"non-integer: {i}")
         return i
 
-    if isinstance(i, str):
+    if _has_type(i, str):
         # `string.whitespace`, not the bare `str.strip()`: that strips
         # every character `isspace` counts, U+00A0 and U+3000 included
         i = i.strip(string.whitespace).lower()
