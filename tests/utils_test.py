@@ -5,17 +5,26 @@
 """Tests for the `ecc._utils` module."""
 
 import array
+import ast
 import random
+from collections.abc import Callable
 from io import BytesIO
+from pathlib import Path
+from typing import Any
+from unittest.mock import MagicMock, Mock
 
 import pytest
+from typing_extensions import override
 
 from ecc._utils import (
     assert_no_trailing,
+    assert_type,
     bytes_from_octets,
+    bytesio_from_binarydata,
     hex_string,
     int_from_bits,
     int_from_integer,
+    is_integer,
     is_octets,
     read_exactly,
     str_from_string,
@@ -357,3 +366,95 @@ def test_the_non_ascii_refusal_names_the_position_and_nothing_of_the_input() -> 
             assert echoed not in text
     assert refusal.value.__cause__ is None
     assert refusal.value.__context__ is None
+
+
+class _OwnBytes(bytes):
+    @override
+    def __bytes__(self) -> bytes:
+        return b"2"
+
+
+class _OwnBytesOfBytearray(bytearray):
+    def __bytes__(self) -> bytes:
+        return b"2"
+
+
+class _OwnBuffer(bytearray):
+    # what `bytes()` and `memoryview()` read from Python 3.12 (PEP 688)
+    @override
+    def __buffer__(self, flags: int, /) -> memoryview:
+        return memoryview(b"2")
+
+
+def test_the_buffer_overrides_answer() -> None:
+    """Each override answers b"2", so a read reaching one would too."""
+    assert _OwnBytes(b"abc").__bytes__() == b"2"
+    assert _OwnBytesOfBytearray(b"abc").__bytes__() == b"2"
+    assert bytes(_OwnBuffer(b"abc").__buffer__(0)) == b"2"
+
+
+@pytest.mark.parametrize("subclass", [_OwnBytes, _OwnBytesOfBytearray, _OwnBuffer])
+def test_a_buffer_subclass_is_read_by_its_base_type(
+    subclass: Callable[[bytes], bytes | bytearray],
+) -> None:
+    """A subclass's own `__bytes__` or `__buffer__` decides nothing read."""
+    octets = subclass(b"abc")
+    assert bytes_from_octets(octets) == b"abc"
+    assert type(bytes_from_octets(octets)) is bytes
+    assert str_from_string(octets, "label") == "abc"
+
+    # a plain bytes is not copied, as `_copy_bytes` says: a copy would be
+    # another object, at another address while `plain` is alive
+    plain = b"abc"
+    assert id(bytes_from_octets(plain)) == id(plain)
+
+
+# (the call, the type its argument claims through `__class__`)
+_CLAIMED: tuple[tuple[Callable[[Any], object], type], ...] = (
+    (bytes_from_octets, bytes),
+    (bytes_from_octets, bytearray),
+    (bytes_from_octets, str),
+    (lambda v: bytes_from_octets(b"ab", v), int),
+    (lambda v: str_from_string(v, "label"), str),
+    (lambda v: str_from_string(v, "label"), bytes),
+    (lambda v: assert_type(v, bytes, "label"), bytes),
+    (bytesio_from_binarydata, BytesIO),
+    (int_from_integer, int),
+    (int_from_integer, str),
+)
+
+
+@pytest.mark.parametrize(
+    "call, claimed",
+    _CLAIMED,
+    ids=[f"{i}-{t.__name__}" for i, (_, t) in enumerate(_CLAIMED)],
+)
+@pytest.mark.parametrize("mock", [Mock, MagicMock])
+def test_a_value_that_claims_a_type_is_refused_as_a_type(
+    call: Callable[[Any], object], claimed: type, mock: type[Mock]
+) -> None:
+    """A `Mock(spec=...)` sets `__class__` to the type it imitates.
+
+    `isinstance` reads `__class__`, so a type test asking it would take
+    the Mock for that type; `_has_type` reads `type()` instead.
+    """
+    with pytest.raises(EccTypeError):
+        call(mock(spec=claimed))
+
+
+def test_a_value_that_claims_a_type_is_described_by_its_own() -> None:
+    """The answers of the functions that never raise, for a claimed type."""
+    assert not is_integer(Mock(spec=int))
+    assert not is_octets(Mock(spec=bytes))
+
+
+def test_utils_tests_a_type_only_through_has_type() -> None:
+    """`_has_type`'s docstring says every type test of the module is its."""
+    source = (Path(__file__).parents[1] / "src" / "ecc" / "_utils.py").read_text()
+    calls = [
+        node.func.id
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    ]
+    assert "_has_type" in calls
+    assert "isinstance" not in calls
