@@ -9,6 +9,30 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.11.12
+
+- **`borromean.BorromeanSig.parse` refuses an `rsizes` that is not an
+  iterable of ints with `EccTypeError`** (closes #515). In v2026.11.11 a
+  non-iterable `rsizes`, or a ring size of another type without
+  `__index__`, raised a builtin `TypeError`. A `bool` ring size, or one
+  that is not an `int` but has `__index__`, such as a numpy integer, was
+  read as an int: `True` as a ring of one. An `rsizes` with
+  `__getitem__` and no `__iter__` was read as a sequence. Each is now
+  refused with a message naming `rsizes`, and the ring's index for a
+  ring size.
+
+  Act on it if you catch `EccException` or `EccTypeError`: these
+  refusals now reach that handler. `EccTypeError` is a `TypeError`, so a
+  handler of `TypeError` still catches them.
+
+  Act on it if you pass a numpy integer, a `bool` or any other value
+  that is not an `int` as a ring size: pass an `int`.
+
+  Act on it if your `rsizes` has `__getitem__` and no `__iter__`: pass
+  a list or a tuple.
+
+`CHANGELOG.md`'s own `v2026.11.12` section has the rest.
+
 ## v2026.11.11
 
 - **Error messages no longer carry bytes of a value refused as a
