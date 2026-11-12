@@ -1093,8 +1093,10 @@ def _odd_multiples(Q: JacPoint, ec: CurveGroup, w: int) -> list[JacPoint]:
     T = [Q]
     if w > 2:
         Q2 = ec._double_jac(Q)
+        P = Q
         for _ in range(2 ** (w - 2) - 1):
-            T.append(ec._add_jac(T[-1], Q2))
+            P = ec._add_jac(P, Q2)
+            T.append(P)
     return T
 
 

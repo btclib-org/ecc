@@ -528,9 +528,11 @@ def _pub_expand_var(
     base = secp256k1.negate(mult(10 ** max(exp, 0), gen, secp256k1))
     rings: list[PubkeyRing] = []
     for i, size in enumerate(rsizes):
-        ring = [ring_commitments[i]]
+        point = ring_commitments[i]
+        ring = [point]
         for _ in range(size - 1):
-            ring.append(secp256k1.add_aff_var(ring[-1], base))
+            point = secp256k1.add_aff_var(point, base)
+            ring.append(point)
         rings.append(tuple(ring))
         if i < len(rsizes) - 1:
             base = secp256k1.double_aff_var(secp256k1.double_aff_var(base))

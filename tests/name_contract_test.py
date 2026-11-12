@@ -69,9 +69,7 @@ def _return_type(returns: ast.expr) -> str:
     None` narrows `returns` before it is passed, here and to `_answer`.
     """
     unparsed = ast.unparse(returns)
-    if unparsed.startswith("TypeIs["):
-        return "bool"
-    return unparsed
+    return "bool" if unparsed.startswith("TypeIs[") else unparsed
 
 
 _Function = ast.FunctionDef | ast.AsyncFunctionDef
@@ -217,9 +215,7 @@ def _misshapen(dotted: str, reads: list[bool]) -> bool:
     A name that says it is not a read is never a property, and any other
     is always one.
     """
-    if _is_not_a_read(dotted):
-        return any(reads)
-    return not all(reads)
+    return any(reads) if _is_not_a_read(dotted) else not all(reads)
 
 
 def _class_members_in(module: str, source: str) -> dict[str, list[bool]]:
