@@ -59,13 +59,15 @@ def checker(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
 class FakeGh:
     """A `subprocess.run` stand-in, answering as the `gh` call it names.
 
-    `open_issue` is the number `_open_issue_number` should report open,
-    or None for no issue open at all. Every call is recorded in `calls`,
-    argv and all.
+    `open_issue` is the number of the open issue titled as searched, or
+    None for no such issue. `longer_titles` maps the number of each other
+    issue the search finds to its title, listed first. Every call is
+    recorded in `calls`, argv and all.
     """
 
     def __init__(self) -> None:
         self.open_issue: int | None = None
+        self.longer_titles: dict[int, str] = {}
         self.calls: list[list[str]] = []
 
     def __call__(
@@ -74,9 +76,14 @@ class FakeGh:
         """Record the call, and answer as the `gh` sub-command it names."""
         self.calls.append(list(argv))
         if argv[2] == "list":
-            issues = (
-                [{"number": self.open_issue}] if self.open_issue is not None else []
-            )
+            search = argv[argv.index("--search") + 1]
+            title = search.removeprefix('"').removesuffix('" in:title')
+            issues = [
+                {"number": number, "title": longer}
+                for number, longer in self.longer_titles.items()
+            ]
+            if self.open_issue is not None:
+                issues.append({"number": self.open_issue, "title": title})
             return subprocess.CompletedProcess(argv, 0, stdout=json.dumps(issues))
         return subprocess.CompletedProcess(argv, 0, stdout="")
 
@@ -143,16 +150,30 @@ def test_compare_treats_an_arm_missing_from_the_measurement_as_empty(
     ]
 
 
-def test_open_issue_number_reads_the_first_match(
+def test_open_issue_number_reads_the_issue_titled_as_searched(
     checker: ModuleType, fake_gh: FakeGh
 ) -> None:
-    """The number of the first issue `gh issue list` names, as a string."""
+    """The number of the issue whose title is the one searched, as a string."""
     fake_gh.open_issue = 42
 
     assert checker._open_issue_number("A title") == "42"
 
     (call,) = fake_gh.calls
     assert '"A title" in:title' in call
+
+
+def test_open_issue_number_skips_a_longer_title_holding_the_one_searched(
+    checker: ModuleType, fake_gh: FakeGh
+) -> None:
+    """An issue the search finds under a longer title is not this one.
+
+    It is listed first, ahead of the exact title where there is one
+    (issue btclib-org/ecc#536).
+    """
+    fake_gh.longer_titles = {41: "Python arm authority table disagrees, in tests"}
+    assert checker._open_issue_number("Arm authority table disagrees") is None
+    fake_gh.open_issue = 42
+    assert checker._open_issue_number("Arm authority table disagrees") == "42"
 
 
 def test_open_issue_number_is_none_when_none_is_open(
