@@ -23,6 +23,35 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.11.12
+
+### `BorromeanSig.parse` refuses a wrong-typed `rsizes` with `EccTypeError`
+
+An `rsizes` that is not an iterable, or a ring size that is not an `int`,
+a `bool` included, is refused naming `rsizes` and the ring's index
+(closes #515).
+
+### The bestpractices.dev answers are held in the tree, and corrected
+
+`.bestpractices.json` holds them (issue btclib-org/.github#2153,
+issue btclib-org/.github#2159).
+
+### `tests/secret_free` takes btclib-org/.github's shared helper and its tests
+
+(issue btclib-org/.github#1950)
+
+### `tests/conftest_test.py` asserts where a run from `tests/` is sent
+
+(issue btclib-org/bip39-slip39#235)
+
+### The ChillDKG vectors are re-recorded at `f0d913b4`
+
+(issue #496)
+
+### CONTRIBUTING.md and RELEASING.md take btclib-org/.github's shared text
+
+(issue btclib-org/.github#2145, issue btclib-org/.github#2107)
+
 ## v2026.11.11
 
 ### Error messages carry no byte of a value refused as a signature

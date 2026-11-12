@@ -9,6 +9,16 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.11.12
+
+### `BorromeanSig.parse` refuses an `rsizes` that is not an iterable of ints
+
+It raises `EccTypeError`, a `TypeError`, and refuses a numpy integer or a `bool`
+as a ring size, and an `rsizes` with no `__iter__`. Pass a list or a tuple of
+`int` (closes #515).
+
+`CHANGELOG.md`'s own `v2026.11.12` section has the rest.
+
 ## v2026.11.11
 
 - **Error messages no longer carry bytes of a value refused as a
