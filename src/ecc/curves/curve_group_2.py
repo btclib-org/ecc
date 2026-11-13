@@ -157,6 +157,19 @@ with no issue of their own are in issue btclib-org/ecc#185:
       needs their y, and `dh.diffie_hellman` is given P whole, so it has
       no root to save. The root is 12% of a `mult`
 
+Measured faster and not yet taken, by the protocol above, each with the
+issue that takes it:
+
+    - the bundled multi multiplication of bitcoin-core/secp256k1#1994, an
+      open pull request not in v0.8.0, read at d22cc578: points six at a
+      time, one table of the subset sums that hold a bundle's first
+      point, and one recoding of a bundle's scalars in place of a wNAF
+      each. On full scalars, without the lambda split, it is 1.08x to
+      1.24x of `_multi_mult_w_NAF_var` from 6 to 56 points, the most at a
+      multiple of six; below six points it runs the same wNAF. Issue
+      btclib-org/ecc#557 takes it, and the script is in a comment on
+      issue btclib-org/ecc#549
+
 Not taken, for a reason, and not measured:
 
     - a separate squaring, `secp256k1_fe_sqr_inner`: CPython's long_mul
