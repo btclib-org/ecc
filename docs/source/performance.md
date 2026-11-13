@@ -45,11 +45,13 @@ A ratio is between two figures of the same script.
 make 72 additions and 125 doublings for every scalar
 (`_mult_endomorphism_secp256k1_var`'s docstring, counted by
 `tests/curves/curve_group_test.py`'s `_CountingGroup`); `add_jac_aff`
-costs 2.80 µs and `double_jac` 1.76 µs, so the two together are 422 µs,
-84% of the call. Inside them a field multiplication `a * b % p` costs
-253 ns, a doubling being seven field operations and a mixed addition
-eleven. libsecp256k1 does the doubling in 41 ns and the mixed addition
-in 79 ns, with the field multiplication at 7.4 ns.
+costs 2.80 µs and `double_jac` 1.76 µs, not counting their check of a
+Jacobian point's form. The multiplication calls `_add_jac_aff` and
+`_double_jac`, which check nothing, so the two together are 422 µs, 84%
+of the call. Inside them a field multiplication `a * b % p` costs 253
+ns, a doubling being seven field operations and a mixed addition eleven.
+libsecp256k1 does the doubling in 41 ns and the mixed addition in 79 ns,
+with the field multiplication at 7.4 ns.
 
 - **Mixed Jacobian coordinates** (Cohen, Miyaji and Ono 1998): 8M+3S
     for a mixed addition and, with a=0, 3M+4S for a doubling. This is

@@ -25,6 +25,7 @@ from ecc._utils import _has_type, assert_type, hex_string, int_from_integer, is_
 from ecc.alias import INF, INFJ, Integer, JacPoint, Point, Public
 from ecc.exceptions import EccTypeError, EccValueError
 from ecc.number_theory import (
+    _assert_valid_operand,
     _field_element,
     _is_prime_var,
     mod_inv_batch_var,
@@ -63,6 +64,35 @@ def _jac_from_aff(Q: Point) -> JacPoint:
     The input point is assumed to be on curve.
     """
     return Q[0], Q[1], 1 if Q[1] else 0
+
+
+def _jac_point(Q: JacPoint) -> JacPoint:
+    """Return the Jacobian point as a plain tuple, refusing what is not one.
+
+    A tuple of three integers, refused as `CurveGroup._require_form`
+    refuses an affine point: a wrong type, of the tuple or of a
+    coordinate, as `EccTypeError`, and a wrong length as `EccValueError`.
+    The callers assume the point is on the curve, so neither the curve
+    equation nor a coordinate's range is asked.
+
+    The callers compute on what this returns, not on Q: a tuple subclass
+    can define `__len__`, `__iter__` and `__getitem__` to answer
+    something other than what it holds, so a check read through them
+    would pass one point and the arithmetic would read another.
+    """
+    # the type before the length: `len` of what is not sized is a
+    # TypeError about a builtin, where a Jacobian point is what this asks for
+    assert_type(Q, tuple, "Jacobian point")
+    # tuple's own slice reads what Q holds, whatever its class defines,
+    # and answers a plain tuple
+    P = tuple.__getitem__(Q, slice(None))
+    if len(P) != 3:
+        raise EccValueError("Jacobian point must be a tuple[int, int, int]")
+    # an integer of the curve's field type: the multiplications hand over
+    # gmpy2's mpz where it is installed, and `_assert_valid_operand` takes it
+    for coordinate in P:
+        _assert_valid_operand(coordinate)
+    return P
 
 
 def _blinded_jac(Q: JacPoint, ec: CurveGroup) -> JacPoint:
@@ -292,11 +322,10 @@ class CurveGroup:
 
         The input point is not checked to be on the curve.
         """
+        Q = _jac_point(Q)
         # % self.p is required to account for INF (i.e. Q[1]==0)
         # so that negate(INF) = INF
-        if len(Q) == 3:
-            return Q[0], (self.p - Q[1]) % self.p, Q[2]
-        raise EccValueError("not a Jacobian point")
+        return Q[0], (self.p - Q[1]) % self.p, Q[2]
 
     def aff_from_jac_var(self, Q: JacPoint) -> Point:
         """Return the affine point: one modular inversion.
@@ -304,6 +333,7 @@ class CurveGroup:
         The input point is assumed to be on the curve; infinity comes
         back as INF, its affine spelling.
         """
+        Q = _jac_point(Q)
         if Q[2] == 0:  # Infinity point in Jacobian coordinates
             return INF
 
@@ -323,7 +353,10 @@ class CurveGroup:
         in the batch, having no Z to invert, and comes back as INF where
         it stood.
         """
-        return [_int_point(Q) for Q in self._aff_from_jac_batch_var(Qs)]
+        assert_type(Qs, Sequence, "Jacobian point sequence")
+        # one pass over Qs, and the arithmetic on what it read
+        points = [_jac_point(Q) for Q in Qs]
+        return [_int_point(Q) for Q in self._aff_from_jac_batch_var(points)]
 
     def _aff_from_jac_batch_var(self, Qs: Sequence[JacPoint]) -> list[Point]:
         # in the type of self._modulus: the tables of the multiplications
@@ -354,6 +387,7 @@ class CurveGroup:
         The input point is assumed to be on the curve; infinity has no
         x and is refused.
         """
+        Q = _jac_point(Q)
         if Q[2] == 0:  # Infinity point in Jacobian coordinates
             raise EccValueError("INF has no x-coordinate")
 
@@ -369,6 +403,7 @@ class CurveGroup:
         The input point is assumed to be on the curve; infinity has no
         y and is refused.
         """
+        Q = _jac_point(Q)
         if Q[2] == 0:  # Infinity point in Jacobian coordinates
             raise EccValueError("INF has no y-coordinate")
 
@@ -381,6 +416,8 @@ class CurveGroup:
 
         The input points are assumed to be on curve.
         """
+        QJ = _jac_point(QJ)
+        PJ = _jac_point(PJ)
         PJ2 = PJ[2] * PJ[2]
         QJ2 = QJ[2] * QJ[2]
         if QJ[0] * PJ2 % self.p != PJ[0] * QJ2 % self.p:
@@ -413,6 +450,8 @@ class CurveGroup:
         included, the comment of `_add_jac` saying why that is
         load-bearing.
         """
+        Q = _jac_point(Q)
+        R = _jac_point(R)
         return _int_jac(self._add_jac(Q, R))
 
     def _add_jac(self, Q: JacPoint, R: JacPoint) -> JacPoint:
@@ -542,6 +581,7 @@ class CurveGroup:
         infinity is in affine coordinates, and the doubling and the sum
         that is infinity through the one branch on V.
         """
+        Q = _jac_point(Q)
         return _int_jac(self._add_jac_aff(Q, R))
 
     def _add_jac_aff(self, Q: JacPoint, R: Point) -> JacPoint:
@@ -575,6 +615,7 @@ class CurveGroup:
 
     def double_jac(self, Q: JacPoint) -> JacPoint:
         """Return twice the Jacobian point, assumed to be on the curve."""
+        Q = _jac_point(Q)
         return _int_jac(self._double_jac(Q))
 
     def _double_jac(self, Q: JacPoint) -> JacPoint:

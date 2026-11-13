@@ -5,7 +5,12 @@
 """Tests for the `ecc.curves.curve_group` module."""
 
 import random
+from collections.abc import Callable, Iterator
+from decimal import Decimal
+from fractions import Fraction
 from functools import partial
+from typing import Any
+from unittest.mock import Mock
 
 import pytest
 from typing_extensions import override
@@ -1153,6 +1158,120 @@ def test_aff_from_jac_batch_is_aff_from_jac_over_a_sequence() -> None:
         # nothing to invert at all, and nothing to convert at all
         assert ec.aff_from_jac_batch_var([INFJ, INFJ]) == [INF, INF]
         assert ec.aff_from_jac_batch_var([]) == []
+        # any sequence, not a list alone
+        assert ec.aff_from_jac_batch_var((QJs[0],)) == [ec.aff_from_jac_var(QJs[0])]
+
+
+class _ClaimsList(tuple[int, ...]):
+    """A tuple whose `__class__` claims list, which `isinstance` believes."""
+
+    __slots__ = ()
+    __class__ = property(lambda _: list)
+
+
+class _Lies(tuple[int, ...]):
+    """A tuple whose own methods answer something other than what it holds."""
+
+    __slots__ = ()
+
+    @override
+    def __len__(self) -> int:
+        return 3
+
+    @override
+    def __iter__(self) -> Iterator[int]:
+        return iter((1, 1, 1))
+
+    @override
+    def __getitem__(self, i: object) -> Any:
+        return None
+
+
+# each public method of CurveGroup taking a Jacobian point, called with the
+# value under test in one position and a valid point in the others
+_JAC_CALLS: tuple[tuple[str, Callable[[Any], object]], ...] = (
+    ("negate_jac", secp256k1.negate_jac),
+    ("aff_from_jac_var", secp256k1.aff_from_jac_var),
+    ("aff_from_jac_batch_var", lambda Q: secp256k1.aff_from_jac_batch_var([INFJ, Q])),
+    ("x_aff_from_jac_var", secp256k1.x_aff_from_jac_var),
+    ("y_aff_from_jac_var", secp256k1.y_aff_from_jac_var),
+    ("is_jac_equal-first", lambda Q: secp256k1.is_jac_equal(Q, secp256k1.GJ)),
+    ("is_jac_equal-second", lambda Q: secp256k1.is_jac_equal(secp256k1.GJ, Q)),
+    ("add_jac-first", lambda Q: secp256k1.add_jac(Q, secp256k1.GJ)),
+    ("add_jac-second", lambda Q: secp256k1.add_jac(secp256k1.GJ, Q)),
+    ("add_jac_aff", lambda Q: secp256k1.add_jac_aff(Q, secp256k1.G)),
+    ("double_jac", secp256k1.double_jac),
+)
+
+
+@pytest.mark.parametrize(
+    "call", [case[1] for case in _JAC_CALLS], ids=[case[0] for case in _JAC_CALLS]
+)
+def test_a_malformed_jacobian_point_is_refused(call: Callable[[Any], object]) -> None:
+    """A malformed Jacobian point leaves as this package's exception.
+
+    Issue btclib-org/ecc#561: indexed unchecked, `None`, a float or a Mock
+    left as Python's own TypeError, a pair as an IndexError, and a
+    string coordinate as a ValueError from `int`.
+    """
+    # bytes, a dict and a range index like a point, and were answered as one
+    for wrong_type in (
+        None,
+        1.5,
+        "abc",
+        [1, 2, 1],
+        b"\x01\x02\x01",
+        {0: 1, 1: 2, 2: 1},
+        range(1, 4),
+        Mock(),
+        Mock(spec=tuple),
+    ):
+        with pytest.raises(EccTypeError, match="invalid Jacobian point type: "):
+            call(wrong_type)
+    for wrong_length in ((1, 2), (1, 2, 1, 0)):
+        with pytest.raises(EccValueError, match=r"tuple\[int, int, int\]$"):
+            call(wrong_length)
+    # a bool is no integer here either, and `False == 0` would read as
+    # infinity's Z
+    for coordinates in (
+        ("a", 1, 1),
+        (None, None, None),
+        (1.0, 2.0, 1.0),
+        (Fraction(1), Fraction(2), Fraction(1)),
+        (Decimal(1), Decimal(2), Decimal(1)),
+        (1, 1, False),
+    ):
+        with pytest.raises(EccTypeError, match="not an integer: "):
+            call(coordinates)
+    # and a well-formed point is still answered, judged by the class it is
+    # and not by the one it claims
+    expected = call(secp256k1.GJ)
+    assert isinstance(_ClaimsList(secp256k1.GJ), list)
+    assert call(_ClaimsList(secp256k1.GJ)) == expected
+    # and read through tuple's own methods, never the point's: a check made
+    # through its `__len__` or `__iter__` and arithmetic made through its
+    # `__getitem__` would each read a different point
+    lies = _Lies(secp256k1.GJ)
+    assert (len(lies), list(lies), lies[0]) == (3, [1, 1, 1], None)
+    assert call(lies) == expected
+    with pytest.raises(EccValueError, match=r"tuple\[int, int, int\]$"):
+        call(_Lies((1, 2)))
+
+
+def test_aff_from_jac_batch_refuses_what_is_no_sequence() -> None:
+    """A generator, iterated twice, would answer an empty list."""
+    # a set is iterable and unordered, and was answered as a batch
+    for wrong_type in (
+        None,
+        1.5,
+        Mock(),
+        {secp256k1.GJ},
+        (QJ for QJ in [secp256k1.GJ]),
+    ):
+        with pytest.raises(
+            EccTypeError, match="invalid Jacobian point sequence type: "
+        ):
+            secp256k1.aff_from_jac_batch_var(wrong_type)  # type: ignore[arg-type]
 
 
 def test_blinding_changes_the_coordinates_and_not_the_point() -> None:
