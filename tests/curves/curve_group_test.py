@@ -1211,10 +1211,10 @@ def test_a_malformed_jacobian_point_is_refused(call: Callable[[Any], object]) ->
     """A malformed Jacobian point leaves as this package's exception.
 
     Issue btclib-org/ecc#561: indexed unchecked, `None`, a float or a Mock
-    left as Python's own TypeError, a pair as an IndexError, and a
+    would leave as Python's own TypeError, a pair as an IndexError, and a
     string coordinate as a ValueError from `int`.
     """
-    # bytes, a dict and a range index like a point, and were answered as one
+    # bytes, a dict and a range index like a point, and are no tuple
     for wrong_type in (
         None,
         1.5,
@@ -1260,8 +1260,9 @@ def test_a_malformed_jacobian_point_is_refused(call: Callable[[Any], object]) ->
 
 def test_aff_from_jac_batch_refuses_what_is_no_sequence() -> None:
     """A generator, iterated twice, would answer an empty list."""
-    # a set is iterable and unordered, and was answered as a batch
-    for wrong_type in (
+    # a set is iterable and unordered, and is no Sequence. The generator is
+    # the case itself: Sourcery's rewrite to a list would test a Sequence
+    for wrong_type in (  # sourcery skip: simplify-generator
         None,
         1.5,
         Mock(),
