@@ -22,6 +22,7 @@ exceptions.
 from __future__ import annotations
 
 import string
+import sys
 from collections.abc import Iterable
 from io import BytesIO
 from typing import Any, BinaryIO, TypeVar, overload
@@ -228,9 +229,14 @@ def str_from_string(s: String, what: str) -> str:
 
     Nothing is stripped and nothing is lowered: which of those is right
     is the caller's to know.
+
+    A str subclass is returned as the plain str of its characters, so
+    that no method of its own decides a check: an `isascii` answering
+    True would take `Envelope.b64decode` past its refusal of a non-ascii
+    character.
     """
     if _has_type(s, str):
-        return s
+        return str.__str__(s)
 
     if not _has_type(s, (bytes, bytearray, memoryview)):
         # what is neither went through untouched, to fail on `len` or on
@@ -239,12 +245,18 @@ def str_from_string(s: String, what: str) -> str:
         err_msg = f"invalid {what} type: {type(s).__name__}"  # type: ignore[unreachable]
         raise EccTypeError(err_msg)
 
+    # a strided memoryview or one whose format is not "B" is refused here
+    # rather than gathered by _copy_bytes below, for the same reason
+    # bytes_from_octets refuses one instead of copying it (issue
+    # btclib-org/btclib#2295)
+    _assert_byte_shaped(s)
+
+    # raised outside the `except`: the Unicode error holds the whole
+    # value, and must not be left as the new error's context; only the
+    # position of the refused byte is kept
     try:
         return _copy_bytes(s).decode("ascii")
     except UnicodeDecodeError as e:
-        # the UnicodeDecodeError holds the whole input and names the
-        # refused byte: raised here it would chain both, so the position
-        # is kept and the refusal is raised after the block
         position = e.start
     raise EccValueError(f"non-ascii character in {what} at position {position}")
 
@@ -287,7 +299,17 @@ def read_exactly(stream: BinaryIO, size: int, what: str) -> bytes:
     `BinaryIO` and not the `BytesIO` of `alias.BinaryData`: `.read` is
     the whole of what a short read is about, so a file object is as much
     an answer here as a buffer.
+
+    `size` is a count of octets, so an integer from zero to
+    `sys.maxsize`: a negative one is what `read` takes for "to the end",
+    and past `sys.maxsize` `read` answers with an OverflowError of its
+    own, where no stream holds that many octets anyway.
     """
+    # a bool is not a count, `True` reading one octet
+    if not is_integer(size):
+        raise EccTypeError(f"invalid {what} size type: {type(size).__name__}")
+    if not 0 <= size <= sys.maxsize:
+        raise EccValueError(f"invalid {what} size: {_message_text(size)}")
     data = stream.read(size)
     if len(data) != size:
         err_msg = f"not enough data for the {what}: "
@@ -315,6 +337,49 @@ def assert_no_trailing(data: BinaryData, stream: BytesIO, what: str) -> None:
 
     if trailing := stream.read():
         raise EccValueError(f"{len(trailing)} bytes after the {what}")
+
+
+def _message_text(value: object) -> str:
+    """Return the description of a value for a refusal's message, never raising.
+
+    No value is written out: an argument in the wrong place may be a key,
+    in an int, a str of its hex, a Decimal or a float of its digits, or
+    its bytes. Section 7 of the organization's standard, *A refusal carries
+    no secret*, lets a refusal print a value's type name and length, and
+    not its digits or characters.
+
+    An int, a bool excepted, is described by its sign and bit length.
+    Anything else, a bool included, is described by its type name, and
+    by its length where `len()` gives one: "a str of length 64", "an
+    object". The article is "an" before a name whose first letter, past
+    any underscore, is a vowel.
+
+    Neither reads the value's `str()`. That of an int past
+    `sys.get_int_max_str_digits()` digits, or of what is written with
+    one, a Fraction for one, raises ValueError, which would leave through
+    the refusal the description is for, as that error rather than this
+    library's.
+    """
+    if _has_type(value, int) and not _has_type(value, bool):
+        return _int_description(value)
+    name = type(value).__name__
+    article = "an" if name.lstrip("_")[:1].lower() in tuple("aeiou") else "a"
+    description = f"{article} {name}"
+    # every Exception and not only TypeError: a `__len__` of the caller's
+    # own can raise anything, and no failure to describe a value may
+    # replace the refusal the description is for
+    try:
+        return f"{description} of length {len(value)}"  # type: ignore[arg-type]
+    except Exception:  # noqa: BLE001
+        return description
+
+
+def _int_description(value: int) -> str:
+    """Return an int's sign and bit length, the text standing for its digits."""
+    # int's own methods, not the value's: a subclass can override the
+    # comparison and bit_length as it overrode __str__
+    sign = "a negative" if int.__lt__(value, 0) else "an"
+    return f"{sign} int of {int.bit_length(value)} bits"
 
 
 def is_integer(value: Any) -> bool:
@@ -468,7 +533,10 @@ def int_from_integer(i: Integer) -> int:
 
     # the hex string, and the refusal of what is neither that nor bytes,
     # both being bytes_from_octets's to give
-    return int.from_bytes(bytes_from_octets(i), "big", signed=False)
+    octets = bytes_from_octets(i)
+    if not octets:
+        raise EccValueError("invalid integer: empty input")
+    return int.from_bytes(octets, "big", signed=False)
 
 
 def hex_string(i: Integer) -> str:

@@ -7,7 +7,10 @@
 import array
 import ast
 import random
+import sys
 from collections.abc import Callable
+from decimal import Decimal
+from fractions import Fraction
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -17,6 +20,7 @@ import pytest
 from typing_extensions import override
 
 from ecc._utils import (
+    _message_text,
     assert_no_trailing,
     assert_type,
     bytes_from_octets,
@@ -45,6 +49,25 @@ def test_read_exactly() -> None:
     assert read_exactly(stream, 3, "second field") == b"345"
     # nothing left, and asking for nothing is not asking
     assert read_exactly(stream, 0, "no field") == b""
+
+
+def test_read_exactly_refuses_a_size_that_is_no_count() -> None:
+    """A size `read` cannot take, or takes as "to the end".
+
+    Left to `read`, a size past `sys.maxsize` would raise an
+    OverflowError and a float a TypeError, a negative size would read
+    the whole stream, and `True` would read one octet (issue
+    btclib-org/btclib#2399).
+    """
+    for size in (1.5, "1", None, True):
+        with pytest.raises(EccTypeError, match="^invalid tx_id size type: "):
+            read_exactly(BytesIO(b"12"), size, "tx_id")  # type: ignore[arg-type]
+    for size in (-1, sys.maxsize + 1, 10**5000, -(10**5000)):
+        with pytest.raises(EccValueError, match="^invalid tx_id size: "):
+            read_exactly(BytesIO(b"12"), size, "tx_id")
+    # the top of the range is a short read, not a refusal of the size
+    with pytest.raises(EccValueError, match="^not enough data for the tx_id: "):
+        read_exactly(BytesIO(b"12"), sys.maxsize, "tx_id")
 
 
 def test_read_exactly_names_the_field_it_could_not_fill() -> None:
@@ -99,6 +122,13 @@ def test_int_from_integer() -> None:
         assert -i == int_from_integer(f"{hex(-i).upper()} ")
         assert i == int_from_integer(hex_string(i))
         assert i == int_from_integer(i.to_bytes(32, byteorder="big", signed=False))
+
+
+def test_int_from_integer_rejects_empty_input() -> None:
+    """Empty integer representations are invalid, not zero."""
+    for value in ("", "   ", b"", bytearray()):
+        with pytest.raises(EccValueError):
+            int_from_integer(value)
 
 
 def test_int_from_integer_reads_a_str_as_hex() -> None:
@@ -368,6 +398,128 @@ def test_the_non_ascii_refusal_names_the_position_and_nothing_of_the_input() -> 
     assert refusal.value.__context__ is None
 
 
+def test_str_from_string_refuses_a_memoryview_of_the_wrong_shape() -> None:
+    """`_assert_byte_shaped`, which `bytes_from_octets` runs, runs here too.
+
+    Without it the copy gathers a strided view's elements, and reads a
+    wide-format view's octets, into a string no buffer holds (issue
+    btclib-org/btclib#2295).
+    """
+    raw = bytes(range(64))
+    strided = memoryview(raw)[::2]
+    with pytest.raises(EccValueError, match="invalid octets: non-contiguous"):
+        str_from_string(strided, "label")
+
+    wide = memoryview(array.array("I", [1, 2]))
+    with pytest.raises(EccValueError, match="invalid octets: memoryview format"):
+        str_from_string(wide, "label")
+
+    # a contiguous, format-"B" memoryview is taken, same as any other buffer
+    assert str_from_string(memoryview(b"abc"), "label") == "abc"
+
+
+class _OwnStrip(str):
+    __slots__ = ()
+
+    @override
+    def strip(self, chars: str | None = None, /) -> str:
+        return "x"
+
+
+def test_str_from_string_returns_a_str_subclass_as_a_plain_str() -> None:
+    """A str subclass comes back as a str, so its own methods answer nothing."""
+    # the override does answer, so a caller reaching it would get "x"
+    assert _OwnStrip("ab").strip() == "x"
+    text = str_from_string(_OwnStrip("ab"), "label")
+    assert type(text) is str
+    assert text == "ab"
+    assert text.strip() == "ab"
+
+
+def test_a_message_describes_every_int() -> None:
+    """Sign and bit length for every int, its digits for none.
+
+    An argument in the wrong place may be a key (issue
+    btclib-org/btclib#2998), and `str()` refuses an int past
+    `sys.get_int_max_str_digits()` digits with ValueError, which a message
+    quoting one would raise instead of the refusal it was building (issue
+    btclib-org/btclib#2389). A bool is no int here.
+    """
+    assert _message_text(10**4000) == "an int of 13288 bits"
+    assert _message_text(-7) == "a negative int of 3 bits"
+    assert _message_text(0) == "an int of 0 bits"
+    assert _message_text(True) == "a bool"
+    assert _message_text("1_0") == "a str of length 3"
+    assert _message_text(10**5000) == "an int of 16610 bits"
+    assert _message_text(-(10**5000)) == "a negative int of 16610 bits"
+
+
+class _Unwritable:
+    @override
+    def __str__(self) -> str:
+        raise RuntimeError
+
+
+def test_a_message_describes_what_str_cannot_write() -> None:
+    """A value whose `str()` raises is named by its type, never by its text."""
+    assert _message_text(Fraction(10**5000)) == "a Fraction"
+    assert _message_text(Fraction(1, 10**5000)) == "a Fraction"
+    assert _message_text(Fraction(3, 2)) == "a Fraction"
+    # the override does raise, so a description reaching it would too
+    with pytest.raises(RuntimeError):
+        str(_Unwritable())
+    assert _message_text(_Unwritable()) == "an _Unwritable"
+
+
+class _Unsized:
+    def __len__(self) -> int:
+        raise RuntimeError
+
+
+def test_a_message_describes_every_other_value() -> None:
+    """Type name, and length where `len()` gives one, for what is no int.
+
+    A str of hex, a Decimal, a float or bytes in an int's place may hold
+    a key (issue btclib-org/btclib#3002): section 7 of the organization's
+    standard lets a refusal print its type name and length, and no
+    character of it.
+    """
+    assert _message_text("") == "a str of length 0"
+    assert _message_text("1") == "a str of length 1"
+    assert _message_text(bytes(32)) == "a bytes of length 32"
+    assert _message_text(Decimal("1.5")) == "a Decimal"
+    assert _message_text(1.5) == "a float"
+    assert _message_text(False) == "a bool"
+    assert _message_text(None) == "a NoneType"
+    assert _message_text(object()) == "an object"
+    assert _message_text(Ellipsis) == "an ellipsis"
+    # the override does raise, so a description reaching it would too
+    with pytest.raises(RuntimeError):
+        len(_Unsized())
+    assert _message_text(_Unsized()) == "an _Unsized"
+
+
+class _UnorderedInt(int):
+    @override
+    def __str__(self) -> str:
+        raise RuntimeError
+
+    @override
+    def __lt__(self, other: object) -> bool:
+        raise RuntimeError
+
+
+def test_a_message_describes_an_int_by_int_s_own_methods() -> None:
+    """A subclass overriding the comparison is described all the same."""
+    # the overrides do raise, so a description reaching them would too
+    with pytest.raises(RuntimeError):
+        _ = _UnorderedInt(-5) < 0
+    with pytest.raises(RuntimeError):
+        str(_UnorderedInt(-5))
+    assert _message_text(_UnorderedInt(-5)) == "a negative int of 3 bits"
+    assert _message_text(_UnorderedInt(10**5000)) == "an int of 16610 bits"
+
+
 class _OwnBytes(bytes):
     @override
     def __bytes__(self) -> bytes:
@@ -419,6 +571,7 @@ _CLAIMED: tuple[tuple[Callable[[Any], object], type], ...] = (
     (lambda v: str_from_string(v, "label"), bytes),
     (lambda v: assert_type(v, bytes, "label"), bytes),
     (bytesio_from_binarydata, BytesIO),
+    (lambda v: read_exactly(BytesIO(b"ab"), v, "field"), int),
     (int_from_integer, int),
     (int_from_integer, str),
 )
@@ -446,6 +599,7 @@ def test_a_value_that_claims_a_type_is_described_by_its_own() -> None:
     """The answers of the functions that never raise, for a claimed type."""
     assert not is_integer(Mock(spec=int))
     assert not is_octets(Mock(spec=bytes))
+    assert _message_text(Mock(spec=int)) == "a Mock"
 
 
 def test_utils_tests_a_type_only_through_has_type() -> None:

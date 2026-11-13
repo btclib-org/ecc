@@ -24,6 +24,7 @@ from collections.abc import Callable
 from typing import Any
 
 import pytest
+from typing_extensions import override
 
 from ecc import ecies
 from ecc.alias import Point
@@ -566,6 +567,24 @@ def test_b64decode_refuses_non_ascii_naming_only_the_position() -> None:
         for echoed in ("xe0", "e0", "\xe0", "SECRET", "ab", "cd"):
             assert echoed not in text
     assert refusal.value.__cause__ is None
+    assert refusal.value.__context__ is None
+
+
+class _AsciiClaim(str):
+    __slots__ = ()
+
+    @override
+    def isascii(self) -> bool:
+        return True
+
+
+def test_b64decode_refuses_non_ascii_whatever_a_str_subclass_claims() -> None:
+    """A str subclass's own `isascii` takes the armor past no refusal."""
+    # the override does answer, so a check reaching it would pass
+    assert _AsciiClaim("ab\xe0cd").isascii()
+    with pytest.raises(EccValueError) as refusal:
+        ecies.Envelope.b64decode(_AsciiClaim("ab\xe0cd"))
+    assert str(refusal.value) == "non-ascii character in base64 envelope at position 2"
     assert refusal.value.__context__ is None
 
 
