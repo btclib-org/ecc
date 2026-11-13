@@ -161,7 +161,7 @@ Measured faster and not yet taken, by the protocol above, each with the
 issue that takes it:
 
     - the bundled multi multiplication of bitcoin-core/secp256k1#1994, an
-      open pull request not in v0.8.0, read at d22cc578: points six at a
+      upstream change not in v0.8.0, read at d22cc578: points six at a
       time, one table of the subset sums that hold a bundle's first
       point, and one recoding of a bundle's scalars in place of a wNAF
       each. On full scalars, without the lambda split, it is 1.08x to
