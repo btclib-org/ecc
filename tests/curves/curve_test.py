@@ -1195,7 +1195,7 @@ def test_negate() -> None:
         with pytest.raises(EccValueError, match="not a point"):
             ec.negate(ec.GJ)  # type: ignore[arg-type]
 
-        with pytest.raises(EccValueError, match="not a Jacobian point"):
+        with pytest.raises(EccValueError, match="Jacobian point must be a tuple"):
             ec.negate_jac(ec.G)  # type: ignore[arg-type]
 
 
