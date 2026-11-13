@@ -4,10 +4,12 @@
 
 """A value is tested by its own class, not by the class it claims.
 
-It is tested through `ecc._utils._has_type`, whose docstring says why
-`isinstance` is not enough. Each case below drives a public function
-with a Mock claiming the type its type test expects, and the value is
-read as the object it is (issue #547).
+`ecc._utils._has_type` is the test, and its docstring says why
+`isinstance` is not enough; `_libsecp256k1`, which sits below `_utils`,
+spells it out. The Mock cases below drive a public function with a Mock
+claiming a type its type test accepts, and the value is read as the
+object it is (issue #547). The last test reads the source instead, and
+fails where a module of ecc calls `isinstance`.
 """
 
 from __future__ import annotations
