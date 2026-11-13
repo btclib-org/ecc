@@ -18,6 +18,7 @@ import pytest
 from typing_extensions import override
 
 from ecc._utils import (
+    _message_field,
     _message_text,
     assert_no_trailing,
     assert_type,
@@ -33,6 +34,7 @@ from ecc._utils import (
 )
 from ecc.exceptions import EccTypeError, EccValueError
 from ecc.hashes import reduce_to_hlen
+from tests.secret_free import assert_secret_free
 
 random.seed(42)
 
@@ -518,6 +520,73 @@ def test_a_message_describes_an_int_by_int_s_own_methods() -> None:
     assert _message_text(_UnorderedInt(10**5000)) == "an int of 16610 bits"
 
 
+def test_a_field_message_writes_only_a_value_that_fits() -> None:
+    """The value where it fits the field, its description where it does not."""
+    assert _message_field(0, 8, "d") == "0"
+    assert _message_field(255, 8, "d") == "255"
+    assert _message_field(255, 8, "#x") == "0xff"
+    assert _message_field(256, 8, "d") == "an int of 9 bits"
+    assert _message_field(-1, 8, "d") == "a negative int of 1 bits"
+    assert _message_field(10**5000, 32, "#x") == "an int of 16610 bits"
+    assert _message_field(True, 8, "d") == "a bool"
+    assert _message_field(_UnorderedInt(-5), 8, "d") == "a negative int of 3 bits"
+
+
+class _UnformattableInt(int):
+    @override
+    def __format__(self, format_spec: str) -> str:
+        raise RuntimeError
+
+    @override
+    def __repr__(self) -> str:
+        raise RuntimeError
+
+
+def test_a_field_message_reads_an_int_through_int_s_own_methods() -> None:
+    """A subclass overriding what formats it is written all the same."""
+    # the overrides do raise, so a field message reaching them would too
+    with pytest.raises(RuntimeError):
+        format(_UnformattableInt(255), "#x")
+    with pytest.raises(RuntimeError):
+        repr(_UnformattableInt(255))
+    assert _message_field(_UnformattableInt(255), 8, "#x") == "0xff"
+    assert _message_field(_UnformattableInt(256), 8, "d") == "an int of 9 bits"
+
+
+def test_a_size_refusal_writes_no_size_wider_than_four_bytes() -> None:
+    """A size is written where it fits four bytes, and described otherwise.
+
+    A size may be a key passed in its place, and `str()` refuses an int
+    past `sys.get_int_max_str_digits()` digits with ValueError, which the
+    refusal would raise in its own place (issue #553). No spelling of the
+    wide size is in the refusal or in anything it holds.
+    """
+    huge = 10**5000
+    msg = "^invalid size: 2 bytes instead of an int of 16610 bits$"
+    with pytest.raises(EccValueError, match=msg) as refused:
+        bytes_from_octets(b"ab", huge)
+    # the decimal written out by hand: `str()` refuses it
+    spellings: list[str | bytes] = [
+        "1" + "0" * 5000,
+        f"{huge:x}",
+        huge.to_bytes(2077, "big"),
+    ]
+    assert_secret_free(refused.value, spellings)
+
+    wide = 0xDEADBEEFCAFEBABE1234567890ABCDEF
+    msg = r"^invalid size: 2 bytes instead of \(32, an int of 128 bits\)$"
+    with pytest.raises(EccValueError, match=msg) as refused:
+        bytes_from_octets(b"ab", [32, wide])
+    spellings = [str(wide), f"{wide:x}", wide.to_bytes(16, "big")]
+    assert_secret_free(refused.value, spellings)
+    msg = "^invalid size: 2 bytes instead of 4294967295$"
+    with pytest.raises(EccValueError, match=msg):
+        bytes_from_octets(b"ab", 2**32 - 1)
+    msg = "^invalid size: 2 bytes instead of an int of 33 bits$"
+    with pytest.raises(EccValueError, match=msg):
+        bytes_from_octets(b"ab", 2**32)
+
+
 class _OwnBytes(bytes):
     @override
     def __bytes__(self) -> bytes:
@@ -598,3 +667,4 @@ def test_a_value_that_claims_a_type_is_described_by_its_own() -> None:
     assert not is_integer(Mock(spec=int))
     assert not is_octets(Mock(spec=bytes))
     assert _message_text(Mock(spec=int)) == "a Mock"
+    assert _message_field(Mock(spec=int), 32, "d") == "a Mock"
