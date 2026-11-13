@@ -1513,7 +1513,7 @@ def _err_msg(size: int, msgs_or_sigs: str, arg2: Sequence[Octets | Sig]) -> str:
 def _assert_batch_sequences(
     msgs: Sequence[Octets], Qs: Sequence[BIP340PubKey], sigs: Sequence[Sig]
 ) -> None:
-    """Refuse a batch parameter that is no sequence, naming which.
+    """Refuse a batch parameter that is no sequence, and a sig that is no Sig.
 
     What is not one was walked untouched, so a None left the zip of
     `assert_batch_as_valid_`, or the reduction of `assert_batch_as_valid`, as
@@ -1528,11 +1528,17 @@ def _assert_batch_sequences(
     to refuse: every Octets is itself a Sequence, so one message passed
     where the batch was meant would zip through its bytes and challenge
     each as its own message (issue btclib-org/btclib#1405).
+
+    Each signature is asked whether it is a `Sig`, since the batch reads
+    its curve, r and s as a `Sig`'s and nothing else asks. A message and a
+    key are refused by their own coercions.
     """
     if is_octets(msgs):
         raise EccTypeError(f"invalid msgs type: {type(msgs).__name__}")
     for value, what in ((msgs, "msgs"), (Qs, "Qs"), (sigs, "sigs")):
         assert_type(value, Sequence, what)
+    for sig in sigs:
+        assert_type(sig, Sig, "sigs item")
 
 
 def assert_batch_as_valid_(

@@ -11,13 +11,15 @@ import itertools
 import secrets
 from collections.abc import Callable
 from hashlib import sha256 as hf
+from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import Mock
 
 import pytest
 
 from ecc import ssa
 from ecc._libsecp256k1 import ssa as libsecp256k1_ssa
-from ecc._utils import int_from_bits
+from ecc._utils import _has_type, int_from_bits
 from ecc.alias import INF, Octets, Point, Public, String
 from ecc.bip340_nonce import bip340_nonce_
 from ecc.curves import (
@@ -741,6 +743,35 @@ def test_one_message_is_not_a_batch_of_them() -> None:
     for verify_call in (ssa.batch_verify, ssa.batch_verify_):
         with pytest.raises(EccTypeError, match="invalid msgs type"):
             verify_call(cast("Any", m), [Q], [sig])
+
+
+@pytest.mark.parametrize("batch_size", [1, 2])
+def test_a_batch_refuses_a_signature_that_is_no_sig(batch_size: int) -> None:
+    """A `sigs` item of another type is refused as a type, by each batch call.
+
+    A `Mock(spec=Sig)` passes `isinstance`, and `_has_type` refuses it. An
+    object carrying a `Sig`'s attributes is refused too: without the check,
+    a batch of two takes it for the signature it copies.
+    """
+    claimed = Mock(spec=ssa.Sig)
+    assert isinstance(claimed, ssa.Sig)
+    assert not _has_type(claimed, ssa.Sig)
+
+    m = reduce_to_hlen(b"msg", hf)
+    q, Q = ssa.gen_keys(1)
+    sig = ssa.sign_(m, q)
+    calls = (
+        ssa.assert_batch_as_valid,
+        ssa.assert_batch_as_valid_,
+        ssa.batch_verify,
+        ssa.batch_verify_,
+    )
+    attributes = SimpleNamespace(r=sig.r, s=sig.s, ec=sig.ec, assert_valid=lambda: None)
+    for not_sig in (1, None, sig.serialize(), claimed, attributes):
+        sigs = [sig] * (batch_size - 1) + [not_sig]
+        for call in calls:
+            with pytest.raises(EccTypeError, match="invalid sigs item type"):
+                call([m] * batch_size, [Q] * batch_size, cast("Any", sigs))
 
 
 def test_a_batch_of_one_takes_the_single_signature_shortcut(
