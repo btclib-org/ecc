@@ -238,13 +238,18 @@ gh api -X POST repos/btclib-org/ecc/rulesets --input - <<'JSON'
 JSON
 ```
 
-`main-self-merge` requires a pull request and has no bypass actor, so
-every merge needs an approval from somebody other than its author.
-`GOVERNANCE.md`'s
-[*How a decision is made*](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md#how-a-decision-is-made)
-says when the maintainer adds the bypass back, and `CONTRIBUTING.md`'s
-*Landing it* has the commands. A direct push to `main` is refused for
-everyone.
+`main-self-merge` requires a pull request, and a direct push to `main`
+is refused for everyone. Its one bypass actor is the maintainer, so the
+maintainer can merge without an approval
+from somebody other than the author, and nobody else can. It is the
+organization-wide bypass, which the maintainer keeps until the backlog
+settles, with no date set (btclib-org/.github#2021). Once it is removed,
+the ruleset has no bypass actor, as the standard asks of a tree whose
+`README.md` carries the OpenSSF Best Practices badge, and
+btclib-org/.github's
+[`GOVERNANCE.md`](https://github.com/btclib-org/.github/blob/main/GOVERNANCE.md#how-a-decision-is-made),
+*How a decision is made*, says when the maintainer adds it back.
+`CONTRIBUTING.md`'s *Landing it* has the commands.
 
 ```shell
 gh api -X POST repos/btclib-org/ecc/rulesets --input - <<'JSON'
@@ -261,9 +266,9 @@ gh api -X POST repos/btclib-org/ecc/rulesets --input - <<'JSON'
 JSON
 ```
 
-The bypass, when the maintainer adds it back, is actor `3296421`,
-`fametrano`'s account id (`gh api users/fametrano --jq .id`), in
-`pull_request` mode.
+The command above creates the ruleset with no bypass actor. The bypass
+is actor `3296421`, `fametrano`'s account id
+(`gh api users/fametrano --jq .id`), in `pull_request` mode.
 
 Classic protection's own copy of the signature rule is off, read on
 2026-10-15:
@@ -313,7 +318,7 @@ done
 #  "methods":[],"name":"main-integrity",
 #  "rules":["required_linear_history","non_fast_forward","deletion"],
 #  "target":"branch"}
-# {"bypass":[],"enforcement":"active",
+# {"bypass":[[3296421,"pull_request"]],"enforcement":"active",
 #  "include":["refs/heads/main"],"methods":[["squash"]],
 #  "name":"main-self-merge","rules":["pull_request"],"target":"branch"}
 # {"bypass":[],"enforcement":"active","include":["refs/tags/v*"],
