@@ -432,8 +432,9 @@ def is_octets(value: Any) -> TypeIs[Octets]:
 def assert_type(value: Any, expected: Any, what: str) -> None:
     """Refuse a value of a type the signature does not declare.
 
-    `expected` is what `issubclass` takes: one type, or a tuple of them.
-    The value's own class is what is tested, as `_has_type` says.
+    `_has_type` says what `expected` may be and which class of `value` it
+    tests.
+
     `bytes_from_octets` and `str_from_string` are the two coercions this
     library has, and each refuses what it cannot convert; this is the
     refusal for a position that takes neither -- a `bool` flag deciding
