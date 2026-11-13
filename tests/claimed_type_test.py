@@ -4,10 +4,8 @@
 
 """A value is tested by its own class, not by the class it claims.
 
-`unittest.mock.Mock(spec=T)` sets its `__class__` to `T`, and
-`isinstance` reads `__class__`, so a type test asking `isinstance` takes
-the Mock for a `T`. `ecc._utils._has_type` reads `type()` instead, and
-every type test of ecc asks it. Each case below drives a public function
+It is tested through `ecc._utils._has_type`, whose docstring says why
+`isinstance` is not enough. Each case below drives a public function
 with a Mock claiming the type its type test expects, and the value is
 read as the object it is (issue #547).
 """
