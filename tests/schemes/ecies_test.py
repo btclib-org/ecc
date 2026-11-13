@@ -442,6 +442,21 @@ def test_envelope_b64decode_tolerates_surrounding_whitespace() -> None:
     armor = envelope.b64encode()
     assert ecies.Envelope.b64decode(f"  {armor}\n") == envelope
     assert ecies.Envelope.b64decode(f" {armor} ".encode()) == envelope
+    padded = f"{string.whitespace}{armor}{string.whitespace}"
+    assert ecies.Envelope.b64decode(padded) == envelope
+    assert ecies.Envelope.b64decode(padded.encode()) == envelope
+
+
+@pytest.mark.parametrize("separator", ["\x1c", "\x1d", "\x1e", "\x1f"])
+def test_envelope_b64decode_refuses_separator_padding(separator: str) -> None:
+    """The separators `str.isspace` counts are not stripped around the armor."""
+    envelope = ecies.Envelope.from_ciphertext(
+        bytes_from_point(mult(42)), bytes(48), bytes(range(32))
+    )
+    padded = f"{separator}{envelope.b64encode()}{separator}"
+    for given in (padded, padded.encode()):
+        with pytest.raises(EccValueError, match="invalid base64 encoding"):
+            ecies.Envelope.b64decode(given)
 
 
 def test_envelope_mac_check_notices_a_flipped_bit() -> None:
