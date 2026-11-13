@@ -74,6 +74,7 @@ from __future__ import annotations
 import base64
 import hmac
 import secrets
+import string
 from dataclasses import dataclass
 from hashlib import sha256, sha512
 
@@ -347,7 +348,9 @@ class Envelope:
             position = next(i for i, char in enumerate(text) if ord(char) > 127)
             err_msg = f"non-ascii character in base64 envelope at position {position}"
             raise EccValueError(err_msg)
-        data_bin = text.strip().encode("ascii")
+        # `string.whitespace`, not the bare `str.strip()`: that also strips
+        # the separators U+001C to U+001F, which `isspace` counts
+        data_bin = text.strip(string.whitespace).encode("ascii")
         try:
             data_decoded = base64.b64decode(data_bin, validate=True)
         except ValueError as e:  # binascii.Error
