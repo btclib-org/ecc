@@ -211,8 +211,20 @@ def bytes_from_octets(octets: Octets, out_size: NoneOneOrMoreInt = None) -> byte
     if size in sizes:
         return octets
 
-    err_msg = f"invalid size: {size} bytes instead of {out_size}"
+    err_msg = f"invalid size: {size} bytes instead of {_sizes_text(sizes)}"
     raise EccValueError(err_msg)
+
+
+def _sizes_text(sizes: tuple[int, ...]) -> str:
+    """Return the sizes octets were expected to have, for a refusal's message.
+
+    A size is the library's constant or the caller's `out_size`, and no
+    field of a format, so it is written in full only where it fits four
+    bytes, through `_message_field`, and described otherwise. One size
+    stands alone, any other count of them in parentheses.
+    """
+    text = ", ".join(_message_field(size, 32, "d") for size in sizes)
+    return text if len(sizes) == 1 else f"({text})"
 
 
 def str_from_string(s: String, what: str) -> str:
@@ -346,7 +358,8 @@ def _message_text(value: object) -> str:
     in an int, a str of its hex, a Decimal or a float of its digits, or
     its bytes. Section 7 of the organization's standard, *A refusal carries
     no secret*, lets a refusal print a value's type name and length, and
-    not its digits or characters.
+    not its digits or characters. `_message_field` is the exception, for
+    a field the format defines.
 
     An int, a bool excepted, is described by its sign and bit length.
     Anything else, a bool included, is described by its type name, and
@@ -372,6 +385,26 @@ def _message_text(value: object) -> str:
         return f"{description} of length {len(value)}"  # type: ignore[arg-type]
     except Exception:  # noqa: BLE001
         return description
+
+
+def _message_field(value: int, bits: int, spec: str) -> str:
+    """Return a field's value for a refusal's message, never raising.
+
+    Section 7 of the organization's standard lets a refusal print a field
+    its format defines, of at most four bytes, where the value has the
+    length the format gives it and is one of the values the format
+    defines. A field every value of whose width is defined meets the
+    second condition wherever it meets the first, as a transaction's
+    lock time, version and sequence do: an int from 0 to `2**bits - 1`
+    is written with `format(value, spec)`, `"#x"` for hex. Any other
+    value is `_message_text`'s to write, since one wider than its field
+    may be a key passed in its place. A field whose width holds values
+    the format does not define is no field for this function.
+    """
+    # int's own methods, for the reason _int_description gives
+    if is_integer(value) and not int.__lt__(value, 0) and int.bit_length(value) <= bits:
+        return int.__format__(value, spec)
+    return _message_text(value)
 
 
 def _int_description(value: int) -> str:
