@@ -46,7 +46,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 
-from ecc._utils import bytes_from_octets
+from ecc._utils import _has_type, bytes_from_octets
 from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import (
     PubKey,
@@ -300,7 +300,7 @@ def recover(adaptor_sig: Octets, sig: Sig | Octets, enc_key: PubKey) -> int:
     """
     R, _, s_a, _, _ = _parse_var(adaptor_sig)
     Y = point_from_pub_key(enc_key)
-    if isinstance(sig, Sig):
+    if _has_type(sig, Sig):
         if sig.ec != secp256k1:
             raise EccValueError("not a secp256k1 signature")
     else:

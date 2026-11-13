@@ -125,8 +125,10 @@ import secrets
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from hashlib import sha256
+from typing import Any, cast
 
 from ecc._utils import (
+    _has_type,
     assert_no_trailing,
     bytes_from_octets,
     bytesio_from_binarydata,
@@ -234,12 +236,13 @@ def _rings_from(s: object) -> tuple[Iterable[object], ...]:
     the integers its bytes are. The parameter is `object` because that is
     what a caller may hand over, whatever `SValues` declares.
     """
-    if not isinstance(s, Iterable):
+    if not _has_type(s, Iterable):
         msg = f"s must be an iterable of rings, not {type(s).__name__}"
         raise EccTypeError(msg)
-    rings = tuple(s)
+    # cast: `_has_type` narrows on no abstract class, as its overloads say
+    rings: tuple[Any, ...] = tuple(cast("Iterable[Any]", s))
     for i, ring in enumerate(rings):
-        if is_octets(ring) or not isinstance(ring, Iterable):
+        if is_octets(ring) or not _has_type(ring, Iterable):
             msg = f"ring {i} must be an iterable of ints, not {type(ring).__name__}"
             raise EccTypeError(msg)
     return rings
@@ -256,10 +259,11 @@ def _rsizes_from(rsizes: object) -> tuple[int, ...]:
     the signature declares, and `is_integer` is what refuses a `bool`, which
     `range(True)` would otherwise read as the ring size one.
     """
-    if not isinstance(rsizes, Iterable):
+    if not _has_type(rsizes, Iterable):
         msg = f"rsizes must be an iterable of ints, not {type(rsizes).__name__}"
         raise EccTypeError(msg)
-    sizes = tuple(rsizes)
+    # cast: as in `_rings_from`
+    sizes: tuple[Any, ...] = tuple(cast("Iterable[Any]", rsizes))
     for i, rsize in enumerate(sizes):
         if not is_integer(rsize):
             msg = f"rsizes[{i}] must be int, not {type(rsize).__name__}"
@@ -319,7 +323,7 @@ class BorromeanSig:
         # every hash function is checked: bytes, and not empty. Another
         # width is a signature of another hash function, which `verify`
         # answers False
-        if not isinstance(self.e0, bytes):
+        if not _has_type(self.e0, bytes):
             msg = f"e0 must be bytes, not {type(self.e0).__name__}"  # type: ignore[unreachable]
             raise EccTypeError(msg)
         if not self.e0:
@@ -805,7 +809,7 @@ def _assert_structurally_valid_(
     what the signature is verified about, and issue btclib-org/btclib#814 is
     where that was settled.
     """
-    if isinstance(sig, BorromeanSig):
+    if _has_type(sig, BorromeanSig):
         return sig
     rsizes = [len(pubk_ring) for pubk_ring in pubk_rings]
     return BorromeanSig.parse(sig, rsizes, check_validity=False)
@@ -885,7 +889,7 @@ def assert_as_valid(
     # path may make the parameter stop being checked
     _assert_valid_ec(ec)
 
-    if isinstance(sig, BorromeanSig):
+    if _has_type(sig, BorromeanSig):
         sig.assert_valid()
     else:
         rsizes = [len(pubk_ring) for pubk_ring in pubk_rings]

@@ -24,7 +24,7 @@ from collections.abc import Sequence
 from math import isqrt
 from typing import cast
 
-from ecc._utils import hex_string, is_integer
+from ecc._utils import _has_type, hex_string, is_integer
 from ecc.alias import Public
 from ecc.exceptions import EccTypeError, EccValueError
 
@@ -73,7 +73,7 @@ def _assert_valid_operand(a: int) -> None:
     where it is installed): it is what `_field_element` makes of a curve's
     modulus, and an operand of that type comes back as one.
     """
-    if not (is_integer(a) or isinstance(a, _FIELD_TYPES)):
+    if not (is_integer(a) or _has_type(a, _FIELD_TYPES)):
         raise EccTypeError(f"not an integer: {type(a).__name__}")
 
 
@@ -106,7 +106,7 @@ def _assert_valid_modulus(m: int) -> None:
 
 # every public function here checks its own arguments, rather than five
 # private twins doing the work unchecked for the ones that call each
-# other: a pair of isinstance calls is a small fraction of the arithmetic
+# other: a pair of type tests is a small fraction of the arithmetic
 # it stands in front of, an inverse modulo a 256-bit prime being an
 # extended Euclid even when C runs it, so the re-checking mod_sqrt_var does
 # through tonelli_var and legendre_symbol_var costs less than five more names

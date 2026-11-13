@@ -47,6 +47,7 @@ from ecc._libsecp256k1 import dsa as libsecp256k1_dsa
 from ecc._libsecp256k1 import ffi as libsecp256k1_ffi
 from ecc._libsecp256k1 import recovery as libsecp256k1_recovery
 from ecc._utils import (
+    _has_type,
     assert_type,
     bytes_from_octets,
     bytesio_from_binarydata,
@@ -715,7 +716,7 @@ def _python_key(key: PubKey, ec: Curve) -> tuple[Point, frozenset[JacPoint]]:
     # the key's own memoized tables where the caller prepared the point,
     # which is the shape a signer checking under a key it already holds
     # is in -- see curves.PreparedPoint
-    fixed = key.fixed if isinstance(key, PreparedPoint) else ec._fixed_points
+    fixed = key.fixed if _has_type(key, PreparedPoint) else ec._fixed_points
     return Q, fixed
 
 
@@ -1741,7 +1742,7 @@ def assert_as_valid_(
     # the (ValueError, EccRuntimeError) `verify_` catches, and
     # it would leave through a function whose whole answer is True or
     # False
-    if isinstance(sig, Sig):
+    if _has_type(sig, Sig):
         sig.assert_valid()
     else:
         sig = Sig.parse(sig)
@@ -1800,7 +1801,7 @@ def assert_as_valid_(
     # the key's own memoized tables where the caller prepared it, the
     # curve's alone where it did not, a fifth off a verification under
     # one key, and `curves.PreparedPoint` is where the trade is written
-    fixed = key.fixed if isinstance(key, PreparedPoint) else sig.ec._fixed_points
+    fixed = key.fixed if _has_type(key, PreparedPoint) else sig.ec._fixed_points
     # second part delegated to helper function
     _assert_as_valid_(
         Public(c), QJ, Public(sig.r), Public(sig.s), sig.ec, fixed, lower_s=False
@@ -1915,7 +1916,7 @@ def verify_(
     `required=True`) and decline `hf`, it raises `EccRuntimeError`
     and does not answer False: nothing was checked.
     """
-    ec = sig.ec if isinstance(sig, Sig) else secp256k1
+    ec = sig.ec if _has_type(sig, Sig) else secp256k1
     _assert_structurally_valid_(key, ec, msg_hash, hf)
     # ValueError and EccRuntimeError, not Exception: a well-formed
     # signature that is not authentic is False, and so is a verification
@@ -1969,7 +1970,7 @@ def verify(
     reduced by hf, so there is no declared length for it to miss. It raises
     where the bindings are required and decline `hf`, as `verify_` does.
     """
-    ec = sig.ec if isinstance(sig, Sig) else secp256k1
+    ec = sig.ec if _has_type(sig, Sig) else secp256k1
     _assert_structurally_valid_(key, ec, None, hf)
     # `assert_as_valid` and not a delegation to the prepared spelling: the
     # reduction has to be inside the try, or a message that is no octets is
@@ -2142,7 +2143,7 @@ def anti_exfil_host_verify(
     if not verify_(msg_hash, key, sig, hf, commit_hash=rho, receipt=receipt):
         return False
     # verify_ answered True, so sig is a valid signature and parses
-    parsed = sig if isinstance(sig, Sig) else Sig.parse(sig)
+    parsed = sig if _has_type(sig, Sig) else Sig.parse(sig)
     return parsed.s <= parsed.ec.n // 2
 
 
@@ -2197,7 +2198,7 @@ def recover_pub_keys_(
     - https://crypto.stackexchange.com/questions/18105/how-does-recovering-the-public-key-from-an-ecdsa-signature-work/18106#18106
 
     """
-    if isinstance(sig, Sig):
+    if _has_type(sig, Sig):
         sig.assert_valid()
     else:
         sig = Sig.parse(sig)
@@ -2487,7 +2488,7 @@ def _recovery_inputs(
     if not is_integer(key_id):
         raise EccTypeError(f"non-integer key_id: {key_id}")
 
-    if isinstance(sig, Sig):
+    if _has_type(sig, Sig):
         sig.assert_valid()
     else:
         sig = Sig.parse(sig)
@@ -2605,12 +2606,12 @@ def crack_prv_key_var_(
     message hashes are two linear equations in the nonce and the key.
     The messages enter already reduced; crack_prv_key_var reduces first.
     """
-    if isinstance(sig1, Sig):
+    if _has_type(sig1, Sig):
         sig1.assert_valid()
     else:
         sig1 = Sig.parse(sig1)
 
-    if isinstance(sig2, Sig):
+    if _has_type(sig2, Sig):
         sig2.assert_valid()
     else:
         sig2 = Sig.parse(sig2)

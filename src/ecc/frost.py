@@ -105,7 +105,7 @@ from hashlib import sha256
 from typing import cast
 
 from ecc import ssa
-from ecc._utils import assert_type, bytes_from_octets, is_integer, is_octets
+from ecc._utils import _has_type, assert_type, bytes_from_octets, is_integer, is_octets
 from ecc.alias import INF, Octets, Point, Public
 from ecc.curves import mult, multi_mult_var, secp256k1
 from ecc.curves.curve import _sum_var, _tweak_add_var
@@ -229,7 +229,7 @@ def _assert_octets_sequence(value: object, what: str) -> None:
     passing one where a list of pubshares or tweaks was meant would zip through
     its bytes silently.
     """
-    if is_octets(value) or not isinstance(value, Sequence):
+    if is_octets(value) or not _has_type(value, Sequence):
         raise EccTypeError(f"invalid {what} type: {type(value).__name__}")
 
 

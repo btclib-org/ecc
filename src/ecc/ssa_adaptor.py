@@ -48,7 +48,7 @@ import secrets
 from hashlib import sha256
 
 from ecc import ssa
-from ecc._utils import bytes_from_octets
+from ecc._utils import _has_type, bytes_from_octets
 from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import (
     PubKey,
@@ -247,7 +247,7 @@ def extract_adaptor_var(sig: ssa.Sig | Octets, pre_sig: Octets) -> int:
     can tell.
     """
     R1, s_pre = _parse_var(pre_sig)
-    if isinstance(sig, ssa.Sig):
+    if _has_type(sig, ssa.Sig):
         if sig.ec != secp256k1:
             raise EccValueError("not a secp256k1 signature")
         sig.assert_valid()
