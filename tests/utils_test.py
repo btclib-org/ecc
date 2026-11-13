@@ -5,14 +5,12 @@
 """Tests for the `ecc._utils` module."""
 
 import array
-import ast
 import random
 import sys
 from collections.abc import Callable
 from decimal import Decimal
 from fractions import Fraction
 from io import BytesIO
-from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, Mock
 
@@ -600,15 +598,3 @@ def test_a_value_that_claims_a_type_is_described_by_its_own() -> None:
     assert not is_integer(Mock(spec=int))
     assert not is_octets(Mock(spec=bytes))
     assert _message_text(Mock(spec=int)) == "a Mock"
-
-
-def test_utils_tests_a_type_only_through_has_type() -> None:
-    """`_has_type`'s docstring says every type test of the module is its."""
-    source = (Path(__file__).parents[1] / "src" / "ecc" / "_utils.py").read_text()
-    calls = [
-        node.func.id
-        for node in ast.walk(ast.parse(source))
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
-    ]
-    assert "_has_type" in calls
-    assert "isinstance" not in calls

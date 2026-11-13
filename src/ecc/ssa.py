@@ -73,6 +73,7 @@ from ecc._libsecp256k1 import (
 )
 from ecc._libsecp256k1 import xonly_tweak_add as libsecp256k1_xonly_tweak_add
 from ecc._utils import (
+    _has_type,
     assert_no_trailing,
     assert_type,
     bytes_from_octets,
@@ -298,12 +299,12 @@ def _x_from_bip340pub_key(x_Q: BIP340PubKey, ec: Curve) -> int:
     # answered about it where `dsa.verify` refused the same value as a type: two
     # schemes disagreeing and not two arms, where the private side of issue
     # btclib-org/btclib#1206 had one scheme answering two ways.
-    if isinstance(x_Q, int):
+    if _has_type(x_Q, int):
         return int_from_integer(x_Q)
 
-    if isinstance(x_Q, PreparedPoint):
+    if _has_type(x_Q, PreparedPoint):
         x_Q = x_Q.point
-    if isinstance(x_Q, tuple):
+    if _has_type(x_Q, tuple):
         # the same check `curves.point_from_pub_key` makes for a point,
         # which this function does not go through: on the curve,
         # and a y that is not zero -- `alias` marks infinity that way,
@@ -1140,7 +1141,7 @@ def assert_as_valid_(
     # does not verify. hashes._assert_valid_hf has the rest
     _assert_valid_hf(hf)
 
-    if isinstance(sig, Sig):
+    if _has_type(sig, Sig):
         sig.assert_valid()
     else:
         sig = Sig.parse(sig)
@@ -1200,7 +1201,7 @@ def assert_as_valid_(
     # one key. The negation is in that set too, which is what makes it
     # answer here -- a prepared point of odd y is this same key, and the
     # lift above is the one of the two BIP340 names
-    fixed = Q.fixed if isinstance(Q, PreparedPoint) else sig.ec._fixed_points
+    fixed = Q.fixed if _has_type(Q, PreparedPoint) else sig.ec._fixed_points
     # Let c = int(hf(bytes(r) || bytes(Q) || msg)) mod n.
     c = challenge_(msg, x_Q, sig.r, sig.ec, hf)
     _assert_as_valid_(
@@ -1260,7 +1261,7 @@ def _assert_structurally_valid_(Q: BIP340PubKey, sig: Sig | Octets, ec: Curve) -
     `_x_from_bip340pub_key`) and stays deferred to the equation, so it
     answers False, matching `lift_x` returning None in the reference.
     """
-    parsed_sig = sig if isinstance(sig, Sig) else Sig.parse(sig, check_validity=False)
+    parsed_sig = sig if _has_type(sig, Sig) else Sig.parse(sig, check_validity=False)
     _x_from_bip340pub_key(Q, ec)
     return parsed_sig
 
@@ -1294,7 +1295,7 @@ def verify_(
     `required=True`) and decline `hf`, it raises `EccRuntimeError`
     and does not answer False: nothing was checked.
     """
-    ec = sig.ec if isinstance(sig, Sig) else secp256k1
+    ec = sig.ec if _has_type(sig, Sig) else secp256k1
     parsed_sig = _assert_structurally_valid_(Q, sig, ec)
     # ValueError and EccRuntimeError: a well-formed signature that is
     # not authentic is False, and so is a commitment that does not open;
@@ -1329,7 +1330,7 @@ def verify(
     `verify_` does, and raises where the bindings are required and decline
     `hf`.
     """
-    ec = sig.ec if isinstance(sig, Sig) else secp256k1
+    ec = sig.ec if _has_type(sig, Sig) else secp256k1
     parsed_sig = _assert_structurally_valid_(Q, sig, ec)
     # `assert_as_valid` and not a delegation to the prepared spelling: the
     # reduction has to be inside the try, or a message that is no octets is

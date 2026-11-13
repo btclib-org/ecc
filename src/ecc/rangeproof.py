@@ -130,6 +130,7 @@ from typing import NamedTuple
 from typing_extensions import override
 
 from ecc._utils import (
+    _has_type,
     assert_no_trailing,
     assert_type,
     bytes_from_octets,
@@ -1439,7 +1440,7 @@ def _proof_from(proof: RangeProof | Octets) -> RangeProof:
     leaves an `OverflowError` -- no refusal of this library's, and
     outside what `verify` catches.
     """
-    if isinstance(proof, RangeProof):
+    if _has_type(proof, RangeProof):
         proof.assert_valid()
         return proof
     return RangeProof.parse(proof)
@@ -1510,7 +1511,7 @@ def _assert_structurally_valid_(proof: RangeProof | Octets) -> RangeProof:
     btclib-org/btclib#814's side of the line with `ecc.dsa`'s and
     `ecc.ssa`'s messages.
     """
-    return proof if isinstance(proof, RangeProof) else RangeProof.parse(proof)
+    return proof if _has_type(proof, RangeProof) else RangeProof.parse(proof)
 
 
 def verify(

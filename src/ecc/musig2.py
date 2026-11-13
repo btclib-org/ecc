@@ -128,7 +128,7 @@ from typing import TYPE_CHECKING
 
 from ecc import ssa
 from ecc._libsecp256k1 import musig as libsecp256k1_musig
-from ecc._utils import assert_type, bytes_from_octets, is_octets
+from ecc._utils import _has_type, assert_type, bytes_from_octets, is_octets
 from ecc.alias import INF, Integer, Octets, Point, Public
 from ecc.curves import mult, multi_mult_var, scalar_from_prv_key, secp256k1
 from ecc.curves.curve import _libsecp256k1_serves, _sum_var, _tweak_add_var
@@ -256,10 +256,10 @@ def _assert_octets_sequence(value: object, what: str) -> None:
     Every Octets is itself a Sequence, so passing one where the list of pubkeys,
     tweaks, nonces or partial signatures was meant would zip through its bytes
     and treat each as its own element (issue btclib-org/btclib#1405); `not
-    isinstance(value, Sequence)` is what refuses everything else the
+    _has_type(value, Sequence)` is what refuses everything else the
     comprehensions below would otherwise raise a bare TypeError on.
     """
-    if is_octets(value) or not isinstance(value, Sequence):
+    if is_octets(value) or not _has_type(value, Sequence):
         raise EccTypeError(f"invalid {what} type: {type(value).__name__}")
 
 

@@ -150,7 +150,7 @@ package is used to teach and to prototype as much as to build:
     this package no longer holding a private key as a Python `int`, which
     is a change to that representation and not to a call site.
     `dsa.Signer.__init__` at `self._q.to_bytes(32, "big")`
-    (`src/ecc/dsa.py:1481`) crosses the same boundary the
+    (`src/ecc/dsa.py:1482`) crosses the same boundary the
     other way, once, at construction: the plain `int`
     `scalar_from_prv_key` already produced becomes a transient `bytes` on
     the way into the owned buffer `wipe` overwrites afterwards. That
@@ -322,10 +322,10 @@ package is used to teach and to prototype as much as to build:
     `sec = libsecp256k1_shared_point(`
     (`src/ecc/dh.py:123`), `sec_point._mult_sec` at
     `libsecp256k1_shared_point(sec, m or 1, False)`
-    (`src/ecc/curves/sec_point.py:444`), under
+    (`src/ecc/curves/sec_point.py:445`), under
     `sec_point.mult_pub_key`, and `sec_point._mult_sec_compressed` at
     `libsecp256k1_shared_point(sec, m, True)`
-    (`src/ecc/curves/sec_point.py:466`), under `ecies.derive_keys`, make
+    (`src/ecc/curves/sec_point.py:467`), under `ecies.derive_keys`, make
     the same call on the octets they already hold.
     `double_mult_var` and `multi_mult_var`, and `ssa.batch_verify`, are
     the other call: `keys.pubkey_tweak_mul_sum`, one
@@ -460,7 +460,7 @@ package is used to teach and to prototype as much as to build:
 - `rangeproof.rewind` on the Python arm takes time that depends on the value
     it recovers: `rangeproof._value_encoding_var` at
     `return position, int.from_bytes(tmp[24:32], "big")`
-    (`src/ecc/rangeproof.py:1607`) returns early, at a position
+    (`src/ecc/rangeproof.py:1608`) returns early, at a position
     set by a digit of that value, which its `_var` suffix says
 - a sign-to-contract commitment is the signer's to open, and opening it
     twice over one message is safe only because the committed value

@@ -46,9 +46,10 @@ import secrets
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from hashlib import sha256
+from typing import Any, cast
 
 from ecc import ssa
-from ecc._utils import assert_type, bytes_from_octets, is_integer, is_octets
+from ecc._utils import _has_type, assert_type, bytes_from_octets, is_integer, is_octets
 from ecc.alias import Integer, Octets, Point, Public
 from ecc.curves import (
     mult,
@@ -130,9 +131,10 @@ def _octets_list(value: object, size: int, what: str) -> tuple[bytes, ...]:
     is refused rather than read element by element (issue
     btclib-org/btclib#1405).
     """
-    if is_octets(value) or not isinstance(value, Sequence):
+    if is_octets(value) or not _has_type(value, Sequence):
         raise EccTypeError(f"invalid {what} type: {type(value).__name__}")
-    return tuple(bytes_from_octets(x, size) for x in value)
+    # cast: `_has_type` narrows on no abstract class, as its overloads say
+    return tuple(bytes_from_octets(x, size) for x in cast("Sequence[Any]", value))
 
 
 def _lists(

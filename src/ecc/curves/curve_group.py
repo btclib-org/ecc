@@ -21,7 +21,7 @@ from math import ceil
 
 from typing_extensions import override
 
-from ecc._utils import assert_type, hex_string, int_from_integer, is_integer
+from ecc._utils import _has_type, assert_type, hex_string, int_from_integer, is_integer
 from ecc.alias import INF, INFJ, Integer, JacPoint, Point, Public
 from ecc.exceptions import EccTypeError, EccValueError
 from ecc.number_theory import (
@@ -258,12 +258,12 @@ class CurveGroup:
         # the slow Python path
         if self is other:
             return True
-        # an exact type test, not isinstance alone: a CurveGroup is not a
+        # an exact type test, not `_has_type` alone: a CurveGroup is not a
         # Curve even when p, a and b are the same, one being every point
         # of the curve and the other a subgroup of those points, and
         # returning NotImplemented lets the reflected operand have its
         # say before Python falls back to identity
-        if not isinstance(other, CurveGroup) or type(self) is not type(other):
+        if not _has_type(other, CurveGroup) or type(self) is not type(other):
             return NotImplemented
         return self._eq_key() == other._eq_key()
 

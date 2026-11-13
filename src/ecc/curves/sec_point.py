@@ -15,6 +15,7 @@ from ecc._libsecp256k1 import (
 )
 from ecc._libsecp256k1 import shared_point as libsecp256k1_shared_point
 from ecc._utils import (
+    _has_type,
     assert_type,
     bytes_from_octets,
     int_from_integer,
@@ -89,12 +90,12 @@ def scalar_from_prv_key(prv_key: Integer, ec: Curve = secp256k1) -> int:
     """
     _assert_valid_ec(ec)
 
-    if isinstance(prv_key, int):
+    if _has_type(prv_key, int):
         # through `int_from_integer` for an int this already has: it is
         # where the bool rule lives, so a `True` is refused here in the
         # words every other `Integer` parameter refuses it in, and a real
         # int comes back untouched. The hex spellings it also takes never
-        # reach it -- the isinstance above is what keeps "0xc0ffee" out
+        # reach it -- the type test above is what keeps "0xc0ffee" out
         q = int_from_integer(prv_key)
     else:
         # `n_size` and not a guess: 32 for secp256k1, where a point is 33
@@ -317,7 +318,7 @@ def _assert_pub_key_type(pub_key: PubKey) -> None:
     private key here, so it is refused as a type rather than reported as a
     public key that does not verify.
     """
-    if not isinstance(pub_key, _PUB_KEY_TYPES):
+    if not _has_type(pub_key, _PUB_KEY_TYPES):
         raise EccTypeError("not a public key")
 
 
@@ -348,10 +349,10 @@ def point_from_pub_key(pub_key: PubKey, ec: Curve = secp256k1) -> Point:
     """
     _assert_valid_ec(ec)
     _assert_pub_key_type(pub_key)
-    if isinstance(pub_key, PreparedPoint):
+    if _has_type(pub_key, PreparedPoint):
         return point_from_pub_key(pub_key.point, ec)
 
-    if isinstance(pub_key, tuple):
+    if _has_type(pub_key, tuple):
         if ec.is_on_curve(pub_key) and pub_key[1] != 0:
             _assert_in_subgroup(pub_key, ec)
             return pub_key[0], pub_key[1]
@@ -397,9 +398,9 @@ def _sec_from_pub_key(pub_key: PubKey, ec: Curve) -> bytes:
     is asked about is the caller's own.
     """
     _assert_pub_key_type(pub_key)
-    if isinstance(pub_key, PreparedPoint):
+    if _has_type(pub_key, PreparedPoint):
         return _sec_from_pub_key(pub_key.point, ec)
-    if isinstance(pub_key, tuple):
+    if _has_type(pub_key, tuple):
         # bytes_from_point is this package's own arithmetic and not a parse: it
         # refuses what is not a point of the curve, and infinity
         return bytes_from_point(pub_key, ec, False)

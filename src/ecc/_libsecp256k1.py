@@ -228,8 +228,10 @@ except (
     # those is an installed package too old for what this module asks of it
     # (btclib-org/ecc#25), and the caller is told so and what to do
     # (btclib-org/ecc#56) rather than silently handed the slower
-    # Python arithmetic
-    if not (isinstance(exc, ModuleNotFoundError) and exc.name == _BINDINGS_MODULE):
+    # Python arithmetic. The class is read as `_utils._has_type` reads it,
+    # spelled out: this module sits below `_utils`
+    not_found = issubclass(type(exc), ModuleNotFoundError)
+    if not (not_found and exc.name == _BINDINGS_MODULE):
         mismatch = _mismatch(exc)
         if mismatch is None:
             raise
