@@ -17,11 +17,11 @@ Empty octets, `""` and a string of ASCII whitespace only were read as 0,
 so `curves.mult("")` answered the point at infinity. Pass the int `0`
 where 0 is meant (closes #546).
 
-### `CurveGroup`'s Jacobian methods refuse a malformed point
+### `CurveGroup`'s Jacobian methods refuse a malformed point or batch
 
-A bool, float, `Fraction` or `Decimal` coordinate, and a list, bytes or a
-range as a point, raise `EccTypeError` where some methods computed on
-them. Pass a `tuple[int, int, int]` (closes #561).
+A bool, float, `Fraction` or `Decimal` coordinate, a list as a point, and a
+batch that is no `Sequence`, as a generator or a set, raise `EccTypeError`.
+Pass `tuple[int, int, int]` points, the batch as a list or tuple (closes #561).
 
 ### A value is typed by its own class, not by its `__class__`
 
