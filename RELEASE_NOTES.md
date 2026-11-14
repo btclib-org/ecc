@@ -19,7 +19,7 @@ where 0 is meant (closes #546).
 
 ### `CurveGroup`'s Jacobian methods refuse a malformed point or batch
 
-A bool, float, `Fraction` or `Decimal` coordinate, a list as a point, and a
+A bool, float, `Fraction` or `Decimal` coordinate, a non-tuple point, and a
 batch that is no `Sequence`, as a generator or a set, raise `EccTypeError`.
 Pass `tuple[int, int, int]` points, the batch as a list or tuple (closes #561).
 
