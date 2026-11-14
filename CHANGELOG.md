@@ -23,6 +23,82 @@ behind them.
 Neither file states how many entries it holds: a stated number is one
 more line to edit at every release.
 
+## v2026.11.14
+
+### A value's type is tested by its own class, not by its `__class__`
+
+A value is read as the object it is: `Mock(spec=bytes)` is refused as
+`EccTypeError` where it passed as the bytes it claims (closes #540,
+closes #547).
+
+### An empty `Integer` is refused, not read as 0
+
+Empty octets, `""` and a string of ASCII whitespace only raise
+`EccValueError` (closes #546).
+
+### A `String` is read as a plain `str`, and a memoryview by its layout
+
+A non-contiguous memoryview, or one whose format is not `"B"`, is refused
+as `Octets` refuses it, and a stream's read size is checked (closes #544,
+closes #545).
+
+### `ssa.batch_verify` refuses an element of `sigs` that is no `Sig`
+
+It, `assert_batch_as_valid` and their underscore twins raise
+`EccTypeError`, where `1`, `None` or bytes left as `AttributeError`
+(closes #558).
+
+### `CurveGroup`'s methods refuse a malformed Jacobian point
+
+A non-tuple point, or a coordinate that is a bool or no `int` or `mpz`,
+raises `EccTypeError`, and a tuple of another length `EccValueError`
+(closes #561).
+
+### A base64 envelope is stripped of ASCII whitespace only
+
+An armor padded with U+001C to U+001F is refused (closes #554).
+
+### An `Octets` size refusal writes no expected size wider than four bytes
+
+(closes #553)
+
+### `assert_type`'s docstring and the multi-multiplication census move
+
+The docstring points to `_has_type` (closes btclib-org/btclib#3090), and
+the census records its verdict on the bundled method (issue #549).
+
+### The vendored-vector and arm-authority checks take only their own issue
+
+Each takes an open issue as its own only where the title is exactly the
+one it searched for (closes #536, issue btclib-org/.github#2152).
+
+### Sourcery's configuration disables only `dont-import-test-modules`
+
+(issue btclib-org/.github#2162, issue btclib-org/.github#2190)
+
+### Dependabot moves the actions and dev-tooling groups; soupsieve is relocked
+
+(#542, #543, closes #550)
+
+### prettier leaves `.pre-commit-config.yaml` to pre-commit.ci
+
+(issue btclib-org/.github#2038)
+
+### The bestpractices.dev answers name releases up to v2026.11.12
+
+`osps_qa_07_01` cites the `main-self-merge` ruleset by its id (closes #528,
+issue btclib-org/.github#2214).
+
+### RELEASING.md: who cannot save the answers records the save as owed
+
+(issue btclib-org/.github#2205)
+
+### The tree follows btclib-org/.github on its prose and copied parts
+
+(issue btclib-org/.github#2009, issue btclib-org/.github#2212,
+issue btclib-org/.github#1927, issue btclib-org/.github#2015,
+issue btclib-org/.github#2166, issue btclib-org/.github#2263)
+
 ## v2026.11.12
 
 ### `BorromeanSig.parse` refuses a wrong-typed `rsizes` with `EccTypeError`

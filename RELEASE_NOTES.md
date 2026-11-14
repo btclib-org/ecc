@@ -9,6 +9,44 @@ number says when a release was cut, and promises nothing about
 compatibility, so a breaking change is announced in this file — read it
 before upgrading, rather than a digit.
 
+## v2026.11.14
+
+### An empty `Integer` raises `EccValueError`
+
+Empty octets, `""` and a string of ASCII whitespace only were read as 0,
+so `curves.mult("")` answered the point at infinity. Pass the int `0`
+where 0 is meant (closes #546).
+
+### `CurveGroup`'s Jacobian methods refuse a malformed point
+
+A bool, float, `Fraction` or `Decimal` coordinate, and a list, bytes or a
+range as a point, raise `EccTypeError` where some methods computed on
+them. Pass a `tuple[int, int, int]` (closes #561).
+
+### A value is typed by its own class, not by its `__class__`
+
+A value whose `__class__` claims another type, as `Mock(spec=bytes)` does,
+is read as the object it is: `EccTypeError` where its own class is not
+accepted. Pass the real type, in tests too (closes #540, closes #547).
+
+### `ssa`'s batch verification refuses a `sigs` item that is no `Sig`
+
+`ssa.batch_verify`, `assert_batch_as_valid` and their underscore twins
+raise `EccTypeError` for it, where `1`, `None` or bytes raised
+`AttributeError` (closes #558).
+
+### A `String` refuses a non-contiguous or non-`"B"` memoryview
+
+It raises `EccValueError`, as for `Octets`. Pass `bytes` instead
+(closes #544).
+
+### A base64 armor padded with U+001C to U+001F is refused
+
+`ecies.Envelope.b64decode` strips ASCII whitespace only. Strip such
+separators before the call (closes #554).
+
+`CHANGELOG.md`'s own `v2026.11.14` section has the rest.
+
 ## v2026.11.12
 
 ### `BorromeanSig.parse` refuses an `rsizes` that is not an iterable of ints
