@@ -95,6 +95,31 @@ def _jac_point(Q: JacPoint) -> JacPoint:
     return P
 
 
+def _aff_point(Q: Point) -> Point:
+    """Return the affine point as a plain tuple, refusing what is not one.
+
+    A tuple of two integers, refused as `_jac_point` refuses a Jacobian
+    point: a wrong type, of the tuple or of a coordinate, as
+    `EccTypeError`, and a wrong length as `EccValueError`. The callers
+    assume the point is on the curve, so neither the curve equation nor
+    a coordinate's range is asked.
+
+    It reads Q as `CurveGroup._require_form` does, through `len` and
+    indexing, and the callers compute on the pair it returns: a tuple
+    subclass whose indexing answers, at every read, one pair other than
+    the one it holds is computed on as a caller's `is_on_curve` read it.
+    """
+    # the type before the length, as in `_jac_point`
+    assert_type(Q, tuple, "point")
+    if len(Q) != 2:
+        raise EccValueError("point must be a tuple[int, int]")
+    P = Q[0], Q[1]
+    # an integer of the curve's field type, as in `_jac_point`
+    for coordinate in P:
+        _assert_valid_operand(coordinate)
+    return P
+
+
 def _blinded_jac(Q: JacPoint, ec: CurveGroup) -> JacPoint:
     """Return the same point with a Z nobody can predict.
 
@@ -311,11 +336,14 @@ class CurveGroup:
 
         The input point is not checked to be on the curve.
         """
+        return self._negate(_aff_point(Q))
+
+    def _negate(self, Q: Point) -> Point:
+        # `negate` with no check of Q, which the multiplications call on
+        # the points of their tables.
         # % self.p is required to account for INF (i.e. Q[1]==0)
         # so that negate(INF) = INF
-        if len(Q) == 2:
-            return Q[0], (self.p - Q[1]) % self.p
-        raise EccValueError("not a point")
+        return Q[0], (self.p - Q[1]) % self.p
 
     def negate_jac(self, Q: JacPoint) -> JacPoint:
         """Return the opposite Jacobian point.
@@ -582,6 +610,7 @@ class CurveGroup:
         that is infinity through the one branch on V.
         """
         Q = _jac_point(Q)
+        R = _aff_point(R)
         return _int_jac(self._add_jac_aff(Q, R))
 
     def _add_jac_aff(self, Q: JacPoint, R: Point) -> JacPoint:
@@ -662,8 +691,15 @@ class CurveGroup:
         """Return the sum of two affine points, assumed on the curve.
 
         One modular inversion; the special cases are branched on, the
-        comment below saying why affine coordinates leave no choice.
+        comment of `_add_aff_var` saying why affine coordinates leave no
+        choice.
         """
+        return self._add_aff_var(_aff_point(Q), _aff_point(R))
+
+    def _add_aff_var(self, Q: Point, R: Point) -> Point:
+        # `add_aff_var` with no check of Q and R, which the multiplications
+        # call.
+        #
         # infinity is a special case here and cannot stop being one: an
         # affine point is two field elements and the group has one point
         # more than any pair of them can name, so INF is spelled y == 0
@@ -699,7 +735,7 @@ class CurveGroup:
         # iteration count follows the value it is inverting, so the affine
         # law cannot be made uniform whatever is done to these three tests
         if R[0] == Q[0]:
-            return self.double_aff_var(R) if R[1] == Q[1] else INF
+            return self._double_aff_var(R) if R[1] == Q[1] else INF
 
         p = self.p
         # lam reduced before it is squared, as in add_jac, though here it
@@ -713,6 +749,10 @@ class CurveGroup:
 
     def double_aff_var(self, Q: Point) -> Point:
         """Return twice the affine point, assumed to be on the curve."""
+        return self._double_aff_var(_aff_point(Q))
+
+    def _double_aff_var(self, Q: Point) -> Point:
+        # `double_aff_var` with no check of Q, which the multiplications call
         if Q[1] == 0:  # Infinity point in affine coordinates
             return INF
 
@@ -858,9 +898,9 @@ def _mult_recursive_aff_var(m: Public, Q: Point, ec: CurveGroup) -> Point:
         return INF
 
     if m % 2 == 1:
-        return ec.add_aff_var(Q, _mult_recursive_aff_var(Public(m - 1), Q, ec))
+        return ec._add_aff_var(Q, _mult_recursive_aff_var(Public(m - 1), Q, ec))
 
-    return _mult_recursive_aff_var(Public(m // 2), ec.double_aff_var(Q), ec)
+    return _mult_recursive_aff_var(Public(m // 2), ec._double_aff_var(Q), ec)
 
 
 def _mult_recursive_jac_var(m: Public, Q: JacPoint, ec: CurveGroup) -> JacPoint:
@@ -906,13 +946,13 @@ def _mult_aff_var(m: Public, Q: Point, ec: CurveGroup) -> Point:
     k = m >> 1
     while k > 0:
         # the doubling part of 'double & add'
-        Q = ec.double_aff_var(Q)
+        Q = ec._double_aff_var(Q)
         # always perform the 'add', even if useless: one addition per bit
         # whatever the bit is, as in _mult_jac_var. It buys less here,
-        # add_aff_var branching on its own cases and mod_inv_var taking the time
-        # its input asks for, which is why the affine variants are the
+        # _add_aff_var branching on its own cases and mod_inv_var taking the
+        # time its input asks for, which is why the affine variants are the
         # readable ones rather than the ones to sign with
-        R[1] = ec.add_aff_var(R[0], Q)
+        R[1] = ec._add_aff_var(R[0], Q)
         # if least significant bit of m is 1, then add Q to R[0]
         R[0] = R[k & 1]
         k >>= 1
@@ -1205,7 +1245,7 @@ def _signed_odd_multiples_aff(Q: JacPoint, ec: CurveGroup, w: int) -> list[Point
     paid for the entries being affine here rather than there.
     """
     T = _odd_multiples_aff(Q, ec, w + 1)
-    return [ec.negate(P) for P in reversed(T)] + T
+    return [ec._negate(P) for P in reversed(T)] + T
 
 
 @functools.lru_cache  # the generator is the Q of most calls, so it pays
@@ -1251,7 +1291,7 @@ def _cached_fixed_base_multiples(
         # the first entry whose top tooth is +: every other tooth is -
         entry = _jac_from_aff(powers[j + teeth - 1])
         for P in powers[j : j + teeth - 1]:
-            entry = ec._add_jac_aff(entry, ec.negate(P))
+            entry = ec._add_jac_aff(entry, ec._negate(P))
         block = [entry]
         for i in range(j, j + teeth - 1):
             block += [ec._add_jac_aff(P, twice[i]) for P in block]
@@ -1263,7 +1303,7 @@ def _cached_fixed_base_multiples(
     for at in range(0, len(aff), half):
         upper = aff[at : at + half]
         # entry e of the lower half is minus entry 2^teeth - 1 - e
-        tables.append([ec.negate(P) for P in reversed(upper)] + upper)
+        tables.append([ec._negate(P) for P in reversed(upper)] + upper)
     return tables
 
 
@@ -1710,7 +1750,7 @@ def _additions_by_position_var(
         for j, d in enumerate(naf):
             if d:
                 at_position[j].append(
-                    T[(d - 1) // 2] if d > 0 else ec.negate(T[(-d - 1) // 2])
+                    T[(d - 1) // 2] if d > 0 else ec._negate(T[(-d - 1) // 2])
                 )
     return at_position
 
