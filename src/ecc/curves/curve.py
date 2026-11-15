@@ -1343,8 +1343,8 @@ def _libsecp256k1_sum(points: Sequence[Point]) -> Point:
     # with a zero y is the two-torsion one, and a group of prime
     # order has none -- which this is, secp256k1 being the only curve
     # it is called for. The Python arms of the callers cannot make that
-    # assumption and do not: `add_aff_var` tests the same y and says why
-    # in its own comment
+    # assumption and do not: `add_aff_var` tests the same y, and the
+    # comment of `_add_aff_var` says why
     secs = [_sec_from_point(Q) for Q in points if Q[1]]
     # and a run with no addition left in it is answered without
     # crossing: one term is that term, and none is infinity, which

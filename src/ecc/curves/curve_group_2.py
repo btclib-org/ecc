@@ -143,8 +143,8 @@ with no issue of their own are in issue btclib-org/ecc#185:
       multiplication
     - the unified addition, `secp256k1_gej_add_ge` after Brier and Joye:
       its core, without the cases, is 0.97x of `add_jac_aff`, not counting
-      its check of a Jacobian point's form, which `_add_jac_aff`, the
-      spelling the multiplications call, does not make
+      its check of its points' form, which `_add_jac_aff`, the spelling
+      the multiplications call, does not make
     - the halving doubling, `secp256k1_fe_half` in `secp256k1_gej_double`:
       0.76x of `_double_jac_helper`
     - Hamburg's offset in place of a parity correction,

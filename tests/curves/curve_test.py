@@ -1192,7 +1192,7 @@ def test_negate() -> None:
         minus_INFJ = ec.negate_jac(INFJ)
         assert ec.is_jac_equal(minus_INFJ, INFJ)
 
-        with pytest.raises(EccValueError, match="not a point"):
+        with pytest.raises(EccValueError, match=r"point must be a tuple\[int, int\]"):
             ec.negate(ec.GJ)  # type: ignore[arg-type]
 
         with pytest.raises(EccValueError, match="Jacobian point must be a tuple"):

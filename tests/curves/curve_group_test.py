@@ -1275,6 +1275,94 @@ def test_aff_from_jac_batch_refuses_what_is_no_sequence() -> None:
             secp256k1.aff_from_jac_batch_var(wrong_type)  # type: ignore[arg-type]
 
 
+class _IndexesG(tuple[int, ...]):
+    """A tuple whose indexing answers the generator, whatever it holds."""
+
+    __slots__ = ()
+
+    @override
+    def __getitem__(self, i: object) -> Any:
+        return secp256k1.G[0] if i == 0 else secp256k1.G[1]
+
+
+# each public method of CurveGroup taking an affine point, called with the
+# value under test in one position and a valid point in the others
+_AFF_CALLS: tuple[tuple[str, Callable[[Any], object]], ...] = (
+    ("negate", secp256k1.negate),
+    ("add_aff_var-first", lambda Q: secp256k1.add_aff_var(Q, secp256k1.G)),
+    ("add_aff_var-second", lambda Q: secp256k1.add_aff_var(secp256k1.G, Q)),
+    ("double_aff_var", secp256k1.double_aff_var),
+    ("add_jac_aff-second", lambda Q: secp256k1.add_jac_aff(secp256k1.GJ, Q)),
+)
+
+
+@pytest.mark.parametrize(
+    "call", [case[1] for case in _AFF_CALLS], ids=[case[0] for case in _AFF_CALLS]
+)
+def test_a_malformed_affine_point_is_refused(call: Callable[[Any], object]) -> None:
+    """A malformed affine point leaves as this package's exception.
+
+    Issue btclib-org/ecc#565: indexed unchecked, `None` or a Mock would
+    leave as Python's own TypeError, and a list, bytes or a bool
+    coordinate would be answered.
+    """
+    # bytes, a dict and a range index like a point, and are no tuple
+    for wrong_type in (
+        None,
+        1.5,
+        "ab",
+        [1, 2],
+        b"\x01\x02",
+        {0: 1, 1: 2},
+        range(1, 3),
+        Mock(),
+        Mock(spec=tuple),
+    ):
+        with pytest.raises(EccTypeError, match="invalid point type: "):
+            call(wrong_type)
+    for wrong_length in ((1,), (1, 2, 1)):
+        with pytest.raises(EccValueError, match=r"tuple\[int, int\]$"):
+            call(wrong_length)
+    # a bool is no integer here either, and `False == 0` would read as
+    # infinity's y
+    for coordinates in (
+        ("a", "b"),
+        (None, None),
+        (1.0, 2.0),
+        (Fraction(1), Fraction(2)),
+        (Decimal(1), Decimal(2)),
+        (1, False),
+    ):
+        with pytest.raises(EccTypeError, match="not an integer: "):
+            call(coordinates)
+    # and a well-formed point is still answered, judged by the class it is
+    # and not by the one it claims
+    expected = call(secp256k1.G)
+    assert call(_ClaimsList(secp256k1.G)) == expected
+    # and read as `is_on_curve` reads it, through `len` and indexing, not
+    # through tuple's own methods as a Jacobian point is
+    # Any: mypy reads its class as a tuple[int, ...], not a Point
+    indexed: Any = _IndexesG((1, 2))
+    assert secp256k1.is_on_curve(indexed)
+    assert call(indexed) == expected
+    with pytest.raises(EccValueError, match=r"tuple\[int, int\]$"):
+        call(_Lies(secp256k1.G))
+
+
+def test_add_var_adds_the_point_it_checked() -> None:
+    """The sum of two points on the curve is on the curve.
+
+    `add_var` checks its operands with `is_on_curve` and adds them with
+    `add_aff_var`: the two read a point the same way, so a tuple subclass
+    whose indexing answers, at every read, one pair other than the one it
+    holds is added as the point it was checked as.
+    """
+    indexed: Any = _IndexesG((1, 2))
+    S = secp256k1.add_var(indexed, secp256k1.G)
+    assert secp256k1.add_var(secp256k1.G, secp256k1.G) == S
+    assert secp256k1.is_on_curve(S)
+
+
 def test_blinding_changes_the_coordinates_and_not_the_point() -> None:
     """A rescaled point is the same point with a Z nobody can predict.
 
