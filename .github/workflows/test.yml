@@ -57,16 +57,23 @@ on:
 permissions:
   contents: read
 
-# cancel superseded runs on the same branch or pull request. Named
-# literally rather than with github.workflow, which in a called workflow
-# is the caller's name. A pull_request run groups by the pull request's
-# own number, which no push's github.ref can equal, so a closed run never
-# lands in main's push group. The suffix keeps a release run out of the
-# branch groups: inside a called workflow github.ref is the caller's, so a
-# rehearsal dispatched on a branch would otherwise compute the group a
-# push to that branch computes, and one would cancel the other
+# cancel superseded runs of the same pull request. Named literally
+# rather than with github.workflow, which in a called workflow is the
+# caller's name. A pull_request run groups by the pull request's own
+# number, which no push's key can equal, so a closed run never lands in
+# a push's group. A push run is keyed on its commit and its ref, so each
+# push to main gets a run and a report of its own, which no later push
+# cancels: section 10 of btclib-org/.github has why cancel-in-progress:
+# false and queue: max do not give that. The suffix keeps a release run
+# out of the branch groups: inside a called workflow github.ref and
+# github.sha are the caller's, so a rehearsal dispatched on a branch
+# would otherwise compute the group a dispatch on that branch computes,
+# and one would cancel the other
 concurrency:
-  group: test-${{ github.event.pull_request.number || github.ref }}${{ inputs.concurrency-suffix }}
+  group: >-
+    test-${{ github.event_name == 'push'
+    && format('{0}-{1}', github.sha, github.ref)
+    || github.event.pull_request.number || github.ref }}${{ inputs.concurrency-suffix }}
   cancel-in-progress: true
 
 jobs:

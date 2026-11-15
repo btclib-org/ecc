@@ -54,9 +54,13 @@ permissions:
   contents: read
 
 # github.event.pull_request.number, not github.head_ref, for the reason
-# vendored-vectors.yml's own concurrency block gives
+# vendored-vectors.yml's own concurrency block gives. A push run is
+# keyed on its commit and its ref, for the reason test.yml gives
 concurrency:
-  group: py-arm-authority-${{ github.event.pull_request.number || github.ref }}
+  group: >-
+    py-arm-authority-${{ github.event_name == 'push'
+    && format('{0}-{1}', github.sha, github.ref)
+    || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

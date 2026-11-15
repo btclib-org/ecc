@@ -20,7 +20,7 @@ place the answer lives, which is what *Topics* and *Publishing* say of
 them.
 
 Each section carries the command that sets its setting and the command
-that reads it back, and the `#` lines under a read-back are what it
+that reads it back, and the fence below a read-back holds what it
 printed on 2026-09-26 — section 16's last step — unless a later date
 stands beside it. Section 11 makes such an answer documentation, with a
 reader as its check: nothing re-runs these commands, so an answer that
@@ -70,10 +70,19 @@ Read back:
 gh api repos/btclib-org/ecc \
   --jq '{visibility, default_branch: .default_branch, has_issues,
          wiki: .has_wiki, projects: .has_projects}'
-# {"default_branch":"main","has_issues":true,"projects":false,
-#  "visibility":"public","wiki":false}
+```
+
+```json
+{"default_branch":"main","has_issues":true,"projects":false,
+ "visibility":"public","wiki":false}
+```
+
+```shell
 gh api -i repos/btclib-org/ecc/pages 2>/dev/null | head -1
-# HTTP/2.0 404 Not Found
+```
+
+```text
+HTTP/2.0 404 Not Found
 ```
 
 `has_issues` is what `CONTRIBUTING.md`'s *The issue tracker* rests on,
@@ -207,17 +216,20 @@ gh api repos/btclib-org/ecc/branches/main/protection \
          force_pushes: .allow_force_pushes.enabled,
          deletions: .allow_deletions.enabled,
          conversation: .required_conversation_resolution.enabled}'
-# {"checks":[["test: every job passed",15368],
-#   ["docs / Build the documentation",15368],
-#   ["lint / Lint and type-check",15368],
-#   ["lint / Dependency review",15368],
-#   ["lint / Sign-off",15368],
-#   ["sourcery / Sourcery",15368]],
-#  "conversation":true,"deletions":false,"enforce_admins":false,
-#  "force_pushes":false,"linear":true,
-#  "reviews":{"dismiss_stale_reviews":true,
-#   "required_approving_review_count":1},
-#  "strict":false}
+```
+
+```json
+{"checks":[["test: every job passed",15368],
+  ["docs / Build the documentation",15368],
+  ["lint / Lint and type-check",15368],
+  ["lint / Dependency review",15368],
+  ["lint / Sign-off",15368],
+  ["sourcery / Sourcery",15368]],
+ "conversation":true,"deletions":false,"enforce_admins":false,
+ "force_pushes":false,"linear":true,
+ "reviews":{"dismiss_stale_reviews":true,
+  "required_approving_review_count":1},
+ "strict":false}
 ```
 
 Read on 2026-11-05T07:17Z, after a `PATCH` of `required_status_checks`
@@ -276,7 +288,10 @@ Classic protection's own copy of the signature rule is off, read on
 ```shell
 gh api repos/btclib-org/ecc/branches/main/protection \
   --jq '.required_signatures.enabled'
-# false
+```
+
+```text
+false
 ```
 
 No ruleset over `main` carries `required_signatures`, so nothing refuses an
@@ -314,16 +329,19 @@ for id in $(gh api repos/btclib-org/ecc/rulesets --jq '.[].id'); do
            methods: [.rules[] | select(.type=="pull_request")
                               | .parameters.allowed_merge_methods]}'
 done
-# {"bypass":[],"enforcement":"active","include":["refs/heads/main"],
-#  "methods":[],"name":"main-integrity",
-#  "rules":["required_linear_history","non_fast_forward","deletion"],
-#  "target":"branch"}
-# {"bypass":[[3296421,"pull_request"]],"enforcement":"active",
-#  "include":["refs/heads/main"],"methods":[["squash"]],
-#  "name":"main-self-merge","rules":["pull_request"],"target":"branch"}
-# {"bypass":[],"enforcement":"active","include":["refs/tags/v*"],
-#  "methods":[],"name":"tag-integrity","rules":["required_signatures"],
-#  "target":"tag"}
+```
+
+```text
+{"bypass":[],"enforcement":"active","include":["refs/heads/main"],
+ "methods":[],"name":"main-integrity",
+ "rules":["required_linear_history","non_fast_forward","deletion"],
+ "target":"branch"}
+{"bypass":[[3296421,"pull_request"]],"enforcement":"active",
+ "include":["refs/heads/main"],"methods":[["squash"]],
+ "name":"main-self-merge","rules":["pull_request"],"target":"branch"}
+{"bypass":[],"enforcement":"active","include":["refs/tags/v*"],
+ "methods":[],"name":"tag-integrity","rules":["required_signatures"],
+ "target":"tag"}
 ```
 
 A `v*` tag push that brings an unsigned commit is refused. A tag on a
@@ -339,19 +357,23 @@ gh api repos/<owner>/<repo>/git/tags/<sha> --jq .verification
 ## Merge methods
 
 **Squash is the only method GitHub can be asked for**, and auto-merge
-is off, so no pull request can be armed; the call is the one under
-*Creating the repository*. Read back:
+is off, [for the reason section 11
+gives](https://github.com/btclib-org/.github/blob/main/README.md#merge-method);
+the call is the one under *Creating the repository*. Read back:
 
 ```shell
 gh api repos/btclib-org/ecc \
   --jq '{allow_squash_merge, allow_merge_commit, allow_rebase_merge,
          allow_auto_merge, squash_merge_commit_title,
          squash_merge_commit_message, delete_branch_on_merge}'
-# {"allow_auto_merge":false,"allow_merge_commit":false,
-#  "allow_rebase_merge":false,"allow_squash_merge":true,
-#  "delete_branch_on_merge":true,
-#  "squash_merge_commit_message":"COMMIT_MESSAGES",
-#  "squash_merge_commit_title":"COMMIT_OR_PR_TITLE"}
+```
+
+```json
+{"allow_auto_merge":false,"allow_merge_commit":false,
+ "allow_rebase_merge":false,"allow_squash_merge":true,
+ "delete_branch_on_merge":true,
+ "squash_merge_commit_message":"COMMIT_MESSAGES",
+ "squash_merge_commit_title":"COMMIT_OR_PR_TITLE"}
 ```
 
 Read on 2026-11-14T15:27Z.
@@ -391,8 +413,11 @@ value it gets:
 ```shell
 gh api repos/btclib-org/ecc/actions/permissions/workflow \
   --jq '{default_workflow_permissions, can_approve_pull_request_reviews}'
-# {"can_approve_pull_request_reviews":false,
-#  "default_workflow_permissions":"read"}
+```
+
+```json
+{"can_approve_pull_request_reviews":false,
+ "default_workflow_permissions":"read"}
 ```
 
 The expected answer is `read` and `false`. Where it is not, the
@@ -406,10 +431,19 @@ Read on 2026-09-27, for this repository and for the organization:
 ```shell
 gh api repos/btclib-org/ecc/actions/permissions \
   --jq '{allowed_actions, sha_pinning_required}'
-# {"allowed_actions":"all","sha_pinning_required":true}
+```
+
+```json
+{"allowed_actions":"all","sha_pinning_required":true}
+```
+
+```shell
 gh api orgs/btclib-org/actions/permissions \
   --jq '{allowed_actions, sha_pinning_required}'
-# {"allowed_actions":"all","sha_pinning_required":true}
+```
+
+```json
+{"allowed_actions":"all","sha_pinning_required":true}
 ```
 
 `sha_pinning_required` is set at the organization level: [section 11 of
@@ -420,9 +454,18 @@ fields](https://github.com/btclib-org/.github#tokens-publishing-scanning).
 
 ```shell
 gh api repos/btclib-org/ecc --jq .web_commit_signoff_required
-# true
+```
+
+```text
+true
+```
+
+```shell
 gh api orgs/btclib-org --jq .web_commit_signoff_required
-# true
+```
+
+```text
+true
 ```
 
 Set at the organization level, [for the reason section 11
@@ -470,17 +513,26 @@ gh api repos/btclib-org/ecc/environments \
   --jq '.environments[] | {name, dbp: .deployment_branch_policy,
          rules: [.protection_rules[] | .type],
          reviewers: [.protection_rules[].reviewers[]?.reviewer.login]}'
-# {"dbp":{"custom_branch_policies":true,"protected_branches":false},
-#  "name":"pypi",
-#  "reviewers":["fametrano","giacomocaironi","pmazzocchi"],
-#  "rules":["required_reviewers","branch_policy"]}
-# {"dbp":null,"name":"testpypi",
-#  "reviewers":["fametrano","giacomocaironi","pmazzocchi"],
-#  "rules":["required_reviewers"]}
+```
+
+```text
+{"dbp":{"custom_branch_policies":true,"protected_branches":false},
+ "name":"pypi",
+ "reviewers":["fametrano","giacomocaironi","pmazzocchi"],
+ "rules":["required_reviewers","branch_policy"]}
+{"dbp":null,"name":"testpypi",
+ "reviewers":["fametrano","giacomocaironi","pmazzocchi"],
+ "rules":["required_reviewers"]}
+```
+
+```shell
 env=repos/btclib-org/ecc/environments/pypi
 gh api "$env/deployment-branch-policies" \
   --jq '.branch_policies[] | [.name, .type]'
-# ["v*","tag"]
+```
+
+```json
+["v*","tag"]
 ```
 
 The distribution publishes as `ecc` on PyPI, and a rehearsal as
@@ -496,7 +548,10 @@ here rather than from `pyproject.toml`'s own copy of it. Read at
 
 ```shell
 gh api repos/btclib-org/ecc --jq '.homepage'
-# https://btclib.org/ecc/
+```
+
+```text
+https://btclib.org/ecc/
 ```
 
 ## Read the Docs, which is btclib-ecc.readthedocs.io
@@ -511,7 +566,10 @@ redirect. The site answers:
 ```shell
 curl -sL -o /dev/null -w '%{http_code} %{url_effective}\n' \
   https://btclib-ecc.readthedocs.io/
-# 200 https://btclib-ecc.readthedocs.io/en/latest/
+```
+
+```text
+200 https://btclib-ecc.readthedocs.io/en/latest/
 ```
 
 The project's public API answers without a token. The `repository`
@@ -520,13 +578,28 @@ and `.homepage` answers were read on 2026-10-19:
 ```shell
 p=https://app.readthedocs.org/api/v3/projects/btclib-ecc
 curl -s "$p/" | jq -c '{default_branch, repository: .repository.url}'
-# {"default_branch":"main",
-#  "repository":"https://github.com/btclib-org/ecc.git"}
+```
+
+```json
+{"default_branch":"main",
+ "repository":"https://github.com/btclib-org/ecc.git"}
+```
+
+```shell
 curl -s "$p/" | jq -c '[.programming_language.code, .homepage]'
-# ["py","https://github.com/btclib-org/ecc"]
+```
+
+```json
+["py","https://github.com/btclib-org/ecc"]
+```
+
+```shell
 diff <(curl -s "$p/" | jq -r '.tags[]' | sort) \
      <(gh api repos/btclib-org/ecc --jq '.topics[]' | sort)
-# (nothing, exit 0)
+```
+
+```text
+(nothing, exit 0)
 ```
 
 The project's tags are the repository's topics, which *Topics* sets, and
@@ -540,10 +613,19 @@ at 2026-09-29T17:49:13Z:
 curl -s "$p/versions/?active=true" \
   | jq -c '.results[] | select(.slug == "latest" or .slug == "stable")
            | [.slug, .type, .ref]'
-# ["stable","tag","v2026.9.28"]
-# ["latest","branch",null]
+```
+
+```text
+["stable","tag","v2026.9.28"]
+["latest","branch",null]
+```
+
+```shell
 git tag --list 'v*' --sort=version:refname | tail -1
-# v2026.9.28
+```
+
+```text
+v2026.9.28
 ```
 
 An automation rule activates each new `v*` tag. That is a setting
@@ -564,7 +646,10 @@ is what tells an absent project from one with nothing active:
 ```shell
 curl -s -o /dev/null -w '%{http_code}\n' \
   https://app.readthedocs.org/api/v3/projects/btclib-ecc/
-# 200
+```
+
+```text
+200
 ```
 
 **What connects the repository to Read the Docs is the organization-wide
@@ -575,9 +660,18 @@ the repository is expected to carry no hook:
 gh api orgs/btclib-org/installations \
   --jq '.installations[] | select(.app_slug == "read-the-docs-community")
         | [.app_slug, .repository_selection]'
-# ["read-the-docs-community","all"]
+```
+
+```json
+["read-the-docs-community","all"]
+```
+
+```shell
 gh api repos/btclib-org/ecc/hooks --jq length
-# 0
+```
+
+```text
+0
 ```
 
 A hook the second command finds is stale and is deleted rather than
@@ -617,21 +711,54 @@ Read back:
 
 ```shell
 gh api repos/btclib-org/ecc --jq '.security_and_analysis'
-# {"dependabot_security_updates":{"status":"enabled"},
-#  "secret_scanning":{"status":"enabled"},
-#  "secret_scanning_non_provider_patterns":{"status":"disabled"},
-#  "secret_scanning_push_protection":{"status":"enabled"},
-#  "secret_scanning_validity_checks":{"status":"disabled"}}
+```
+
+```json
+{"dependabot_security_updates":{"status":"enabled"},
+ "secret_scanning":{"status":"enabled"},
+ "secret_scanning_non_provider_patterns":{"status":"disabled"},
+ "secret_scanning_push_protection":{"status":"enabled"},
+ "secret_scanning_validity_checks":{"status":"disabled"}}
+```
+
+```shell
 gh api -i repos/btclib-org/ecc/vulnerability-alerts | head -1
-# HTTP/2.0 204 No Content
+```
+
+```text
+HTTP/2.0 204 No Content
+```
+
+```shell
 gh api repos/btclib-org/ecc/automated-security-fixes
-# {"enabled":true,"paused":false}
+```
+
+```json
+{"enabled":true,"paused":false}
+```
+
+```shell
 gh api repos/btclib-org/ecc/private-vulnerability-reporting
-# {"enabled":true}
+```
+
+```json
+{"enabled":true}
+```
+
+```shell
 gh api repos/btclib-org/ecc/code-scanning/default-setup --jq .state
-# not-configured
+```
+
+```text
+not-configured
+```
+
+```shell
 gh api repos/btclib-org/ecc/code-quality/setup --jq .state
-# not-configured
+```
+
+```text
+not-configured
 ```
 
 The alerts endpoint has no body and answers with its status, 204 for
@@ -658,16 +785,22 @@ of its own; the diff is expected empty:
 diff <(gh api repos/btclib-org/ecc --jq '.topics[]' | sort) \
      <(sed -n '/^keywords = \[/,/^]/s/^ *"\(.*\)",$/\1/p' pyproject.toml \
        | sort)
-# (nothing, exit 0)
+```
+
+```text
+(nothing, exit 0)
 ```
 
 What the diff compares, the topics as the endpoint returns them:
 
 ```shell
 gh api repos/btclib-org/ecc --jq '.topics'
-# ["bip340","cryptography","ecdsa","ecies","elliptic-curves","ellswift",
-#  "frost","musig2","pedersen-commitment","rfc-6979","schnorr",
-#  "secp256k1"]
+```
+
+```json
+["bip340","cryptography","ecdsa","ecies","elliptic-curves","ellswift",
+ "frost","musig2","pedersen-commitment","rfc-6979","schnorr",
+ "secp256k1"]
 ```
 
 ## Plan-gated settings
@@ -679,7 +812,10 @@ configures, so prose that needs the reasoning — a workflow header,
 
 ```shell
 gh api orgs/btclib-org --jq .plan.name
-# free
+```
+
+```text
+free
 ```
 
 [GitHub's own table](https://docs.github.com/en/actions/reference/limits)
@@ -716,9 +852,18 @@ either would be that decision undone:
 
 ```shell
 gh api repos/btclib-org/ecc/actions/secrets --jq .total_count
-# 0
+```
+
+```text
+0
+```
+
+```shell
 gh api repos/btclib-org/ecc/dependabot/secrets --jq .total_count
-# 0
+```
+
+```text
+0
 ```
 
 **A switch this repository does not set.** `claude-review.yml` calls
@@ -729,5 +874,8 @@ store is read too:
 
 ```shell
 gh api repos/btclib-org/ecc/actions/variables --jq .total_count
-# 0
+```
+
+```text
+0
 ```
