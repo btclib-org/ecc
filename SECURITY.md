@@ -41,6 +41,10 @@ What a refusal may print about a value that could be a key is the
 organization's rule, [*A refusal carries no
 secret*](https://github.com/btclib-org/.github#a-refusal-carries-no-secret).
 
+A flaw in what this package derives, signs or verifies that lets funds
+be stolen, lost or locked belongs here too: locked includes an output
+that consensus can spend but standard relay policy refuses.
+
 ## Security review
 
 The latest security review is dated 2026-09-30.
