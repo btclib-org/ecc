@@ -215,42 +215,27 @@ reproduces each signature byte for byte.
 
 ### BIP327 (MuSig2): files under `tests/schemes/_data/`
 
-The vectors of `bip-0327/vectors/`, vendored whole
-and under upstream's own names: `key_sort_vectors.json`,
-`key_agg_vectors.json`, `nonce_gen_vectors.json`,
-`nonce_agg_vectors.json`, `sign_verify_vectors.json`,
-`tweak_vectors.json`, `det_sign_vectors.json` and
-`sig_agg_vectors.json`. Each is pinned below in its own entry, one real
-path per pin, rather than to one placeholder path shared by all of them:
-a placeholder is not a path GitHub's own "commits touching a path" API
-can be asked about, which is what kept every one of them out of
-the weekly check. It also papered over a real difference between
-them: six were untouched since the commit that added all eight,
-`87394eaeb436d02e0a68b38a1e94bc526d50056e` (2023-03-27, "Add BIP327:
-MuSig2 for BIP340-compatible Multi-Signatures"); `sign_verify_vectors.json`
-was fixed once since, at `508e3a6a40a6e73c73cbfa8a33aa18a2bc7b9d91`
-(2024-05-14, "Fix the four test vectors"); and `sig_agg_vectors.json`
-once more again, at `1c6ac0c4cf1f39ea806b8594d6060b6d52fd1439`
-(2024-07-19, "bip327: minor fixes") -- the one commit the shared
-placeholder cited as the tip of all eight paths, when it is the tip of
-only that one.
+The JSON files of `bip-0327/vectors/`, vendored under upstream's own
+names: `key_sort_vectors.json`, `key_agg_vectors.json`,
+`nonce_gen_vectors.json`, `nonce_agg_vectors.json`,
+`sign_verify_vectors.json`, `tweak_vectors.json`,
+`det_sign_vectors.json` and `sig_agg_vectors.json`. The `README.md`
+beside them describes the vectors and is not vendored. Each file is
+pinned below in its own entry, one real path per pin, rather than to one
+placeholder path shared by all of them: a placeholder is not a path
+GitHub's own "commits touching a path" API can be asked about, and that
+API is what the weekly check asks. Each entry pins a commit that
+touches its own path.
 
-56 cases between them, and `tests/schemes/musig2_test.py` runs every one:
-1 sorting, 4 + 5 aggregations valid and failing, 4 nonce derivations,
-2 + 3 nonce aggregations, 6 + 6 + 3 + 2 signatures (valid, refused at
-signing, false on verification, refused on verification), 5 + 1
-tweaked, 4 + 5 deterministic, 4 + 1 aggregated. An error case carries
-what should be raised — which party contributed what, or the text of a
-plain value error — and is checked against it, so the failing half of
-each file is as load-bearing as the valid half.
+What `tests/schemes/musig2_test.py` runs of them, and how it checks an
+error case, its docstring says.
 
 What the files are measured against is `bip-0327/reference.py`, pinned
 separately at `9297c12729670d09f9149ec6d8bad967d8161bfe` (2025-10-03):
-`src/ecc/musig2.py` follows it
-function for function, and copies four of its error message strings
-verbatim because the `error.message` field of a case is compared byte
-for byte. That file is not vendored — it is an implementation, not data,
-and this package's is the one under test.
+`src/ecc/musig2.py` follows it function for function; the comment above
+its error message strings says which it copies verbatim, and why. That
+file is not vendored — it is an implementation, not data, and this
+package's is the one under test.
 
 The pin is behind the tip of that path.
 `gh api 'repos/bitcoin/bips/commits?path=bip-0327/reference.py'` lists
@@ -281,9 +266,9 @@ Verdict: **identical**.
 ```text
 repo    bitcoin/bips
 path    bip-0327/vectors/key_agg_vectors.json
-commit  87394eaeb436d02e0a68b38a1e94bc526d50056e  2023-03-27
-blob    b2e623de60f302c4004a6d656581bdba1f4e1e05
-pulled  2026-08-02, split into its own pin 2026-08-06
+commit  17affe28619e1c761c384c048229369518c12ea1  2026-11-16
+blob    45d12e9430b080dafaaeb63cbd4c9f9a61f09255
+pulled  2026-08-02, split into its own pin 2026-08-06, refreshed 2026-11-17
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -294,9 +279,9 @@ Verdict: **identical**.
 ```text
 repo    bitcoin/bips
 path    bip-0327/vectors/nonce_gen_vectors.json
-commit  87394eaeb436d02e0a68b38a1e94bc526d50056e  2023-03-27
-blob    ced946f3efd9f80cb1a3819939f2b39de2061e42
-pulled  2026-08-02, split into its own pin 2026-08-06
+commit  b7557f897af05da55ea72918d3c3c395daca4670  2026-11-16
+blob    3fe19f121ec3ad945f7f5889848b99af34e5981b
+pulled  2026-08-02, split into its own pin 2026-08-06, refreshed 2026-11-17
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -320,9 +305,9 @@ Verdict: **identical**.
 ```text
 repo    bitcoin/bips
 path    bip-0327/vectors/sign_verify_vectors.json
-commit  508e3a6a40a6e73c73cbfa8a33aa18a2bc7b9d91  2024-05-14
-blob    f71c8dd9d935c8c5f398e6a3888943e1e68b729d
-pulled  2026-08-02, split into its own pin 2026-08-06
+commit  7cdaa7a183dda530df2b338c5df6f24ec691657f  2026-11-16
+blob    66b6402eb8efb8aae30c20c2b53e1391116a45e6
+pulled  2026-08-02, split into its own pin 2026-08-06, refreshed 2026-11-17
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -333,9 +318,9 @@ Verdict: **identical**.
 ```text
 repo    bitcoin/bips
 path    bip-0327/vectors/tweak_vectors.json
-commit  87394eaeb436d02e0a68b38a1e94bc526d50056e  2023-03-27
-blob    d0a7cfe832bfe22375af0d64cd5d0dbb350592e0
-pulled  2026-08-02, split into its own pin 2026-08-06
+commit  83b770777a16f72de935e10bc535ec817a3ae43b  2026-11-16
+blob    ed62b2451b6299f28e0c04581c0d7aff9fcded06
+pulled  2026-08-02, split into its own pin 2026-08-06, refreshed 2026-11-17
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -346,9 +331,9 @@ Verdict: **identical**.
 ```text
 repo    bitcoin/bips
 path    bip-0327/vectors/det_sign_vectors.json
-commit  87394eaeb436d02e0a68b38a1e94bc526d50056e  2023-03-27
-blob    261669ccd01cd4098fa97045f3d32654f64a48af
-pulled  2026-08-02, split into its own pin 2026-08-06
+commit  0ba8e56a029f4078272e14f6c5132454ed59a2d5  2026-11-16
+blob    c0f0fc48cfc97b199ea6fc34c435dba587dd9c55
+pulled  2026-08-02, split into its own pin 2026-08-06, refreshed 2026-11-17
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -359,9 +344,9 @@ Verdict: **identical**.
 ```text
 repo    bitcoin/bips
 path    bip-0327/vectors/sig_agg_vectors.json
-commit  1c6ac0c4cf1f39ea806b8594d6060b6d52fd1439  2024-07-19
-blob    519562c343b6e4bf686ba6e3eda8cee5c8e8b55d
-pulled  2026-08-02, split into its own pin 2026-08-06
+commit  83b770777a16f72de935e10bc535ec817a3ae43b  2026-11-16
+blob    08808fe82b25fb8f5b5ac42ebec03f88cc2b7253
+pulled  2026-08-02, split into its own pin 2026-08-06, refreshed 2026-11-17
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -370,12 +355,11 @@ Verdict: **identical**.
 ### BIP324 (ElligatorSwift): files under `tests/schemes/_data/`
 
 `ellswift_decode_test_vectors.csv` and `xswiftec_inv_test_vectors.csv`,
-under upstream's own names, both genuinely tipped by the same commit --
-unlike BIP327 above, there is no exception a shared pin would have
-papered over here. Each is pinned below in its own entry, one real path
-per pin, rather than to one placeholder path standing in for both: a
-placeholder is not a path GitHub's own "commits touching a path" API can
-be asked about, which is what kept the pair out of the weekly check.
+under upstream's own names, both tipped by the same commit. Each is
+pinned below in its own entry, one real path per pin, rather than to one
+placeholder path standing in for both: a placeholder is not a path
+GitHub's own "commits touching a path" API can be asked about, which is
+what kept the pair out of the weekly check.
 
 `packet_encoding_test_vectors.csv` is tipped by a later commit, and is
 pinned on its own too.
@@ -744,13 +728,10 @@ the BIP allows and for a zero tweak, and `nonce_gen`'s bound on
 `siv2r/bip-frost-signing` for that reason, and move back to
 `bitcoin/bips#2070` once it carries those commits. Each file is pinned to
 the commit on that repository's default branch, `master`, that last
-touched it, the same distinction the BIP327 entry above draws for
-`sign_verify_vectors.json` and `sig_agg_vectors.json`.
+touched it.
 
-`tests/schemes/frost_test.py` runs every case of every file. An error case
-carries what should be raised -- which party contributed what, or the
-text of a plain value error -- and is checked against it, the same
-discipline the BIP327 entry above states.
+What `tests/schemes/frost_test.py` runs of them, and how it checks an
+error case, its docstring says.
 
 `src/ecc/frost.py` follows `python/frost_ref/signing.py`
 function for function, checked against it at
@@ -870,12 +851,11 @@ Verdict: **identical but for a trailing newline**, which the
 ### `tests/schemes/_data/chilldkg_vectors.json`
 
 ```text
-repo      mllwchrry/bip-frost-dkg
+repo      BlockstreamResearch/bip-frost-dkg
 path      python/chilldkg_ref/chilldkg.py
-ref       remove-dkgoutput
-commit    f0d913b4a019cbb71ec437a1b4b46afd89b6c13b  2026-11-09
-blob      21c0ac32d009e143a7dfe50a7de53deea8c17f80
-ours      d2c536227962692afcf8dfcdf83dafb5657c00d1
+commit    f913f9c7ffc3d67bfbb22dd7d294fb43f71562f3  2026-11-13
+blob      9fef8ba80344e7f5214f55d590443793ac807308
+ours      6777a181875281510f115cefff7838d17eaed9ff
 program   ChillDKG's reference, python/chilldkg_ref/ at that commit
 calls     for each session (t, n), with
           rand(x, i) = sha256(seed + "|" + f"{t}|{n}|{x}|{i}"):
@@ -892,7 +872,7 @@ calls     for each session (t, n), with
             coordinator_finalize(cstate, pmsgs2)
             for each participant i:
               participant_finalize(state2[i], cmsg2)
-recorded  2026-11-11
+recorded  2026-11-16
 behind    0 revisions; that commit is the tip of the path
 ```
 
@@ -902,15 +882,10 @@ specifies, with every participant honest, for the (t, n) pairs
 [ISS 342](https://github.com/btclib-org/ecc/issues/342) lists. `seed` is
 the file's own field.
 
-The reference is pinned to the head of
-BlockstreamResearch/bip-frost-dkg#165, which is still open. That head is
-on the fork's branch `ref` names, and `commit` is the last commit there
-touching `chilldkg.py`. So the weekly check reports a revision of that
-pull request that changes `chilldkg.py`; one that changes only the rest
-of the program goes unreported.
-
-A force-push that rewrites the commit touching `chilldkg.py` is reported
-too, whatever it changes.
+`commit` is on the default branch and touches `chilldkg.py`, the path
+the weekly check asks about. So it reports a revision that changes
+`chilldkg.py`; one that changes only the rest of the program goes
+unreported.
 
 Before writing the file, the program asserted that every participant
 finalized with the coordinator's threshold info and recovery data; that
@@ -932,7 +907,7 @@ the file is the program's output unchanged.
 ```text
 repo    bitcoin-core/secp256k1
 path    src
-commit  1c088b64867d63f489d9d2ec58219e21f28357dd  2026-11-03
+commit  a0e2e23a71bf2aaae910f81cb2bd8aa0ae49d544  2026-11-16
 ours    a8f306732166cf782473ecbd2b90030616953689
 pulled  2026-09-10, refreshed 2026-09-14, 2026-10-07, 2026-10-26 and 2026-10-28
 behind  0 revisions; that commit is the tip of the path
