@@ -200,6 +200,9 @@ def test_multiplier_decomposer() -> None:
     that are exact by construction: the identities of the lattice. A negative or
     oversized m reduces mod n first, so every integer decomposes and the caller
     owns the sign handling.
+
+    Among the scalars libsecp256k1 tests its own split on, a half is exactly
+    _HALF_LEN bits wide: the bound is reached, not only respected.
     """
     # the identity decompositions, exact values rather than properties
     assert _multiplier_decomposer(0) == (0, 0)
@@ -211,10 +214,19 @@ def test_multiplier_decomposer() -> None:
     assert _multiplier_decomposer(-7) == (-7, 0)
     assert _multiplier_decomposer(_N + 42) == (42, 0)
 
+    # libsecp256k1's fill_scalars_near_split_bounds, a*lambda + (n + b)/2 mod n
+    # for a in -2..2 and b in -3, -1, 1, 3: the scalars whose halves its own
+    # split sends furthest from zero
+    # https://github.com/bitcoin-core/secp256k1/blob/2e1e6c60e970b8c27adfd6e5f0e6d23a91bc70f6/src/tests.c#L4641-L4667
+    near_bounds = [
+        (a * _LAM + (_N + b) // 2) % _N
+        for a in (-2, -1, 0, 1, 2)
+        for b in (-3, -1, 1, 3)
+    ]
     scalars = [1 << 127, (1 << 128) - 1, _N - 2, _LAM - 1, _LAM + 1] + [
         secrets.randbelow(_N) for _ in range(20)
     ]
-    for m in scalars:
+    for m in scalars + near_bounds:
         m1, m2 = _multiplier_decomposer(m)
         # congruent: m1 + m2*lambda is m mod n, which is the identity
         # making m1*Q + m2*(lambda*Q) equal m*Q
@@ -225,6 +237,9 @@ def test_multiplier_decomposer() -> None:
         # the endomorphism runs, so a half over it would cost a window
         assert m1.bit_length() <= _HALF_LEN
         assert m2.bit_length() <= _HALF_LEN
+
+    widest = max(h.bit_length() for m in near_bounds for h in _multiplier_decomposer(m))
+    assert widest == _HALF_LEN
 
 
 def test_double_mult_w_NAF() -> None:
