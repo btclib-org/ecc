@@ -495,6 +495,21 @@ def test_parse_refuses_a_truncated_proof(id_: str, size: int, err_msg: str) -> N
         RangeProof.parse(_octets(id_)[:size])
 
 
+def test_parse_writes_no_sign_bit_count_decoded_from_the_mantissa() -> None:
+    """A short read of the sign bits leaves out how many octets they take.
+
+    That count is decoded from the mantissa octet, so the sign bits are
+    read through `_read_decoded`, whose docstring says why (issue
+    btclib-org/btclib#3103).
+    """
+    # no min value, exp 0, and a mantissa of 64: 32 rings, four sign
+    # octets, of which one is there
+    header = bytes([_HAS_NZ_RANGE, 63])
+    err_msg = "rangeproof sign bits: 1 bytes, fewer than its size$"
+    with pytest.raises(EccValueError, match=f"^not enough data for the {err_msg}"):
+        RangeProof.parse(header + b"\x00")
+
+
 def test_assert_valid_refuses_a_body_the_mantissa_does_not_describe() -> None:
     """Every field is against the mantissa, that being what says the shape."""
     proof = RangeProof.parse(_octets("odd mantissa"))

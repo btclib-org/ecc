@@ -86,6 +86,33 @@ def test_read_exactly_names_the_field_it_could_not_fill() -> None:
         read_exactly(BytesIO(b""), 32, "tx_id")
 
 
+@pytest.mark.skipif(
+    sys.maxsize < 2**63 - 1, reason="sizes past four bytes need a 64-bit build"
+)
+def test_read_exactly_writes_no_size_wider_than_four_bytes() -> None:
+    """A short read's size is written where it fits four bytes, else described.
+
+    `read_exactly`'s docstring says why, and `_message_field` how (issue
+    btclib-org/btclib#3103). No spelling of the wide size is in the
+    refusal.
+    """
+    err_msg = "^not enough data for the f: 2 bytes instead of 4294967295$"
+    with pytest.raises(EccValueError, match=err_msg):
+        read_exactly(BytesIO(b"ab"), 2**32 - 1, "f")
+    err_msg = "^not enough data for the f: 2 bytes instead of an int of 33 bits$"
+    with pytest.raises(EccValueError, match=err_msg):
+        read_exactly(BytesIO(b"ab"), 2**32, "f")
+    err_msg = "^not enough data for the f: 2 bytes instead of an int of 63 bits$"
+    with pytest.raises(EccValueError, match=err_msg):
+        read_exactly(BytesIO(b"ab"), sys.maxsize, "f")
+
+    wide = 0x1234_5678_9ABC
+    err_msg = "^not enough data for the f: 2 bytes instead of an int of 45 bits$"
+    with pytest.raises(EccValueError, match=err_msg) as refused:
+        read_exactly(BytesIO(b"ab"), wide, "f")
+    assert_secret_free(refused.value, [str(wide), f"{wide:x}", wide.to_bytes(6, "big")])
+
+
 def test_assert_no_trailing() -> None:
     """Octets are one whole object; a caller's stream is the caller's."""
     # what a parser hands over: the argument as it came, and the stream
