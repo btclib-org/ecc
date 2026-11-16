@@ -131,6 +131,7 @@ from typing_extensions import override
 
 from ecc._utils import (
     _has_type,
+    _read_decoded,
     assert_no_trailing,
     assert_type,
     bytes_from_octets,
@@ -1047,7 +1048,7 @@ class RangeProof:
             min_value = int.from_bytes(octets, byteorder="big")
 
         rings = len(_rsizes(mantissa))
-        octets = read_exactly(stream, _sign_octets(rings), "rangeproof sign bits")
+        octets = _read_decoded(stream, _sign_octets(rings), "rangeproof sign bits")
         signs = tuple(bool(octets[i >> 3] & 1 << (i & 7)) for i in range(rings - 1))
         padding = (rings - 1) & 7
         if padding and octets[-1] >> padding:
