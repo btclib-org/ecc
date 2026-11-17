@@ -22,16 +22,20 @@ A caller with something to do about that difference names the specific
 class; `except EccException` is for the caller who only needs
 to know it came from here.
 
-The two classes carrying a field hand every constructor argument to
-`BaseException.__init__` and compose their message in `__str__`, which
+A class carrying a field hands every constructor argument to
+`BaseException.__init__` and composes its message in `__str__`, which
 is what `subprocess.CalledProcessError` and `UnicodeDecodeError` do, and
-what makes them picklable: `BaseException.__reduce__` returns `(cls,
+what makes it picklable: `BaseException.__reduce__` returns `(cls,
 self.args)`, so a class whose `args` is the composed message alone is
 rebuilt by calling it with one argument, and one argument is not what it
 takes. That is a TypeError out of `pickle`, out of `copy.copy` and out
 of `copy.deepcopy` -- and out of a `ProcessPoolExecutor`, which cannot
 send the exception back and reports a broken pool instead of the failure
 the worker died of.
+
+The classes from `HostSeckeyError` on are `ecc.chilldkg`'s, under the
+names BIP-FROST-DKG's reference gives them. Its vectors name the class
+each error case raises, and which participant it blames.
 """
 
 from __future__ import annotations
@@ -40,11 +44,24 @@ from typing_extensions import override
 
 __all__ = [
     "BorromeanRingError",
+    "DuplicateHostPubkeyError",
     "EccException",
     "EccRuntimeError",
     "EccTypeError",
     "EccValueError",
+    "FaultyCoordinatorError",
+    "FaultyParticipantError",
+    "FaultyParticipantOrCoordinatorError",
+    "HostSeckeyError",
     "InvalidContributionError",
+    "InvalidHostPubkeyError",
+    "InvalidRecoveryAckError",
+    "ProtocolError",
+    "RandomnessError",
+    "RecoveryDataError",
+    "SessionParamsError",
+    "ThresholdOrCountError",
+    "UnknownFaultyParticipantOrCoordinatorError",
 ]
 
 
@@ -137,3 +154,129 @@ class BorromeanRingError(EccRuntimeError):
         if self.ring is None:
             return str(self.args[0])
         return f"{self.args[0]} (ring {self.ring}, position {self.position})"
+
+
+class HostSeckeyError(EccValueError):
+    """A host secret key not in 1..n-1, or not the session's.
+
+    Not the session's: its host public key is in no position of the
+    session's parameters, or is not in the position the state passed
+    with it holds.
+    """
+
+
+class SessionParamsError(EccValueError):
+    """A ChillDKG session's parameters that no session can run on.
+
+    Each subclass says what is wrong with them.
+    """
+
+
+class InvalidHostPubkeyError(SessionParamsError):
+    """The host public key of `participant_id` is not a compressed point."""
+
+    def __init__(self, participant_id: int) -> None:
+        self.participant_id = participant_id
+        super().__init__(participant_id)
+
+    @override
+    def __str__(self) -> str:
+        return f"invalid host public key of participant {self.participant_id}"
+
+
+class DuplicateHostPubkeyError(SessionParamsError):
+    """Participant `participant_id1` and a later `participant_id2` share a key.
+
+    Honest key generation repeats a key with negligible probability, so
+    at least one of the two is faulty, where the keys reached the caller
+    unaltered.
+    """
+
+    def __init__(self, participant_id1: int, participant_id2: int) -> None:
+        self.participant_id1 = participant_id1
+        self.participant_id2 = participant_id2
+        super().__init__(participant_id1, participant_id2)
+
+    @override
+    def __str__(self) -> str:
+        return (
+            f"participants {self.participant_id1} and {self.participant_id2}"
+            " have the same host public key"
+        )
+
+
+class ThresholdOrCountError(SessionParamsError):
+    """A threshold and a count of host keys out of the bounds of a session.
+
+    `ecc.chilldkg.SessionParams` states the bounds.
+    """
+
+
+class RandomnessError(EccValueError):
+    """Randomness of 32 zero bytes, which a broken generator answers."""
+
+
+class RecoveryDataError(EccValueError):
+    """Recovery data that does not parse, or does not check out."""
+
+
+class ProtocolError(EccRuntimeError):
+    """A ChillDKG message that does not check out, and whom it accuses.
+
+    Each subclass says whom: a participant, the coordinator, or one of
+    the two. An EccRuntimeError for `InvalidContributionError`'s reason: a
+    party misbehaving is not the caller's mistake, and an
+    `except ValueError` must not swallow it.
+    """
+
+
+class FaultyParticipantError(ProtocolError):
+    """The coordinator found participant `participant_id` faulty.
+
+    Where the messages reached the coordinator unaltered, that
+    participant deviated from the protocol.
+    """
+
+    def __init__(self, participant_id: int, message: str) -> None:
+        self.participant_id = participant_id
+        super().__init__(participant_id, message)
+
+    @override
+    def __str__(self) -> str:
+        return f"participant {self.participant_id}: {self.args[1]}"
+
+
+class FaultyParticipantOrCoordinatorError(ProtocolError):
+    """A participant found `participant_id`, or the coordinator, faulty.
+
+    It is no proof against that participant: a coordinator deviating from
+    the protocol can make an honest one look faulty.
+    """
+
+    def __init__(self, participant_id: int, message: str) -> None:
+        self.participant_id = participant_id
+        super().__init__(participant_id, message)
+
+    @override
+    def __str__(self) -> str:
+        return f"participant {self.participant_id}: {self.args[1]}"
+
+
+class FaultyCoordinatorError(ProtocolError):
+    """A participant found the coordinator faulty."""
+
+
+class UnknownFaultyParticipantOrCoordinatorError(ProtocolError):
+    """A participant's secret share is wrong, and the messages do not say whose.
+
+    `ecc.chilldkg.participant_investigate`, given the coordinator's
+    investigation message, names a participant or the coordinator.
+    """
+
+
+class InvalidRecoveryAckError(FaultyParticipantError):
+    """The recovery acknowledgment of participant `participant_id` is invalid.
+
+    The session itself succeeded: what is not confirmed is that this
+    participant holds the recovery data.
+    """

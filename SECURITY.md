@@ -142,6 +142,24 @@ package is used to teach and to prototype as much as to build:
     being immutable exactly like `int` while only `bytearray` zeroizes,
     and bignum arithmetic on a `bytearray` still allocating `int`
     intermediates at every step
+- **`ecc.chilldkg` makes no call into libsecp256k1 of its own**:
+    libsecp256k1 has no module for it. It crosses where a function of
+    this package it calls does, as when it multiplies, sums points,
+    lifts a point it parses, signs and verifies. A secret crosses where
+    it is handed to such a function: for example, `curve.mult` makes the
+    commitments, the proof of possession's points and each check of a
+    secret share against its public share,
+    `sec_point.bytes_from_prv_key_int` the host public key and the
+    encryption nonce's point, `sec_point._mult_sec_compressed` each
+    pad's ECDH, and `ssa.sign_` the certificate's and the recovery
+    acknowledgment's signatures. What `ecc.chilldkg` computes itself on
+    a secret is the Python arithmetic above, whatever is installed.
+    Examples are the polynomial evaluated at each participant's x, the
+    check that each secret coefficient is below n, the proof of
+    possession's negations of d and k, its `d ^ mask` and its
+    `s = k + e*d`, the pads added to the shares and taken from them, the
+    tweak added to the secret share, and the sum of the partial secret
+    shares an investigation decrypts
 - the bindings also let a caller own the buffer a secret is written
     into: a keyword-only `into=`, on the entry points that produce one.
     This package passes none, and that is a decision, not an oversight.
@@ -329,8 +347,9 @@ package is used to teach and to prototype as much as to build:
     (`src/ecc/curves/sec_point.py:445`), under
     `sec_point.mult_pub_key`, and `sec_point._mult_sec_compressed` at
     `libsecp256k1_shared_point(sec, m, True)`
-    (`src/ecc/curves/sec_point.py:467`), under `ecies.derive_keys`, make
-    the same call on the octets they already hold.
+    (`src/ecc/curves/sec_point.py:467`), under `ecies.derive_keys` and
+    the pads of `ecc.chilldkg`, make the same call on the octets they
+    already hold.
     `double_mult_var` and `multi_mult_var`, and `ssa.batch_verify`, are
     the other call: `keys.pubkey_tweak_mul_sum`, one
     `secp256k1_ec_pubkey_tweak_mul` per term, which runs
@@ -403,7 +422,8 @@ package is used to teach and to prototype as much as to build:
     call. After the call, its `ecdh._shared_point_`, under every
     `secp256k1_ecdh` this package makes, assembles the octets it answers in
     Python: it copies the coordinates out and, where the call asks for the
-    compressed form, as `dh.diffie_hellman`'s and `ecies.derive_keys`'s do,
+    compressed form, as `dh.diffie_hellman`'s, `ecies.derive_keys`'s and
+    `ecc.chilldkg`'s do,
     sets the prefix from the parity of the product's y,
     `_EVEN_Y | (coordinates[63] & 1)`.
 
@@ -450,6 +470,14 @@ package is used to teach and to prototype as much as to build:
     - `dh.diffie_hellman` slices the x-coordinate out of the shared
         point's octets and derives the key from it in Python,
         `kdf.ansi_x9_63_kdf`, one hash call per block
+    - `chilldkg.participant_step2`, `chilldkg.participant_investigate` and
+        `chilldkg.participant_recover` read the host secret key from
+        octets and refuse one outside 1..n-1 with a Python comparison,
+        and `chilldkg.participant_step1_` derives its secret nonce
+        through `scalar_from_prv_key`. Each hands that scalar, with
+        another party's 33 octets, to `sec_point._mult_sec_compressed`,
+        and hashes with sha256 the compressed octets it answers, then
+        hashes that into a pad and reduces the pad mod n in Python
     - `ellswift.create`, `ellswift.xdh`, `dsa.sign_`,
         `dsa.sign_recoverable_` and `ssa.sign_`, with the spellings that
         reduce a message first, take the key through
@@ -476,8 +504,9 @@ package is used to teach and to prototype as much as to build:
     ordering matters as well -- the signer must publish its `R` before
     learning the host's randomness, and `sign` alone cannot enforce that
 - randomness comes from the operating system through the `secrets`
-    module: the auxiliary randomness of BIP340 signing and the private
-    keys of the key generation helpers. Nothing here seeds a generator
+    module: the auxiliary randomness of BIP340 signing, the private
+    keys of the key generation helpers, and the randomness
+    `chilldkg.participant_step1` draws. Nothing here seeds a generator
     of its own
 - `ecc.ecies` ships no block cipher and takes AES-128-CBC
     as two callables, so the cipher's own resistance to timing and

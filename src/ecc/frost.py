@@ -17,7 +17,7 @@ single x-only public key with `ecc.ssa` and with any other BIP340
 verifier -- the same output shape `ecc.musig2` produces for an
 *n*-of-*n* group, with a chosen subset standing in for the whole group.
 
-**Key generation is out of scope, here as in the BIP.** This module
+**Key generation is not this module's, here as in the BIP.** This module
 takes a threshold secret key already split into shares -- a *secshare*
 per participant, all of them scalar multiples of the same secret
 polynomial's constant term -- and never splits one itself. It is tested
@@ -26,9 +26,9 @@ of ChillDKG's reference. `validate_threshold_info` checks key material
 a dealer or a DKG produced rather than producing any: it asks whether a
 threshold info's own public shares reconstruct its own threshold public
 key, which functional compatibility needs and which is not a statement
-about how that key material came to exist. `btclib-org/btclib#2200` is
-where key generation is tracked: a trusted dealer, then ChillDKG, once
-BIP445 and BIP-FROST-DKG settle.
+about how that key material came to exist. `ecc.chilldkg` produces it
+with no dealer, by BIP-FROST-DKG's ChillDKG; `btclib-org/btclib#2200`
+tracks a trusted dealer's split.
 
 The round shape mirrors `ecc.musig2`: a primitive per round and
 no function that signs, because signing is interactive. Key material and nonces
@@ -361,8 +361,7 @@ class ThresholdInfo:
     `t` of the present shares a caller happened to check against.
 
     A key generation protocol answers this, and this module never builds
-    one: `btclib-org/btclib#2200` is where producing it -- a trusted
-    dealer, ChillDKG -- is tracked.
+    one: `ecc.chilldkg` does.
     """
 
     t: int

@@ -93,6 +93,19 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
         "bip-anti-exfil-boundary.json",
         "bip-anti-exfil.json",
     ),
+    "schemes/chilldkg_test.py": (
+        "chilldkg_vectors.json",
+        "coordinator_finalize_vectors.json",
+        "coordinator_investigate_vectors.json",
+        "coordinator_step1_vectors.json",
+        "hostpubkey_gen_vectors.json",
+        "params_hash_vectors.json",
+        "participant_finalize_vectors.json",
+        "participant_investigate_vectors.json",
+        "participant_step1_vectors.json",
+        "participant_step2_vectors.json",
+        "recover_vectors.json",
+    ),
     "schemes/der_test.py": ("der_length_vectors.json",),
     "schemes/dleq_test.py": (
         "test_vectors_generate_proof.csv",
@@ -160,6 +173,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "curves.curve._add": ("curves/curve_test.py",),
     "curves.curve._jac_double_mult_var": (
         "schemes/anti_exfil_vectors_test.py",
+        "schemes/chilldkg_test.py",
         "schemes/der_test.py",
         "schemes/dlc_oracle_test.py",
         "schemes/dsa_recovery_test.py",
@@ -175,6 +189,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "curves/bip32_public_derivation_test.py",
         "curves/curve_test.py",
         "schemes/anti_exfil_vectors_test.py",
+        "schemes/chilldkg_test.py",
         "schemes/dahlias_test.py",
         "schemes/der_test.py",
         "schemes/dlc_oracle_test.py",
@@ -196,6 +211,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.curve._sum_var": (
         "curves/curve_test.py",
+        "schemes/chilldkg_test.py",
         "schemes/dahlias_test.py",
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
@@ -212,6 +228,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "curves/bip32_public_derivation_test.py",
         "curves/curve_test.py",
         "schemes/anti_exfil_vectors_test.py",
+        "schemes/chilldkg_test.py",
         "schemes/dahlias_test.py",
         "schemes/der_test.py",
         "schemes/dlc_oracle_test.py",
@@ -230,6 +247,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "curves.curve.add": ("curves/curve_test.py",),
     "curves.curve.double_mult_var": (
         "curves/curve_test.py",
+        "schemes/chilldkg_test.py",
         "schemes/dlc_oracle_test.py",
         "schemes/dleq_test.py",
         "schemes/ecdsa_adaptor_test.py",
@@ -237,6 +255,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.curve.multi_mult_var": (
         "curves/curve_test.py",
+        "schemes/chilldkg_test.py",
         "schemes/dahlias_test.py",
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
@@ -244,11 +263,14 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/ssa_test.py",
     ),
     "curves.sec_point._mult_sec": (),
-    "curves.sec_point._mult_sec_compressed": (),
+    "curves.sec_point._mult_sec_compressed": ("schemes/chilldkg_test.py",),
     "curves.sec_point.PubKeyTweakChain.__init__": (
         "curves/bip32_public_derivation_test.py",
     ),
-    "curves.sec_point.bytes_from_prv_key_int": ("schemes/musig2_test.py",),
+    "curves.sec_point.bytes_from_prv_key_int": (
+        "schemes/chilldkg_test.py",
+        "schemes/musig2_test.py",
+    ),
     "curves.sec_point.prv_key_tweak_add": ("schemes/dahlias_test.py",),
     "commit_nonce.commit_nonce_": (
         "schemes/anti_exfil_vectors_test.py",
@@ -281,6 +303,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     "ssa.Signer.sign_": ("schemes/ssa_test.py",),
     "ssa.assert_as_valid_": (
         "schemes/anti_exfil_vectors_test.py",
+        "schemes/chilldkg_test.py",
         "schemes/dlc_oracle_test.py",
         "schemes/frost_test.py",
         "schemes/musig2_test.py",
@@ -297,6 +320,7 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
         "schemes/ssa_tweak_test.py",
     ),
     "ssa.sign_": (
+        "schemes/chilldkg_test.py",
         "schemes/ssa_halfagg_test.py",
         "schemes/ssa_test.py",
     ),
@@ -306,10 +330,9 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 # is a line deleted here rather than a number nobody re-derives, and what
 # would close each:
 #
-# - `curves.sec_point._mult_sec` and `curves.sec_point._mult_sec_compressed`,
-#   a point multiplied from its SEC octets. No vendored vector here hands
-#   the package octets to multiply; a set that does, an ECDH one taking the
-#   peer's key as octets, would.
+# - `curves.sec_point._mult_sec`, a point multiplied from its SEC octets.
+#   No vendored vector here hands it octets to multiply; an ECDH set taking
+#   the peer's key as octets, through `sec_point.mult_pub_key`, would.
 # - `dsa.Signer.__init__` and `dsa.Signer.sign_`, `Signer`'s
 #   constructor and signing. Every third-party vector
 #   reaches `dsa.sign_` or `dsa.assert_as_valid_` through the free
@@ -324,7 +347,6 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
 _WITHOUT_AN_AUTHORITY = frozenset(
     {
         "curves.sec_point._mult_sec",
-        "curves.sec_point._mult_sec_compressed",
         "dsa.Signer.__init__",
         "dsa.Signer.sign_",
         "dsa.sign_recoverable_",

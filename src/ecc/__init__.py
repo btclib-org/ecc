@@ -61,6 +61,7 @@ __all__ = [
     "alias",
     "bip340_nonce",
     "borromean",
+    "chilldkg",
     "commit_nonce",
     "curves",
     "dahlias",

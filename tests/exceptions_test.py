@@ -6,12 +6,11 @@
 
 The classes with nothing added to their base need no test of their own:
 what they are is the base, and every module raising one asserts the
-message it raised. What is tested here is the two carrying a field --
-`InvalidContributionError` and `BorromeanRingError` -- and specifically
-that a field survives leaving the process it was raised in, which is the
-case the field exists for and the one nothing else in the suite
-exercises: pytest-xdist sends a report as text, so no exception object
-crosses between workers.
+message it raised. The classes carrying a field are tested here, and
+specifically that a field survives leaving the process it was raised in,
+which is the case the field exists for and the one nothing else in the
+suite exercises: pytest-xdist sends a report as text, so no exception
+object crosses between workers.
 """
 
 from __future__ import annotations
@@ -26,11 +25,16 @@ import pytest
 from ecc import exceptions
 from ecc.exceptions import (
     BorromeanRingError,
+    DuplicateHostPubkeyError,
     EccException,
     EccRuntimeError,
     EccTypeError,
     EccValueError,
+    FaultyParticipantError,
+    FaultyParticipantOrCoordinatorError,
     InvalidContributionError,
+    InvalidHostPubkeyError,
+    InvalidRecoveryAckError,
 )
 
 # the exception, the `args` it is expected to carry, its message, and the
@@ -66,6 +70,41 @@ CASES = [
         {"ring": None, "position": None},
         id="BorromeanRingError-whole-signature",
     ),
+    pytest.param(
+        InvalidHostPubkeyError(3),
+        (3,),
+        "invalid host public key of participant 3",
+        {"participant_id": 3},
+        id="InvalidHostPubkeyError",
+    ),
+    pytest.param(
+        DuplicateHostPubkeyError(0, 2),
+        (0, 2),
+        "participants 0 and 2 have the same host public key",
+        {"participant_id1": 0, "participant_id2": 2},
+        id="DuplicateHostPubkeyError",
+    ),
+    pytest.param(
+        FaultyParticipantError(1, "invalid VSS commitment"),
+        (1, "invalid VSS commitment"),
+        "participant 1: invalid VSS commitment",
+        {"participant_id": 1},
+        id="FaultyParticipantError",
+    ),
+    pytest.param(
+        FaultyParticipantOrCoordinatorError(2, "invalid public nonce"),
+        (2, "invalid public nonce"),
+        "participant 2: invalid public nonce",
+        {"participant_id": 2},
+        id="FaultyParticipantOrCoordinatorError",
+    ),
+    pytest.param(
+        InvalidRecoveryAckError(0, "invalid acknowledgment"),
+        (0, "invalid acknowledgment"),
+        "participant 0: invalid acknowledgment",
+        {"participant_id": 0},
+        id="InvalidRecoveryAckError",
+    ),
 ]
 
 
@@ -89,7 +128,8 @@ def test_a_field_carrying_exception_says_what_it_carries(
     # `repr` names the fields with the message, which is the visible half
     # of `args` holding them: rebuilding the class from what it prints is
     # what a one-tuple of the composed message could not offer
-    assert repr(error) == f"{type(error).__name__}{args!r}"
+    # (a one-tuple is printed without its trailing comma)
+    assert repr(error) == f"{type(error).__name__}({', '.join(map(repr, args))})"
 
 
 @pytest.mark.parametrize("error, args, message, fields", CASES)

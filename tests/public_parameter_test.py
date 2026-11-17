@@ -62,6 +62,16 @@ _NOT_OPERANDS: dict[str, str] = {
     "ecc.number_theory._jacobi_var.n": "modulus",
     # which of the eight preimages to try, drawn by `_ell_from_point_var`
     "ecc.ellswift._xswiftec_inv_var.case": "selector",
+    # how many points a message holds: the number of operands, not one
+    "ecc.chilldkg._parse_cmsg1_var.n": "count",
+    "ecc.chilldkg._parse_cmsg1_var.t": "count",
+    "ecc.chilldkg._parse_pmsg1_var.n": "count",
+    "ecc.chilldkg._parse_pmsg1_var.t": "count",
+    "ecc.chilldkg._points_var.count": "count",
+    # the threshold, which is how many commitments there are, and how many
+    # public shares to compute: counts, not operands
+    "ecc.chilldkg._threshold_info_var.n": "count",
+    "ecc.chilldkg._threshold_info_var.t": "count",
     # only refused when out of range: the work is the parse of the shares
     "ecc.frost._parse_session_pub_shares_var.ids": "range-checked",
     "ecc.frost._parse_session_pub_shares_var.n": "range-checked",
