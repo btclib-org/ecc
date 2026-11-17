@@ -201,18 +201,14 @@ _NONCE_SIZE = 66
 # aggregate nonce is always 66 bytes on the wire
 _INF_BYTES = bytes(_PK_SIZE)
 
-# BIP327's reference raises several of its own verbatim strings besides
-# the four named below -- "first secnonce value is out of range." here
-# and its "second" twin, and "Public key does not match nonce_gen
-# argument" among them (`sign`, further down). What earns a name here is
-# not "BIP327's own": it is whether a vector compares the string byte for
-# byte, `assert_error` doing that for a "value" case's `error.message` --
-# a paraphrase there would cost the comparison and a translation table in
-# the test would drift from both sides at once. Only the four below and
-# "first secnonce value is out of range." are compared that way today;
-# `_TWEAK_SIZE_ERR` is named and untested by any vector regardless, for
-# the reader rather than the suite. Everything else raises what the
-# this package helper it called raises, verbatim BIP327 string or not
+# BIP327's reference strings, copied verbatim, as are the ones `sign`
+# raises further down for its secnonce and its public key. `assert_error`
+# compares a "value" case's `error.message` with the raised message byte
+# for byte, so a paraphrase would cost the comparison, and a translation
+# table in the test would drift from both sides at once. The vectors
+# compare each of these strings except `_TWEAK_SIZE_ERR`. Everything else
+# raises what the package helper it called raises, verbatim BIP327 string
+# or not
 _TWEAK_SIZE_ERR = "The tweak must be a 32-byte array."
 _TWEAK_RANGE_ERR = "The tweak must be less than n."
 _TWEAK_INF_ERR = "The result of tweaking cannot be infinity."

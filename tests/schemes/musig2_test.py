@@ -4,7 +4,7 @@
 
 """Tests for the `ecc.musig2` module.
 
-The vectors are BIP327's own, all eight files of
+The vectors are BIP327's own, the JSON files of
 https://github.com/bitcoin/bips/tree/master/bip-0327/vectors, vendored
 under `tests/schemes/_data/`; `tests/_data/README.md` pins the revision.
 Every case of every file is exercised, the error cases included, and an
@@ -120,7 +120,7 @@ def assert_error(error: dict[str, Any], exc: Exception) -> None:
     else:
         assert error["type"] == "value"
         assert isinstance(exc, EccValueError)
-        # the message, byte for byte: the four BIP327 strings this package
+        # the message, byte for byte: the BIP327 strings this package
         # copies verbatim are the reason it can be compared at all
         assert str(exc) == error["message"]
 
@@ -804,8 +804,8 @@ def test_sign_verified_by_bindings(case: dict[str, Any]) -> None:
     signer = case["signer_index"]
 
     session_ctx = musig2.SessionContext(agg_nonce, pub_keys, [], [], msg)
-    # a copy: signing consumes the secnonce, and every valid case in this
-    # file signs with the vector file's one secnonce, index 0, exactly as
+    # a copy: signing consumes the secnonce, and every valid case in
+    # this file signs with the secnonce at index 0, exactly as
     # test_sign_verify_valid_vectors does
     sig = musig2.sign(bytearray(_SV_SEC_NONCES[0]), _SV_SK, session_ctx)
 
@@ -1305,8 +1305,6 @@ def test_sec_nonce_signs_once() -> None:
 
 def test_sec_nonce_second_half_out_of_range() -> None:
     """Verify sign refuses a secnonce whose second scalar is zero."""
-    # the vectors zero a whole secnonce, which the first half already
-    # answers; the second half is checked here
     pk_1 = musig2.individual_pub_key(_SK_1)
     sec_nonce, pub_nonce = musig2.nonce_gen(_SK_1, pk_1, None, _MSG)
     sec_nonce[32:64] = bytes(32)
