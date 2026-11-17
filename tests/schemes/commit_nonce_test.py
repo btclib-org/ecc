@@ -10,11 +10,12 @@ an ordinary one, opens against the value committed to, and opens against
 nothing else.
 
 The dsa construction is libsecp256k1-zkp's `ecdsa_s2c`, and the fixed
-vectors of that module's test suite are below. The ssa side matches
-bitcoin-core/secp256k1#1140's tags, an open and unmerged pull request
-whose `tests_impl.h` publishes no fixed vector of its own, so it has
-none to match and is tested against itself and against the properties
-the scheme needs.
+vectors of that module's test suite are below. The ssa side follows
+bitcoin-core/secp256k1#1140, an open and unmerged pull request whose
+`tests_impl.h` publishes no fixed vector of its own:
+`tests/schemes/ssa_s2c_vectors_test.py` holds it to octets that pull
+request's library answered, and here it is tested against itself and
+against the properties the scheme needs.
 """
 
 import random
@@ -27,7 +28,7 @@ import pytest
 
 from ecc import commit_nonce, dsa, ssa
 from ecc.alias import INF
-from ecc.bip340_nonce import bip340_nonce_
+from ecc.bip340_nonce import _unnegated_nonce_, bip340_nonce_
 from ecc.commit_nonce import (
     _tweak,
     commit_entropy_,
@@ -50,6 +51,7 @@ from ecc.exceptions import (
 )
 from ecc.hashes import reduce_to_hlen
 from ecc.rfc6979_nonce import rfc6979_nonce_
+from ecc.ssa import _S2C_DATA_TAG as _SSA_DATA_TAG
 from ecc.ssa import _S2C_POINT_TAG as _SSA_POINT_TAG
 from tests import REFUSED_SCALARS, both_arms, needs_zkp, refused_secret
 from tests.curves.curve_test import low_card_curves
@@ -141,12 +143,16 @@ def test_ssa_commitment() -> None:
     """Check a committing ssa signature verifies over both nonce parities."""
     # the tweak moves the nonce's point, so BIP340's even-y normalization
     # has to be applied to the moved one: both parities are collected
-    # here, the odd ones being the signatures that fail without it
+    # here, the odd ones being the signatures that fail without it. The
+    # receipt is the point before that normalization, so both of its
+    # parities are collected too
     parities = set()
+    receipt_parities = set()
     for hf in (sha256, sha1):
         for ec in (secp256k1, CURVES["secp160r1"]):
             prv_key, x_Q = ssa.gen_keys(_PRV_KEY, ec)
             commit_hash = reduce_to_hlen(_COMMIT, hf)
+            msg_hash = reduce_to_hlen(_MSG, hf)
             for i in range(4):
                 aux = i.to_bytes(hf().digest_size, "big")
                 sig, receipt = ssa.sign(_MSG, prv_key, aux, ec, hf, commit=_COMMIT)
@@ -158,12 +164,17 @@ def test_ssa_commitment() -> None:
                 assert not ssa.verify(
                     _MSG, x_Q, sig, hf, commit=_COMMIT, receipt=mult(2, receipt, ec)
                 )
-                # the receipt is the even-y point the tweak hashed
-                assert receipt[1] % 2 == 0
+                # the receipt is the point of the nonce before its even-y
+                # negation: commit_hash and then aux reach the derivation
+                nonce_aux = commit_entropy_(commit_hash + aux, _SSA_DATA_TAG, hf)
+                k0, _, _ = _unnegated_nonce_(msg_hash, prv_key, nonce_aux, ec, hf, None)
+                assert receipt == mult(k0, ec.G, ec)
+                receipt_parities.add(receipt[1] % 2)
                 W = commit_point_var_(commit_hash, receipt, _SSA_POINT_TAG, ec, hf)
                 parities.add(W[1] % 2)
 
     assert parities == {0, 1}
+    assert receipt_parities == {0, 1}
 
 
 def test_the_python_path_is_the_committing_one() -> None:

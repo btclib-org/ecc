@@ -84,7 +84,7 @@ from ecc._utils import (
     is_octets,
 )
 from ecc.alias import BinaryData, HashF, Integer, JacPoint, Octets, Point, Public
-from ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
+from ecc.bip340_nonce import _nonce_with_pub_key_, _unnegated_nonce_
 from ecc.commit_nonce import (
     commit_entropy_,
     commit_nonce_,
@@ -145,14 +145,15 @@ __all__ = [
 
 # bitcoin-core/secp256k1#1140 ("Schnorr sign-to-contract and anti-exfil")
 # spells these `s2c/schnorr/point` and `s2c/schnorr/data`, in
-# src/modules/schnorrsig/main_impl.h at its head 49c31379, and this tree
-# matches it byte for byte: if it lands, a commitment made here opens
-# there. bitcoin-core/secp256k1#1140 is open and unmerged, so it is a
-# reference and not an authority -- its spelling can still change, and
-# the pull request may never land at all. Named for the standard rather
-# than for this package's `ssa`, and not under BIP0340/, which would claim the
-# BIP defines this. Frozen all the same: a different string is a
-# different scheme, and every signature already made would stop opening
+# src/modules/schnorrsig/main_impl.h at the commit `tests/_data/README.md`
+# pins for `schnorrsig_s2c_vectors.json`, and this tree matches it byte
+# for byte: if it lands, a commitment made here opens there.
+# bitcoin-core/secp256k1#1140 is open and unmerged, so it is a reference
+# and not an authority -- its spelling can still change, and the pull
+# request may never land at all. Named for the standard rather than for
+# this package's `ssa`, and not under BIP0340/, which would claim the BIP
+# defines this. Frozen all the same: a different string is a different
+# scheme, and every signature already made would stop opening
 _S2C_POINT_TAG = b"s2c/schnorr/point"
 _S2C_DATA_TAG = b"s2c/schnorr/data"
 
@@ -613,22 +614,22 @@ def _sign_commit_(
 ) -> tuple[Sig, Point]:
     """Return the sign-to-contract signature and its receipt.
 
-    ``nonce_aux`` is what reaches ``bip340_nonce_`` as auxiliary
-    randomness. ``sign_``'s own commitment path passes its mix of the
-    caller's aux and commit_hash; the anti-exfil protocol below passes
-    commit_hash alone, already hashed by ``anti_exfil_host_commit``, so
-    that the nonce a signature reaches depends on nothing a caller
-    supplied on the side.
+    ``nonce_aux`` is what reaches the BIP340 nonce derivation as
+    auxiliary randomness. ``sign_``'s own commitment path passes its mix
+    of commit_hash and the caller's aux; the anti-exfil protocol below
+    passes commit_hash alone, already hashed by
+    ``anti_exfil_host_commit``, so that the nonce a signature reaches
+    depends on nothing a caller supplied on the side.
     """
-    # k is the nonce: an integer in the range 1..n-1.
-    k, x_K, q, x_Q = bip340_nonce_(msg, prv_key, nonce_aux, ec, hf)
-
-    # the tweak moves the nonce's point, and BIP340 signs with the
-    # even-y one: k comes back from bip340_nonce_ already normalized,
-    # so it is the tweaked point whose parity is still to be settled --
-    # and x_K, which the challenge commits to, is the tweaked one.
-    # The receipt keeps the even-y point the tweak hashed
-    k, receipt = commit_nonce_(commit_hash, k, _S2C_POINT_TAG, ec, hf)
+    # k0 is the nonce before BIP340's even-y negation, in 1..n-1. Its
+    # point, with its actual parity, is the receipt the tweak hashes, as
+    # bitcoin-core/secp256k1#1140 hashes it, and as step 2 of the draft
+    # anti-exfil BIP (AvilaLabs/anti-exfil, spec/bip-anti-exfil.md) asks.
+    # The tweak moves the point, so the even-y negation BIP340 signs with
+    # applies to the tweaked nonce, and x_K, which the challenge commits
+    # to, is the tweaked point's
+    k0, q, x_Q = _unnegated_nonce_(msg, prv_key, nonce_aux, ec, hf, None)
+    k, receipt = commit_nonce_(commit_hash, k0, _S2C_POINT_TAG, ec, hf)
     x_K, y_K = mult(k, ec=ec)
     # selected by index, not under an `if`: the parity of y_K is not published
     k = (k, ec.n - k)[y_K & 1]
@@ -716,7 +717,8 @@ def sign_(
     ecc.commit_nonce). Keyword-only, and the only argument that
     changes what is returned, so that neither is easy to pass by accident.
     A commitment does not displace aux: it joins it, both of them
-    reaching the nonce as BIP340's auxiliary randomness.
+    reaching the nonce as BIP340's auxiliary randomness, commit_hash
+    first and aux after it.
     """
     msg = bytes_from_octets(msg)
 
@@ -726,12 +728,16 @@ def sign_(
     # the committed value has to reach the nonce derivation, or two
     # commitments over one message hand out the private key -- see
     # commit_nonce. BIP340 has the slot for it and dsa does not: `a` is
-    # whatever the signer wants mixed in, so aux and the commitment are
+    # whatever the signer wants mixed in, so the commitment and aux are
     # hashed together into it and both still count. That is why ssa keeps
     # taking its aux where dsa refuses a nonce beside a commitment: an
-    # aux is an input to the derivation, a nonce is its answer
+    # aux is an input to the derivation, a nonce is its answer.
+    #
+    # The commitment comes first and aux after it, as
+    # bitcoin-core/secp256k1#1140 hashes s2c_data32 before ndata, which
+    # carries aux there: the two libraries then sign the same octets
     if commit_hash is not None:
-        aux = commit_entropy_(aux + bytes_from_octets(commit_hash), _S2C_DATA_TAG, hf)
+        aux = commit_entropy_(bytes_from_octets(commit_hash) + aux, _S2C_DATA_TAG, hf)
 
     # the curve and the hash function decide this, and the size of the
     # message does not. `libsecp256k1_ssa.sign` accepts only a 32-byte
@@ -1410,10 +1416,13 @@ def anti_exfil_signer_commit(
     exactly what it becomes inside ``anti_exfil_sign``'s nonce derivation
     -- so the two reach one nonce and the R below is the receipt that
     signature will open with.
+
+    R is the point of the nonce before BIP340's even-y negation, with
+    whatever parity it has: step 4 negates the tweaked nonce instead.
     """
     aux = bytes_from_octets(host_commitment, hf().digest_size)
-    _, x_K, _, _ = bip340_nonce_(msg, prv_key, aux, ec, hf)
-    return x_K, _y_even_var(Public(x_K), ec)
+    k0, _, _ = _unnegated_nonce_(msg, prv_key, aux, ec, hf, None)
+    return mult(k0, ec.G, ec)
 
 
 def anti_exfil_sign(

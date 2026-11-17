@@ -158,6 +158,28 @@ def _nonce_with_pub_key_(
     no key, which the default self-check refuses. Only `Signer` passes
     one, computed from its own scalar.
     """
+    k, q, x_Q = _unnegated_nonce_(msg, prv_key, aux, ec, hf, pub_key)
+    x_K, y_K = mult(k, ec=ec)
+    # selected by index, not under an `if`: the parity of y_K is not published
+    k = (k, ec.n - k)[y_K & 1]
+
+    return k, x_K, q, x_Q
+
+
+def _unnegated_nonce_(
+    msg: Octets,
+    prv_key: Integer,
+    aux: Octets | None,
+    ec: Curve,
+    hf: HashF,
+    pub_key: Point | None,
+) -> tuple[int, int, int]:
+    """Return the nonce before its even-y negation, with q and x_Q.
+
+    `ssa`'s sign-to-contract hashes this nonce's point with its actual
+    parity, and negates only the tweaked nonce. q is negated to match the
+    even-y key.
+    """
     hf_len = hf().digest_size
     msg = bytes_from_octets(msg)
 
@@ -169,9 +191,4 @@ def _nonce_with_pub_key_(
 
     aux = secrets.token_bytes(hf_len) if aux is None else bytes_from_octets(aux, hf_len)
 
-    k = _bip340_nonce_(msg, q, x_Q, aux, ec, hf)
-    x_K, y_K = mult(k, ec=ec)
-    # selected by index, not under an `if`: the parity of y_K is not published
-    k = (k, ec.n - k)[y_K & 1]
-
-    return k, x_K, q, x_Q
+    return _bip340_nonce_(msg, q, x_Q, aux, ec, hf), q, x_Q

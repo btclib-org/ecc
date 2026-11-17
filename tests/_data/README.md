@@ -1035,6 +1035,56 @@ with secret key zero, which is not a valid key. This package refuses a
 zero r or s where upstream parses it; the test asks `recover_pub_key_`
 for the refusal.
 
+### `tests/schemes/_data/schnorrsig_s2c_vectors.json`
+
+```text
+repo      benma/secp256k1
+path      src/modules/schnorrsig/main_impl.h
+ref       schnorr-s2c
+commit    b4d2b22e39832d4332ce889aac40812ff1c4cbad  2026-10-14
+blob      3c4e420c8fd9cbc30bf89a7d251b5796713e3d5c
+ours      92145497196b939b7d6206faeae40b9620a0892b
+program   the library at that commit, built by cmake with its defaults
+calls     for each index i, with h(tag) = sha256(f"pr1140/{tag}/{i}"):
+            seckey = int(h("sk"), big-endian) % (n - 1) + 1
+            msg32, aux32, data32 = h("msg"), h("aux"), h("data")
+            keypair = secp256k1_keypair_create(seckey)
+          anti_exfil, with rho = data32:
+            secp256k1_schnorrsig_anti_exfil_host_commit(rho)
+            secp256k1_schnorrsig_anti_exfil_signer_commit(msg32, keypair,
+                                                          host commitment)
+            secp256k1_schnorrsig_sign_custom(msg32, keypair), with
+              s2c_data32 = rho and ndata = NULL
+            secp256k1_schnorrsig_anti_exfil_host_verify
+          sign_to_contract:
+            secp256k1_schnorrsig_sign_custom(msg32, keypair), with
+              s2c_data32 = data32 and ndata = aux32
+          each opening: secp256k1_schnorrsig_s2c_opening_serialize
+recorded  2026-11-17
+behind    0 revisions; that commit is the tip of the path
+```
+
+Verdict: **recorded**. There is no upstream vector file: the pull
+request's `tests_impl.h` draws its sign-to-contract data at random. Each
+row is one run of the library of bitcoin-core/secp256k1#1140, whose head
+is `commit`, on the branch of the fork `ref` names. `index` is the row's
+i. Each flow has one row for each combination of the parities of the
+key point P, of the receipt R0 and of the tweaked nonce point W: the
+lowest i that gives it. The signer commitment is R0, compressed by
+`secp256k1_ec_pubkey_serialize`, and an opening is the same octets with
+the first one's 0x04 bit set where W has odd y. The program that made
+the calls is not committed.
+
+`secp256k1_schnorrsig_anti_exfil_host_verify` accepted each anti-exfil
+row before the file was written.
+
+`commit` touches `main_impl.h`, the path the weekly check asks about,
+so a revision of the pull request that changes only another file goes
+unreported. The pull request is open and unmerged, so the file is a
+reference and not an authority. It is libsecp256k1's output, so
+`tests/py_arm_authority_test.py` does not name it.
+`tests/schemes/ssa_s2c_vectors_test.py` reads every row.
+
 ## AvilaLabs/anti-exfil
 
 ### The draft anti-exfil BIP: files under `tests/schemes/_data/`
@@ -1987,6 +2037,7 @@ Not checked byte for byte against one:
   `zkp_schnorr_adaptor_vectors.json`,
   `dsa_anti_exfil_test.py`, `secp256k1_symbols.txt`,
   `bitcoin_core_compact_vectors.json` and `secp256k1_recovery_vectors.json`.
-- recorded from a program pinned upstream: `chilldkg_vectors.json`.
+- recorded from a program pinned upstream: `chilldkg_vectors.json` and
+  `schnorrsig_s2c_vectors.json`.
 - not vendored: `zkp_rangeproof_vectors.json` and
   `der_length_vectors.json` (this suite's own).

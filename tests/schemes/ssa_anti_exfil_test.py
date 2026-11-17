@@ -8,10 +8,10 @@ bitcoin-core/secp256k1#1140 proposes the same handshake for
 `schnorrsig`, carrying over the ECDSA one BlockstreamResearch/secp256k1-zkp's
 `secp256k1_ecdsa_s2c.h` specifies -- `tests/schemes/dsa_anti_exfil_test.py` is
 that module's test, and its own docstring is where the two are put side
-by side. The pull request is open and unmerged, so unlike that one this
-file pins no vendored vector: its own `test_s2c_anti_exfil` draws its
-data at random rather than fixing it, so there is nothing there to
-reproduce byte for byte.
+by side. The pull request is open and unmerged, and its own
+`test_s2c_anti_exfil` draws its data at random rather than fixing it.
+`tests/schemes/ssa_s2c_vectors_test.py` holds the handshake to octets
+that pull request's library answered; this file runs it against itself.
 """
 
 from hashlib import sha1, sha256

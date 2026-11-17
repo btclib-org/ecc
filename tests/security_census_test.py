@@ -48,13 +48,9 @@ _PUBLIC_VALUES = {
     "ecc.dsa.recover_pub_keys_": "a signature and a message hash",
     "ecc.dsa.recover_sec_": "a signature and a message hash",
     "ecc.ssa.anti_exfil_sign": (
-        "its key reaches `bip340_nonce_` and its nonce `commit_nonce_`; its"
-        " own dispatches are handed public values only, x-coordinates to"
-        " lift and its signature to verify"
-    ),
-    "ecc.ssa.anti_exfil_signer_commit": (
-        "its key reaches `bip340_nonce_`; its own dispatches are handed"
-        " public values only, x-coordinates to lift"
+        "its key and its nonce reach `mult`, and its nonce `commit_nonce_`;"
+        " its own dispatches are handed public values only, x-coordinates"
+        " to lift and its signature to verify"
     ),
 }
 
