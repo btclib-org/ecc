@@ -4,14 +4,12 @@
 
 """Tests for the anti-exfil protocol of `ecc.ssa`.
 
-bitcoin-core/secp256k1#1140 proposes the same handshake for
-`schnorrsig`, carrying over the ECDSA one BlockstreamResearch/secp256k1-zkp's
-`secp256k1_ecdsa_s2c.h` specifies -- `tests/schemes/dsa_anti_exfil_test.py` is
-that module's test, and its own docstring is where the two are put side
-by side. The pull request is open and unmerged, so unlike that one this
-file pins no vendored vector: its own `test_s2c_anti_exfil` draws its
-data at random rather than fixing it, so there is nothing there to
-reproduce byte for byte.
+The draft anti-exfil BIP, AvilaLabs/anti-exfil's `spec/bip-anti-exfil.md`,
+specifies the handshake for BIP340, as bitcoin-core/secp256k1#1140
+proposes it with another base nonce. `tests/schemes/anti_exfil_vectors_test.py`
+holds the device and the host to the draft's vectors, and
+`tests/schemes/ssa_s2c_vectors_test.py` the host to octets that pull
+request's library answered; this file runs the handshake against itself.
 """
 
 from hashlib import sha1, sha256
@@ -19,7 +17,9 @@ from hashlib import sha1, sha256
 import pytest
 
 from ecc import ssa
+from ecc.bip340_nonce import bip340_nonce_
 from ecc.exceptions import EccValueError
+from tests import both_arms
 
 _PRV_KEY = bytes.fromhex("55" * 32)
 _PUB_KEY = ssa.gen_keys(_PRV_KEY)[1]
@@ -77,6 +77,28 @@ def test_the_whole_handshake() -> None:
         _MSG, _PRV_KEY, ssa.anti_exfil_host_commit(_OTHER_RHO)
     )
     assert not ssa.anti_exfil_host_verify(_MSG, _PUB_KEY, sig, _RHO, other_point)
+
+
+@both_arms
+def test_ordinary_signing_does_not_reach_the_base_nonce() -> None:
+    """No ordinary signing nonce has the R of step 2, given the commitment.
+
+    The draft's *Key separation* section asks this, and aux is where a
+    BIP340 signer takes a value of the caller's: the commitment goes
+    there, through `sign_`, `Signer.sign_` and `bip340_nonce_`, and to
+    `sign_` as the value to commit to beside it.
+    """
+    for i in range(8):
+        rho = sha256(i.to_bytes(1, "big")).digest()
+        commitment = ssa.anti_exfil_host_commit(rho)
+        R = ssa.anti_exfil_signer_commit(_MSG, _PRV_KEY, commitment)
+        assert ssa.sign_(_MSG, _PRV_KEY, commitment).r != R[0]
+        with ssa.Signer(_PRV_KEY) as signer:
+            assert ssa.Sig.parse(signer.sign_(_MSG, commitment)).r != R[0]
+        assert bip340_nonce_(_MSG, _PRV_KEY, commitment)[1] != R[0]
+        for value in (commitment, rho):
+            _, receipt = ssa.sign_(_MSG, _PRV_KEY, commitment, commit_hash=value)
+            assert receipt[0] != R[0]
 
 
 def test_the_signer_keeps_no_state() -> None:

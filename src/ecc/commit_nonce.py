@@ -51,7 +51,18 @@ secret key by signing the same message thrice with different
 commitments". So `commit_entropy_` is not optional garnish, and the two
 schemes each feed it to their nonce derivation before calling
 `commit_nonce_`: dsa through RFC6979's section 3.6 additional data, ssa
-through BIP340's auxiliary randomness.
+through BIP340's auxiliary randomness, and the anti-exfil protocol of
+both through `_anti_exfil_nonce_`, the draft anti-exfil BIP's own.
+
+The draft, AvilaLabs/anti-exfil's `spec/bip-anti-exfil.md`, derives the
+base nonce under tags of its own, so that no ordinary signing interface
+under the same key reaches it: its *Key separation* section asks this of
+an implementation. It specifies that derivation for secp256k1 with
+sha256 only, and `_anti_exfil_nonce_` follows it exactly there, with hf
+compared by identity: a wrapper such as ``functools.partial(sha256)`` is
+another hash function. On any other curve or hash function the draft's
+tagged hashes are stretched in counter mode, as ``bip340_nonce_``
+stretches a short hash, into a scalar in 1..n-1.
 
 Both hashes are tagged, and the tags are the scheme's: they are what
 keeps a tweak from being read as a challenge, or an ECDSA commitment as a
@@ -66,6 +77,7 @@ from hashlib import sha256
 from ecc._libsecp256k1 import keys as libsecp256k1_keys
 from ecc._utils import _MAX_NONCE_ATTEMPTS, bytes_from_octets, int_from_bits
 from ecc.alias import HashF, Integer, Octets, Point, Public
+from ecc.bip340_nonce import _stretch, _stretched_scalar
 from ecc.curves import (
     Curve,
     bytes_from_point,
@@ -94,6 +106,48 @@ def commit_entropy_(commit_hash: Octets, tag: bytes, hf: HashF = sha256) -> byte
     built on.
     """
     return tagged_hash(tag, bytes_from_octets(commit_hash), hf)
+
+
+def _anti_exfil_nonce_(
+    aux_tag: bytes,
+    nonce_tag: bytes,
+    q: int,
+    pub_key: bytes,
+    msg: bytes,
+    host_commitment: bytes,
+    reduce: bool,
+    ec: Curve,
+    hf: HashF,
+) -> int:
+    """Return the base nonce k0 of the draft anti-exfil BIP's step 2.
+
+    Where the module docstring says the derivation is the draft's, it is:
+
+    mask = bytes(q xor TaggedHash(aux_tag, host_commitment))
+    k0 = int(TaggedHash(nonce_tag, mask||pub_key||msg||host_commitment))
+
+    reduced mod n and refused at zero where reduce is set, as the draft's
+    BIP340 protocol does, and refused outside 1..n-1 with no second
+    candidate where it is not, as its ECDSA protocol does.
+
+    Elsewhere the mask is n_size octets and k0 a scalar in 1..n-1, so
+    that a digest shorter than n covers all of the key and all of the
+    nonce, and reduce plays no part.
+    """
+    if ec == secp256k1 and hf is sha256:
+        mask = q ^ int.from_bytes(tagged_hash(aux_tag, host_commitment, hf), "big")
+        m = mask.to_bytes(ec.n_size, "big") + pub_key + msg + host_commitment
+        k0 = int.from_bytes(tagged_hash(nonce_tag, m, hf), "big")
+        if reduce:
+            k0 %= ec.n
+        if not 0 < k0 < ec.n:
+            raise EccRuntimeError("failed to sign: anti-exfil nonce not in 1..n-1")
+        return k0
+
+    randomizer = _stretch(aux_tag, host_commitment, ec.n_size, hf)
+    mask = q ^ int.from_bytes(randomizer, "big")
+    m = mask.to_bytes(ec.n_size, "big") + pub_key + msg + host_commitment
+    return _stretched_scalar(nonce_tag, m, ec, hf)
 
 
 def _tweak(

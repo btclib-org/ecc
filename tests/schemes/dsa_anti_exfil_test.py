@@ -2,118 +2,36 @@
 # Distributed under the MIT software license, see the accompanying
 # LICENSE file or https://opensource.org/license/mit for the full text.
 
-"""Tests for the ECDSA Anti-Exfil Protocol of `ecc.dsa`.
+"""Tests for the ECDSA anti-exfil protocol of `ecc.dsa`.
 
-BlockstreamResearch/secp256k1-zkp's `ecdsa_s2c` module carries the
-vectors: the fixture below is that module's `ecdsa_s2c_tests`, whose
-third column, `expected_s2c_exfil_opening`, is the R that
-`anti_exfil_signer_commit` has to answer with.
-
-The second column is what makes the fixture worth more than two numbers.
-`expected_s2c_opening` is the receipt of a sign-to-contract signature
-over the same data, so the two columns are one `anti_exfil_host_commit`
-apart -- and that is exactly the property the handshake stands on, step
-2 and step 4 reaching one nonce. It is checked here against upstream's
-own bytes rather than against this package run twice.
-
-Which revision of `src/modules/ecdsa_s2c/tests_impl.h` those columns
-are is `tests/_data/README.md`'s entry for this module, beside the
-vendored files, and none is recorded here: a pin in that ledger is what
-`.github/workflows/vendored-vectors.yml` re-checks weekly, opening an
-issue where it is no longer the tip of its path. `ecc.dsa`'s
-`anti_exfil_host_commit` cites the header its docstring paraphrases, and
-that README's opening says why the citation carries no revision.
+BlockstreamResearch/secp256k1-zkp's `secp256k1_ecdsa_s2c.h` specifies the
+handshake, and the draft anti-exfil BIP, AvilaLabs/anti-exfil's
+`spec/bip-anti-exfil.md`, specifies it again with a base nonce of its
+own. `tests/schemes/anti_exfil_vectors_test.py` holds this package to the
+draft's vectors, the largest low s and the next among them; this file
+runs the handshake against itself.
 """
 
 from hashlib import sha1, sha256
+from typing import Any
 
 import pytest
 
 from ecc import dsa
-from ecc.commit_nonce import commit_nonce_
-from ecc.curves import bytes_from_point, mult, secp256k1
+from ecc.curves import mult, secp256k1
 from ecc.exceptions import EccValueError
+from ecc.rfc6979_nonce import challenge_, rfc6979_nonce_
+from tests import both_arms
 
-# the key and the message of test_ecdsa_s2c_fixed_vectors, which
-# test_ecdsa_anti_exfil_signer_commit reuses verbatim
 _PRV_KEY = bytes.fromhex("55" * 32)
-_MSG_HASH = bytes.fromhex("88" * 32)
 _PUB_KEY = dsa.gen_keys(_PRV_KEY)[1]
 
-# s2c_data, expected_s2c_opening, expected_s2c_exfil_opening
-_ZKP_VECTORS = [
-    pytest.param(
-        "1bf6fb42f41eb876c4d7aa0d67242b00baab99dc2084493e4e63277fa1f77f22",
-        "03f030def3188c0f56fcea87435b307643f45dafe22cbc82fd56034fae97417d3a",
-        "02df63755d1f3292bffed82986b106497c93b1f8bdc0454b6b0b0a4779c0ef7188",
-        id="zkp-0",
-    ),
-    pytest.param(
-        "35199a8fbf84ad6ef69a184c1b19285befbe06e60b6264e6d373893f6855e24a",
-        "03901717ce7c7484a2ce1b7dc7403b14e0354971393ec092a7f3e0c8e4e2d2639d",
-        "02c04ac7f771e8ebdbf315ff5e58b7fe9516102103500066172c4fac5b20f9e0ea",
-        id="zkp-1",
-    ),
-]
-
-# a handshake of its own, so that nothing here leans on the fixture's
-# message. rho is a constant because a test has to be reproducible; a
-# host draws it from a cryptographically secure generator, which is what
-# the protocol asks of it and the one thing a test cannot check
+# rho is a constant because a test has to be reproducible; a host draws
+# it from a cryptographically secure generator, which is what the
+# protocol asks of it and the one thing a test cannot check
 _HANDSHAKE_MSG_HASH = sha256(b"to be signed").digest()
 _RHO = sha256(b"the host's randomness").digest()
 _OTHER_RHO = sha256(b"a second draw").digest()
-
-
-@pytest.mark.parametrize("rho, opening, exfil_opening", _ZKP_VECTORS)
-def test_signer_commit_vectors(rho: str, opening: str, exfil_opening: str) -> None:
-    """R is the opening test_ecdsa_anti_exfil_signer_commit expects.
-
-    That fixture hands the raw s2c_data to `anti_exfil_signer_commit` as
-    the host commitment -- an unreachable value in a real handshake,
-    where the commitment is a hash -- so this pins the derivation and
-    nothing about the protocol. Which is what a vector is for: the
-    commitment enters as RFC6979 additional data, unhashed, and no other
-    layout reaches these bytes.
-    """
-    R = dsa.anti_exfil_signer_commit(_MSG_HASH, _PRV_KEY, rho)
-    assert bytes_from_point(R, secp256k1).hex() == exfil_opening
-    # the other column is a different R, the s2c signature deriving its
-    # nonce from a hash of this same data: which is the next test
-    assert exfil_opening != opening
-
-
-@pytest.mark.parametrize("rho, opening, exfil_opening", _ZKP_VECTORS)
-def test_step_2_and_step_4_reach_one_nonce(
-    rho: str, opening: str, exfil_opening: str
-) -> None:
-    """The R promised in step 2 is the R the signature of step 4 has.
-
-    Which is what `commit_entropy_` buys by hashing the committed value
-    before it enters the derivation: the device can reach the nonce
-    knowing only a hash of rho, so it can publish R before rho is
-    revealed. Upstream's two columns are one host commitment apart and
-    say so in their own bytes -- the R derived from
-    `anti_exfil_host_commit(rho)` is the receipt of the sign-to-contract
-    signature over rho.
-    """
-    commitment = dsa.anti_exfil_host_commit(rho)
-    # the raw data is not the commitment, or the two columns would agree
-    assert commitment.hex() != rho
-    assert (
-        bytes_from_point(
-            dsa.anti_exfil_signer_commit(_MSG_HASH, _PRV_KEY, rho), secp256k1
-        ).hex()
-        == exfil_opening
-    )
-
-    R = dsa.anti_exfil_signer_commit(_MSG_HASH, _PRV_KEY, commitment)
-    assert bytes_from_point(R, secp256k1).hex() == opening
-
-    sig, receipt = dsa.sign_(_MSG_HASH, _PRV_KEY, grind=False, commit_hash=rho)
-    assert receipt == R
-    assert dsa.anti_exfil_sign(_MSG_HASH, _PRV_KEY, rho) == sig
-    assert dsa.anti_exfil_host_verify(_MSG_HASH, _PUB_KEY, sig, rho, R)
 
 
 def test_the_whole_handshake() -> None:
@@ -165,28 +83,51 @@ def test_the_whole_handshake() -> None:
     )
 
 
-def test_the_largest_low_s_is_accepted_and_the_next_is_refused() -> None:
-    """The largest low s, n // 2, passes step 5, and its twin does not.
+@both_arms
+def test_ordinary_signing_does_not_reach_the_base_nonce() -> None:
+    """No ordinary signing nonce has the R of step 2, given the commitment.
 
-    The draft anti-exfil BIP's case for this bound,
-    `ecdsa-forced-isolated-s-low-limit-host`, needs a hash override, and
-    `anti_exfil_vectors_test.py` runs none. This builds such a tuple
-    without one: a nonce of its own, tweaked by rho as step 4 tweaks it,
-    and the message hash that makes s the bound.
+    The draft's *Key separation* section asks this. `sign_` takes no
+    extra entropy, so the commitment goes to RFC6979 as
+    `rfc6979_nonce_`'s extra entropy, and to `sign_` as the value to
+    commit to, and rho with it.
     """
     n = secp256k1.n
-    # the tag `dsa` tweaks its sign-to-contract nonce with
-    nonce, R = commit_nonce_(_RHO, 11, b"s2c/ecdsa/point")
-    r = mult(nonce)[0] % n
-    q = int.from_bytes(_PRV_KEY, "big")
-    msg_hash = ((n // 2 * nonce - r * q) % n).to_bytes(32, "big")
-    low = dsa.Sig(r, n // 2)
-    high = dsa.Sig(r, n // 2 + 1)
-    assert high.s == n - low.s
-    assert dsa.verify_(msg_hash, _PUB_KEY, low)
-    assert dsa.verify_(msg_hash, _PUB_KEY, high)
-    assert dsa.anti_exfil_host_verify(msg_hash, _PUB_KEY, low, _RHO, R)
-    assert not dsa.anti_exfil_host_verify(msg_hash, _PUB_KEY, high, _RHO, R)
+    for i in range(8):
+        rho = sha256(i.to_bytes(1, "big")).digest()
+        commitment = dsa.anti_exfil_host_commit(rho)
+        R = dsa.anti_exfil_signer_commit(_HANDSHAKE_MSG_HASH, _PRV_KEY, commitment)
+        nonce = rfc6979_nonce_(_HANDSHAKE_MSG_HASH, _PRV_KEY, extra_entropy=commitment)
+        assert mult(nonce)[0] != R[0]
+        assert dsa.sign_(_HANDSHAKE_MSG_HASH, _PRV_KEY).r != R[0] % n
+        for value in (commitment, rho):
+            _, receipt = dsa.sign_(
+                _HANDSHAKE_MSG_HASH, _PRV_KEY, grind=False, commit_hash=value
+            )
+            assert receipt[0] != R[0]
+
+
+def test_one_message_reaches_the_challenge_and_the_nonce(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A message hash changed during step 4 does not split the signature.
+
+    The challenge and the nonce are derived from one copy of the message
+    hash, so a caller's bytearray changed between the two reaches neither.
+    """
+    commitment = dsa.anti_exfil_host_commit(_RHO)
+    R = dsa.anti_exfil_signer_commit(_HANDSHAKE_MSG_HASH, _PRV_KEY, commitment)
+    msg_hash = bytearray(_HANDSHAKE_MSG_HASH)
+
+    def changing(*args: Any) -> int:
+        c = challenge_(*args)
+        # the caller's copy changes once the challenge has read it
+        msg_hash[0] ^= 1
+        return c
+
+    monkeypatch.setattr("ecc.dsa.challenge_", changing)
+    sig = dsa.anti_exfil_sign(msg_hash, _PRV_KEY, _RHO)
+    assert dsa.anti_exfil_host_verify(_HANDSHAKE_MSG_HASH, _PUB_KEY, sig, _RHO, R)
 
 
 def test_the_signer_keeps_no_state() -> None:

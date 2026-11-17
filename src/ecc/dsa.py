@@ -56,6 +56,7 @@ from ecc._utils import (
 )
 from ecc.alias import BinaryData, HashF, Integer, JacPoint, Octets, Point, Public
 from ecc.commit_nonce import (
+    _anti_exfil_nonce_,
     commit_entropy_,
     commit_nonce_,
     commit_point_var_,
@@ -127,6 +128,13 @@ _DER_SIG_MARKER = b"\x30"
 # would stop opening
 _S2C_POINT_TAG = b"s2c/ecdsa/point"
 _S2C_DATA_TAG = b"s2c/ecdsa/data"
+
+# The draft anti-exfil BIP derives the protocol's base nonce under these
+# tags: `ecc.commit_nonce` says why. An implementation that derives the
+# base nonce otherwise signs other octets, which `anti_exfil_host_verify`
+# accepts all the same. Frozen for the reason above
+_ANTI_EXFIL_AUX_TAG = b"s2c/ecdsa/aux"
+_ANTI_EXFIL_NONCE_TAG = b"s2c/ecdsa/nonce"
 
 
 def _der_length(n: int) -> bytes:
@@ -1049,8 +1057,7 @@ def sign_(
     # counter would travel through. The second is not only an encoding
     # clash -- grinding a nonce is exactly the freedom the anti-exfil
     # protocol takes away from a signing device, see
-    # anti_exfil_host_commit, and this is the call that protocol signs
-    # through
+    # anti_exfil_host_commit
     if grind and (nonce is not None or commit_hash is not None):
         raise EccValueError("grinding derives its own nonce")
 
@@ -1991,8 +1998,11 @@ def verify(
 def anti_exfil_host_commit(rho: Octets, hf: HashF = sha256) -> bytes:
     """Return the host's commitment to rho: step 1 of the anti-exfil protocol.
 
-    The protocol is specified in `include/secp256k1_ecdsa_s2c.h` of
-    BlockstreamResearch/secp256k1-zkp.
+    The protocol is the ECDSA Anti-Exfil Protocol
+    `include/secp256k1_ecdsa_s2c.h` of BlockstreamResearch/secp256k1-zkp
+    specifies, as the draft anti-exfil BIP, AvilaLabs/anti-exfil's
+    `spec/bip-anti-exfil.md`, specifies it again: the same messages, and
+    a base nonce of the draft's own (``anti_exfil_signer_commit``).
 
     A signing device that picks its own nonce can leak the private key
     through the nonces themselves, a few bits per signature, and no
@@ -2035,6 +2045,23 @@ def anti_exfil_host_commit(rho: Octets, hf: HashF = sha256) -> bytes:
     return commit_entropy_(bytes_from_octets(rho, hf().digest_size), _S2C_DATA_TAG, hf)
 
 
+def _anti_exfil_base_nonce_(
+    msg_hash: bytes, q: int, Q: Point, host_commitment: bytes, ec: Curve, hf: HashF
+) -> int:
+    """Return the draft's k0 for the key q, whose point is Q."""
+    return _anti_exfil_nonce_(
+        _ANTI_EXFIL_AUX_TAG,
+        _ANTI_EXFIL_NONCE_TAG,
+        q,
+        bytes_from_point(Q, ec),
+        msg_hash,
+        host_commitment,
+        False,
+        ec,
+        hf,
+    )
+
+
 def anti_exfil_signer_commit(
     msg_hash: Octets,
     prv_key: Integer,
@@ -2049,15 +2076,21 @@ def anti_exfil_signer_commit(
     here, and that is the shape the protocol needs: R is a promise, and
     step 4 is what keeps it.
 
-    The commitment travels as RFC6979 section 3.6 additional data,
-    exactly as the committed value does in ``sign_``, so the two derive
-    one nonce and the R below is the receipt that signature will open
-    with.
+    The nonce is the draft anti-exfil BIP's base nonce k0, derived from the
+    key, the message hash and the commitment. ``ecc.commit_nonce`` says
+    where the derivation is the draft's, and there the draft's ECDSA
+    protocol refuses a k0 outside 1..n-1 with no second candidate.
+    ``sign_`` takes no extra entropy, and ``rfc6979_nonce_`` says what its
+    extra entropy must never be. ``anti_exfil_sign`` derives the same k0,
+    so R is the receipt its signature will open with. A k0 the draft's
+    step 2 refuses raises EccRuntimeError.
     """
-    c = challenge_(msg_hash, ec, hf)
+    hf_len = hf().digest_size
+    msg_hash = bytes_from_octets(msg_hash, hf_len)
     q = scalar_from_prv_key(prv_key, ec)
-    entropy = bytes_from_octets(host_commitment, hf().digest_size)
-    return mult(_rfc6979_nonce_(c, q, ec, hf, entropy), ec.G, ec)
+    hc = bytes_from_octets(host_commitment, hf_len)
+    k0 = _anti_exfil_base_nonce_(msg_hash, q, mult(q, ec.G, ec), hc, ec, hf)
+    return mult(k0, ec.G, ec)
 
 
 def anti_exfil_sign(
@@ -2070,12 +2103,15 @@ def anti_exfil_sign(
 ) -> Sig:
     """Sign committing to the host's rho: step 4 of the anti-exfil protocol.
 
-    Sign-to-contract with rho as the committed value, which is all step 4
-    is: ``sign_`` with that commitment. The receipt it returns is dropped
-    rather than passed on, because the host has it already -- it is the R
-    of step 2, and a host taking the device's word for it here would be
-    accepting a nonce point chosen *after* rho was revealed, which is the
-    one thing the ordering exists to rule out.
+    Sign-to-contract with rho as the committed value, over the base nonce
+    of step 2: ``sign_(msg_hash, prv_key, grind=False, commit_hash=rho)``
+    derives an RFC6979 nonce instead, and does not reach that R. A k0 the
+    draft's step 2 refuses, a tweaked nonce of zero, or a zero r or s
+    raises EccRuntimeError. The receipt is dropped rather than passed on,
+    because the host has it already -- it is the R of step 2, and a host
+    taking the device's word for it here would be accepting a nonce
+    point chosen *after* rho was revealed, which is the one thing the
+    ordering exists to rule out.
 
     **The device keeps no state between step 2 and step 4.** It does not
     check rho against the commitment it was given: it re-derives the
@@ -2088,21 +2124,27 @@ def anti_exfil_sign(
     With ``lower_s=False`` the signature fails step 5 whenever its s is
     the high one: ``anti_exfil_host_verify`` says why.
     """
-    # grind=False, and it is the protocol that requires it rather than the
-    # encoding: grinding a nonce is the freedom this exchange takes away
-    # from the device, which promised R in step 2 and would be drawing a
-    # different nonce here. `sign_` refuses the pair anyway, a commitment
-    # owning the entropy a counter would travel through, so this says out
-    # loud what would otherwise be an error message
-    sig, _ = sign_(
-        msg_hash,
-        prv_key,
+    assert_type(lower_s, bool, "lower_s")
+    hf_len = hf().digest_size
+    # one copy of the message for the challenge and for the nonce
+    msg_hash = bytes_from_octets(msg_hash, hf_len)
+    c = challenge_(msg_hash, ec, hf)
+    rho = bytes_from_octets(rho, hf_len)
+    q = scalar_from_prv_key(prv_key, ec)
+    # a commitment is signed by the Python arithmetic, as in `sign_`, so
+    # a caller who required the bindings is refused here as there
+    _libsecp256k1_serves(ec, hf, commit_hash=True)
+    Q = mult(q, ec.G, ec)
+    hc = commit_entropy_(rho, _S2C_DATA_TAG, hf)
+    k0 = _anti_exfil_base_nonce_(msg_hash, q, Q, hc, ec, hf)
+    # no grinding: it is the freedom this exchange takes away from the
+    # device, which promised R in step 2
+    nonce, _ = commit_nonce_(rho, k0, _S2C_POINT_TAG, ec, hf)
+    sig = _sign_(c, q, nonce, lower_s, ec)
+    _abort_unless_checked(
+        lambda key: _python_verified(Public(c), sig, ec, key),
+        lambda: (Q, ec._fixed_points),
         None,
-        lower_s,
-        ec,
-        hf,
-        grind=False,
-        commit_hash=bytes_from_octets(rho, hf().digest_size),
     )
     return sig
 
