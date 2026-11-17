@@ -120,9 +120,12 @@ _THIRD_PARTY_VECTORS: dict[str, tuple[str, ...]] = {
     ),
     "schemes/frost_test.py": (
         "chilldkg_vectors.json",
+        "coordinator_finalize_vectors.json",
         "det_sign_vectors.json",
         "nonce_agg_vectors.json",
         "nonce_gen_vectors.json",
+        "participant_finalize_vectors.json",
+        "recover_vectors.json",
         "sig_agg_vectors.json",
         "sign_verify_vectors.json",
         "threshold_info_vectors.json",

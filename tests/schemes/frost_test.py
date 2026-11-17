@@ -11,10 +11,24 @@ Every case of every file is exercised, the error cases included, and an
 error case is checked against the exception the file names -- which
 party misbehaved and how, or the message of a plain value error.
 
-A trusted dealer generated those vectors. `chilldkg_vectors.json` is key
-material from ChillDKG's reference instead, and `tests/_data/README.md`
-pins it too. Each of its sessions is validated, signs and verifies, and
-is refused once mutated.
+A trusted dealer generated those vectors. BIP-FROST-DKG's own vectors,
+every JSON file of `BlockstreamResearch/bip-frost-dkg`'s `vectors/`,
+vendored under `tests/schemes/_data/chilldkg/`, come from ChillDKG's
+reference instead, and `tests/_data/README.md` pins them too. This
+package implements no ChillDKG function, so what is read of them is the
+key material their valid cases output, in
+`participant_finalize_vectors.json`, `coordinator_finalize_vectors.json`
+and `recover_vectors.json`, each case checked as
+`test_chilldkg_vector_key_material_is_valid` says. Each group of
+`participant_finalize_vectors.json` is also a session, as
+`_finalized_session` says, and the session tests run on each: it is
+validated, signs and verifies, and is refused once mutated. The other
+JSON files, and every error case, ask a ChillDKG function, and nothing
+here reads them.
+
+`chilldkg_vectors.json` adds a session recorded from ChillDKG's
+reference, which the same session tests run on; the comment above its
+loading says why it is kept.
 
 There is no oracle to cross-validate against, unlike `musig2_test.py`'s
 own `btclib_secp256k1.musig`: BIP445 has no C implementation this
@@ -24,7 +38,7 @@ vectors are its only authority.
 
 from collections.abc import Callable
 from dataclasses import replace
-from typing import Any
+from typing import Any, NamedTuple
 
 import pytest
 
@@ -886,37 +900,99 @@ def test_threshold_info_error_vectors(
 
 
 # --------------------------------------------------------------------
-# chilldkg_vectors.json: key material from ChillDKG's reference, where the
-# BIP445 vectors above come from a trusted dealer
+# ChillDKG: key material from BIP-FROST-DKG's vectors, where the BIP445
+# vectors above come from a trusted dealer
 # --------------------------------------------------------------------
 
+
+def _dkg_vectors(name: str) -> Any:
+    """Load one of BIP-FROST-DKG's vector files."""
+    return load("schemes", "_data", "chilldkg", name)
+
+
+_PARTICIPANT_FINALIZE = _dkg_vectors("participant_finalize_vectors.json")
+_COORDINATOR_FINALIZE = _dkg_vectors("coordinator_finalize_vectors.json")
+_RECOVER = _dkg_vectors("recover_vectors.json")
+
+# a session of a single participant, recorded from ChillDKG's reference.
+# It is kept because no params of BIP-FROST-DKG's vector files has a
+# single host key, so no session above has that shape
 _CHILLDKG = load("schemes", "_data", "chilldkg_vectors.json")
 
 _CHILLDKG_MSG = b"ChillDKG session"
 
 
-def chilldkg_sessions() -> list[Any]:
-    """One param per session of chilldkg_vectors.json, named by its (t, n)."""
+class _Session(NamedTuple):
+    """The key material of an honest ChillDKG session, in participant order."""
+
+    n: int
+    t: int
+    thresh_pk: bytes
+    pub_shares: list[bytes]
+    sec_shares: list[bytes]
+
+
+def _key_material_cases() -> list[Any]:
+    """One param per valid case of BIP-FROST-DKG's that outputs key material."""
+    files = (
+        ("participant_finalize", _PARTICIPANT_FINALIZE["testGroups"]),
+        ("coordinator_finalize", _COORDINATOR_FINALIZE["testGroups"]),
+        ("recover", [_RECOVER]),
+    )
     return [
-        pytest.param(
-            session, id=vector_id(index, f"t{session['t']}", f"n{session['n']}")
-        )
-        for index, session in enumerate(_CHILLDKG["sessions"])
+        pytest.param(group, case, id=vector_id(case["tcId"], name, group.get("tgId")))
+        for name, groups in files
+        for group in groups
+        for case in group["validTestCases"]
     ]
 
 
-def _chilldkg(
-    session: dict[str, Any],
-) -> tuple[int, int, bytes, list[bytes], list[bytes]]:
-    """Return a session's n, t, thresh_pk, pubshares and secshares."""
+def _finalized_session(group: dict[str, Any]) -> _Session:
+    """Return a participant_finalize group's session.
+
+    Its valid cases are its participants, in order, each with its own
+    secshare and the threshold info they all share.
+    """
+    cases = group["validTestCases"]
+    info = cases[0]["expectedOutput"]["thresholdInfo"]
+    return _Session(
+        len(group["params"]["hostpubkeys"]),
+        info["t"],
+        bytes.fromhex(info["threshPk"]),
+        _hex_all(info["pubshares"]),
+        [bytes.fromhex(case["expectedOutput"]["secshare"]) for case in cases],
+    )
+
+
+def _recorded_session(session: dict[str, Any]) -> _Session:
+    """Return a session of chilldkg_vectors.json."""
     info = session["threshold_info"]
-    return (
+    return _Session(
         session["n"],
         info["t"],
         bytes.fromhex(info["thresh_pk"]),
         _hex_all(info["pubshares"]),
         _hex_all(session["secshares"]),
     )
+
+
+def chilldkg_sessions() -> list[Any]:
+    """One param per session: each participant_finalize group, then ours."""
+    finalized = [
+        pytest.param(
+            _finalized_session(group),
+            id=vector_id(index, "participant_finalize", group["tgId"]),
+        )
+        for index, group in enumerate(_PARTICIPANT_FINALIZE["testGroups"])
+    ]
+    recorded = [
+        pytest.param(
+            _recorded_session(session),
+            id=vector_id(index, "recorded", f"t{session['t']}", f"n{session['n']}"),
+        )
+        for index, session in enumerate(_CHILLDKG["sessions"])
+    ]
+    return finalized + recorded
 
 
 def _chilldkg_signers(n: int, t: int) -> list[int]:
@@ -947,16 +1023,41 @@ def _negated(point: bytes) -> bytes:
     return bytes([point[0] ^ 1]) + point[1:]
 
 
+@pytest.mark.parametrize("group, case", _key_material_cases())
+@both_arms
+def test_chilldkg_vector_key_material_is_valid(
+    group: dict[str, Any], case: dict[str, Any]
+) -> None:
+    """`validate_threshold_info` accepts each threshold info a vector outputs.
+
+    Where the case outputs a secshare too, it is checked against the
+    pubshare at its host key's position.
+    """
+    output = case["expectedOutput"]
+    info = output["thresholdInfo"]
+    pub_shares = _hex_all(info["pubshares"])
+    frost.validate_threshold_info(
+        frost.ThresholdInfo(info["t"], bytes.fromhex(info["threshPk"]), pub_shares)
+    )
+    sec_share = output.get("secshare")
+    if sec_share is None:
+        return
+    host_sec_key = case["hostseckey"]
+    params = output.get("params") or group["params"]
+    host_pub_keys = _hex_all(params["hostpubkeys"])
+    i = host_pub_keys.index(bytes_from_point(mult(int(host_sec_key, 16))))
+    assert pub_shares[i] == bytes_from_point(mult(int(sec_share, 16)))
+
+
 @pytest.mark.parametrize("session", chilldkg_sessions())
 @both_arms
-def test_chilldkg_threshold_info_is_valid(session: dict[str, Any]) -> None:
+def test_chilldkg_threshold_info_is_valid(session: _Session) -> None:
     """`validate_threshold_info` accepts what ChillDKG output.
 
     Each secshare is also checked against its pubshare: the control of the
     refusal of a negated secshare below.
     """
-    n, t, thresh_pk, pub_shares, sec_shares = _chilldkg(session)
-    assert t == session["t"]
+    n, t, thresh_pk, pub_shares, sec_shares = session
     assert len(pub_shares) == len(sec_shares) == n
     frost.validate_threshold_info(frost.ThresholdInfo(t, thresh_pk, pub_shares))
     for pub_share, sec_share in zip(pub_shares, sec_shares, strict=True):
@@ -965,9 +1066,9 @@ def test_chilldkg_threshold_info_is_valid(session: dict[str, Any]) -> None:
 
 @pytest.mark.parametrize("session", chilldkg_sessions())
 @both_arms
-def test_chilldkg_session_signs_and_verifies(session: dict[str, Any]) -> None:
+def test_chilldkg_session_signs_and_verifies(session: _Session) -> None:
     """The last t participants sign, and every signature verifies."""
-    n, t, thresh_pk, pub_shares, sec_shares = _chilldkg(session)
+    n, t, thresh_pk, pub_shares, sec_shares = session
     ids = _chilldkg_signers(n, t)
     signer_pub_shares = [pub_shares[i] for i in ids]
     sec_nonces, pub_nonces = _chilldkg_nonces(ids, pub_shares, sec_shares, thresh_pk)
@@ -1005,13 +1106,13 @@ def test_chilldkg_session_signs_and_verifies(session: dict[str, Any]) -> None:
 
 @pytest.mark.parametrize("session", chilldkg_sessions())
 @both_arms
-def test_chilldkg_flipped_pubshare_is_refused(session: dict[str, Any]) -> None:
+def test_chilldkg_flipped_pubshare_is_refused(session: _Session) -> None:
     """Each pubshare negated in turn is refused.
 
     With t = n no share is left over to check the polynomial against, so
     the threshold public key is what disagrees.
     """
-    n, t, thresh_pk, pub_shares, _ = _chilldkg(session)
+    n, t, thresh_pk, pub_shares, _ = session
     message = frost._KEY_MATERIAL_POLY_ERR if t < n else frost._KEY_MATERIAL_MATCH_ERR
     for i in range(n):
         flipped = [*pub_shares[:i], _negated(pub_shares[i]), *pub_shares[i + 1 :]]
@@ -1022,13 +1123,13 @@ def test_chilldkg_flipped_pubshare_is_refused(session: dict[str, Any]) -> None:
 
 @pytest.mark.parametrize("session", chilldkg_sessions())
 @both_arms
-def test_chilldkg_wrong_thresh_pk_is_refused(session: dict[str, Any]) -> None:
+def test_chilldkg_wrong_thresh_pk_is_refused(session: _Session) -> None:
     """The negated threshold public key is refused, at setup and in a session.
 
     It has the same x-only key as the right one, so only the parity byte
     tells them apart.
     """
-    n, t, thresh_pk, pub_shares, _ = _chilldkg(session)
+    n, t, thresh_pk, pub_shares, _ = session
     wrong = _negated(thresh_pk)
     with pytest.raises(EccValueError) as excinfo:
         frost.validate_threshold_info(frost.ThresholdInfo(t, wrong, pub_shares))
@@ -1045,7 +1146,7 @@ def test_chilldkg_wrong_thresh_pk_is_refused(session: dict[str, Any]) -> None:
 @pytest.mark.parametrize("session", chilldkg_sessions())
 @both_arms
 def test_chilldkg_secshare_not_matching_its_pubshare_is_refused(
-    session: dict[str, Any],
+    session: _Session,
 ) -> None:
     """A signer holding its secshare negated is refused.
 
@@ -1053,7 +1154,7 @@ def test_chilldkg_secshare_not_matching_its_pubshare_is_refused(
     does not, the partial signature does not verify, and the right
     secshare's does.
     """
-    n, t, thresh_pk, pub_shares, sec_shares = _chilldkg(session)
+    n, t, thresh_pk, pub_shares, sec_shares = session
     ids = _chilldkg_signers(n, t)
     signer_id = ids[0]
     d = int.from_bytes(sec_shares[signer_id], "big")
