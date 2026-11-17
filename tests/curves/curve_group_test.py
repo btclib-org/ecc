@@ -21,6 +21,7 @@ from ecc.curves import (
     CurveGroup,
     curve_group,
     find_all_points,
+    multi_mult_var,
     secp256k1,
 )
 
@@ -58,6 +59,7 @@ from ecc.curves.curve_group import (
 )
 from ecc.exceptions import EccTypeError, EccValueError
 from ecc.pedersen import second_generator
+from tests import both_arms
 from tests.curves.curve_test import all_curves, low_card_curves
 
 ec23_31 = low_card_curves["ec23_31"]
@@ -1105,6 +1107,55 @@ def test_multi_mult_distant_magnitudes() -> None:
             _multi_mult_bos_coster_var([Public(v) for v in scalars], [ec.GJ, HJ], ec),
             expected,
         )
+
+
+@both_arms
+def test_multi_mult_cancelling_batches() -> None:
+    """Batches whose partial sums are infinity, and one whose total is.
+
+    A point beside its negation, and P and Q beside -(P + Q), each group
+    under one scalar wider than every other of its batch: Bos-Coster pops
+    those terms first, and the interleaved wNAF adds them alone at the top
+    bit positions, so both meet a sum at infinity and go on from it. The
+    third batch's last term makes the total infinity.
+
+    Asked of multi_mult_var under `both_arms`, and of the two Python
+    implementations by name, one nonzero term short of BOS_COSTER_THRESHOLD
+    and exactly on it.
+    """
+    ec = secp256k1
+    n = ec.n
+    rnd = random.Random(0x584)
+    for size in (BOS_COSTER_THRESHOLD - 1, BOS_COSTER_THRESHOLD):
+        logs = [rnd.randrange(1, n) for _ in range(size)]
+        points = [_mult(m, ec.GJ, ec) for m in logs]
+        narrow = [rnd.randrange(1, 1 << 128) for _ in range(size)]
+        wide = rnd.randrange(1 << 255, n)
+        P, Q = points[0], points[1]
+        negation = [wide, wide, *narrow[2:]], [P, ec.negate_jac(P), *points[2:]]
+        minus_sum = ec.negate_jac(ec.add_jac(P, Q))
+        triple = [wide] * 3 + narrow[3:], [P, Q, minus_sum, *points[3:]]
+        # the last scalar times its point's discrete log is minus the sum of
+        # the other terms' products
+        rest = sum(s * m for s, m in zip(narrow[:-1], logs[:-1], strict=True))
+        total = [*narrow[:-1], -rest * pow(logs[-1], -1, n) % n], points
+        assert ec.is_jac_equal(_sum_of_mults(*total, ec), INFJ)
+        for scalars, jac_points in (negation, triple, total):
+            # nonzero, for the reason test_multi_mult_dispatch gives
+            assert all(scalars)
+            expected = _sum_of_mults(scalars, jac_points, ec)
+            pub = [Public(s) for s in scalars]
+            aff = [ec.aff_from_jac_var(PJ) for PJ in jac_points]
+            assert multi_mult_var(pub, aff, ec) == ec.aff_from_jac_var(expected)
+            assert ec.is_jac_equal(
+                _multi_mult_w_NAF_var(
+                    pub, jac_points, ec, _MULTI_MULT_W, ec._fixed_points
+                ),
+                expected,
+            )
+            assert ec.is_jac_equal(
+                _multi_mult_bos_coster_var(pub, jac_points, ec), expected
+            )
 
 
 def test_jac_equality() -> None:
