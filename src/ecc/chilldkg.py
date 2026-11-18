@@ -820,8 +820,9 @@ def participant_step2(
     and can show this one the recovery data at any later time.
 
     A `cmsg1` of the right size that does not check out raises the
-    `ecc.exceptions` protocol error naming whom it accuses, unless it puts
-    a participant's public share at infinity: that raises `EccValueError`,
+    `ecc.exceptions` protocol error naming whom it accuses, unless this
+    participant's own share checks out and the message puts another
+    participant's public share at infinity: that raises `EccValueError`,
     which accuses nobody. `UnknownFaultyParticipantOrCoordinatorError`
     names nobody either: `participant_investigate` does, given the same
     arguments and the coordinator's investigation message.
@@ -1185,6 +1186,13 @@ def participant_recovery_ack_sign(
     `validate_recovery_acks` checks every participant's before the
     threshold public key is used. `aux` is BIP340's auxiliary randomness,
     drawn where it is None.
+
+    The recovery data is a successful session's, as the reference asks:
+    an acknowledgment says its signer holds these bytes, not that they
+    rebuild the session, and neither function here checks the
+    certificate. Recovery data received other than from
+    `participant_finalize` or `coordinator_finalize` goes through
+    `participant_recover` or `coordinator_recover_var` first.
     """
     assert_type(params, SessionParams, "params")
     _, q, host_pub_key = _host_key(host_sec_key)
@@ -1203,7 +1211,8 @@ def validate_recovery_acks(
 
     `ack_sigs` holds each participant's acknowledgment, in the order of
     the host public keys. `InvalidRecoveryAckError` names the first that
-    does not verify, and says what that leaves unconfirmed.
+    does not verify, and says what that leaves unconfirmed. The recovery
+    data is what `participant_recovery_ack_sign` says it is.
     """
     assert_type(params, SessionParams, "params")
     host_pub_keys, _ = _validate_params_var(params)

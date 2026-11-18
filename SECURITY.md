@@ -150,16 +150,16 @@ package is used to teach and to prototype as much as to build:
     commitments, the proof of possession's points and each check of a
     secret share against its public share,
     `sec_point.bytes_from_prv_key_int` the host public key and the
-    encryption nonce's point, `sec_point._mult_sec_compressed` each
-    pad's ECDH, and `ssa.sign_` the certificate's and the recovery
-    acknowledgment's signatures. What `ecc.chilldkg` computes itself on
-    a secret is the Python arithmetic above, whatever is installed.
-    Examples are the polynomial evaluated at each participant's x, the
-    check that each secret coefficient is below n, the proof of
-    possession's negations of d and k, its `d ^ mask` and its
-    `s = k + e*d`, the pads added to the shares and taken from them, the
-    tweak added to the secret share, and the sum of the partial secret
-    shares an investigation decrypts
+    encryption nonce's point, and `ssa.sign_` the certificate's and the
+    recovery acknowledgment's signatures; each pad's ECDH is in the list
+    under *the Python around a crossing* below. What `ecc.chilldkg`
+    computes itself on a secret is the Python arithmetic above, whatever
+    is installed. Examples are the polynomial evaluated at each
+    participant's x, the check that each secret coefficient is below n,
+    the proof of possession's negations of d and k, its `d ^ mask` and
+    its `s = k + e*d`, the pads added to the shares and taken from them,
+    the tweak added to the secret share, and the sum of the partial
+    secret shares an investigation decrypts
 - the bindings also let a caller own the buffer a secret is written
     into: a keyword-only `into=`, on the entry points that produce one.
     This package passes none, and that is a decision, not an oversight.

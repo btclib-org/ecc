@@ -80,6 +80,9 @@ against says so in prose instead. The verdicts used:
   is a case written for this suite, naming the third implementation
   that answered it; *recorded* is one reply a program gave, kept
   verbatim, naming the program and the calls that ask it again.
+- **ported** -- no file is vendored: a module of this package is a port
+  of the pinned program, so nothing is compared byte for byte, and the
+  pins say which revision the port follows.
 
 A case of this package's own is written in the test module that reads
 the file, never inside the file, so refreshing a pin is a fetch and never

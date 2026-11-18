@@ -485,6 +485,9 @@ def test_a_public_share_at_infinity_accuses_nobody() -> None:
     participant 0's x, and D2 = -(1/2) times participant 1's public share.
     Participant 0's own share checks out, `participant_step2` refuses the
     message as `EccValueError`, and the investigation finds no fault.
+    Participant 1's own share does not: its `participant_step2` refuses
+    the message as `UnknownFaultyParticipantOrCoordinatorError`, and its
+    investigation blames the coordinator.
     """
     params = chilldkg.SessionParams(_HOST_PUB_KEYS, 3)
     steps1 = [chilldkg.participant_step1(key, params) for key in _HOST_SEC_KEYS]
@@ -503,9 +506,19 @@ def test_a_public_share_at_infinity_accuses_nobody() -> None:
     with pytest.raises(EccValueError, match="participant 1 is infinity") as refused:
         chilldkg.participant_step2(_HOST_SEC_KEYS[0], state1, bytes(broken))
     assert type(refused.value) is EccValueError
-    cinv = chilldkg.coordinator_investigate_var(pmsgs1, params)[0]
+    cinvs = chilldkg.coordinator_investigate_var(pmsgs1, params)
     with pytest.raises(EccValueError, match="all inputs are consistent"):
-        chilldkg.participant_investigate(_HOST_SEC_KEYS[0], state1, bytes(broken), cinv)
+        chilldkg.participant_investigate(
+            _HOST_SEC_KEYS[0], state1, bytes(broken), cinvs[0]
+        )
+
+    state1_of_1 = steps1[1][0]
+    with pytest.raises(UnknownFaultyParticipantOrCoordinatorError):
+        chilldkg.participant_step2(_HOST_SEC_KEYS[1], state1_of_1, bytes(broken))
+    with pytest.raises(FaultyCoordinatorError, match="Sum of partial pubshares"):
+        chilldkg.participant_investigate(
+            _HOST_SEC_KEYS[1], state1_of_1, bytes(broken), cinvs[1]
+        )
 
 
 @both_arms
