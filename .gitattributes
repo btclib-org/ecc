@@ -25,6 +25,17 @@ tests/schemes/_data/bip459/test_vectors_sign_error.csv -text
 tests/schemes/_data/bip459/test_vectors_tweak.csv -text
 tests/schemes/_data/bip459/test_vectors_verify.csv -text
 tests/schemes/_data/bitcoin_core_compact_vectors.json -text
+tests/schemes/_data/chilldkg/COPYING -text
+tests/schemes/_data/chilldkg/coordinator_finalize_vectors.json -text
+tests/schemes/_data/chilldkg/coordinator_investigate_vectors.json -text
+tests/schemes/_data/chilldkg/coordinator_step1_vectors.json -text
+tests/schemes/_data/chilldkg/hostpubkey_gen_vectors.json -text
+tests/schemes/_data/chilldkg/params_hash_vectors.json -text
+tests/schemes/_data/chilldkg/participant_finalize_vectors.json -text
+tests/schemes/_data/chilldkg/participant_investigate_vectors.json -text
+tests/schemes/_data/chilldkg/participant_step1_vectors.json -text
+tests/schemes/_data/chilldkg/participant_step2_vectors.json -text
+tests/schemes/_data/chilldkg/recover_vectors.json -text
 tests/schemes/_data/chilldkg_vectors.json -text
 tests/schemes/_data/det_sign_vectors.json -text
 tests/schemes/_data/dlc_schnorr_test.json -text
