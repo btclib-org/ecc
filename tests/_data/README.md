@@ -1055,12 +1055,12 @@ calls     for each index i, with h(tag) = sha256(f"pr1140/{tag}/{i}"):
             secp256k1_schnorrsig_anti_exfil_signer_commit(msg32, keypair,
                                                           host commitment)
             secp256k1_schnorrsig_sign_custom(msg32, keypair), with
-              s2c_data32 = rho and ndata = NULL
+              s2c_data32 = rho, s2c_opening an output and ndata = NULL
             secp256k1_schnorrsig_anti_exfil_host_verify
           sign_to_contract:
             secp256k1_schnorrsig_sign_custom(msg32, keypair), with
-              s2c_data32 = data32 and ndata = aux32
-          each opening: secp256k1_schnorrsig_s2c_opening_serialize
+              s2c_data32 = data32, s2c_opening an output and ndata = aux32
+          each s2c_opening: secp256k1_schnorrsig_s2c_opening_serialize
 recorded  2026-11-17
 behind    0 revisions; that commit is the tip of the path
 ```

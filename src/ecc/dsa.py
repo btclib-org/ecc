@@ -130,9 +130,8 @@ _S2C_POINT_TAG = b"s2c/ecdsa/point"
 _S2C_DATA_TAG = b"s2c/ecdsa/data"
 
 # The draft anti-exfil BIP derives the protocol's base nonce under these
-# tags: `ecc.commit_nonce` says why. An implementation that derives the
-# base nonce otherwise signs other octets, which `anti_exfil_host_verify`
-# accepts all the same. Frozen for the reason above
+# tags: `ecc.commit_nonce` says why, and what the host's check makes of
+# another derivation. Frozen for the reason above
 _ANTI_EXFIL_AUX_TAG = b"s2c/ecdsa/aux"
 _ANTI_EXFIL_NONCE_TAG = b"s2c/ecdsa/nonce"
 

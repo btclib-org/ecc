@@ -64,6 +64,10 @@ another hash function. On any other curve or hash function the draft's
 tagged hashes are stretched in counter mode, as ``bip340_nonce_``
 stretches a short hash, into a scalar in 1..n-1.
 
+The host's check does not read that derivation: an implementation that
+derives the base nonce otherwise signs other octets, which each scheme's
+``anti_exfil_host_verify`` accepts all the same.
+
 Both hashes are tagged, and the tags are the scheme's: they are what
 keeps a tweak from being read as a challenge, or an ECDSA commitment as a
 BIP340 one. Each caller passes its own, because they differ per scheme

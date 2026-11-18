@@ -159,8 +159,7 @@ _S2C_DATA_TAG = b"s2c/schnorr/data"
 
 # The draft anti-exfil BIP derives the protocol's base nonce under the
 # second tag, with BIP340's aux tag for the key mask: `ecc.commit_nonce`
-# says why. An implementation that derives the base nonce otherwise signs
-# other octets, which `anti_exfil_host_verify` accepts all the same.
+# says why, and what the host's check makes of another derivation.
 # Frozen for the reason above
 _ANTI_EXFIL_AUX_TAG = b"BIP0340/aux"
 _ANTI_EXFIL_NONCE_TAG = b"s2c/schnorr/nonce"
@@ -749,6 +748,10 @@ def sign_(
     # The commitment comes first and aux after it, as
     # bitcoin-core/secp256k1#1140 hashes s2c_data32 before ndata, which
     # carries aux there: the two libraries then sign the same octets
+    # wherever the first digests of the nonce and of the tweak are both in
+    # 1..n-1. Outside that range the pull request reduces the nonce mod n
+    # or fails, and takes a zero tweak or fails, where this package hashes
+    # again
     if commit_hash is not None:
         aux = commit_entropy_(bytes_from_octets(commit_hash) + aux, _S2C_DATA_TAG, hf)
 

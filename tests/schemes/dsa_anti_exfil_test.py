@@ -8,8 +8,7 @@ BlockstreamResearch/secp256k1-zkp's `secp256k1_ecdsa_s2c.h` specifies the
 handshake, and the draft anti-exfil BIP, AvilaLabs/anti-exfil's
 `spec/bip-anti-exfil.md`, specifies it again with a base nonce of its
 own. `tests/schemes/anti_exfil_vectors_test.py` holds this package to the
-draft's vectors, the largest low s and the next among them; this file
-runs the handshake against itself.
+draft's vectors; this file runs the handshake against itself.
 """
 
 from hashlib import sha1, sha256
@@ -18,6 +17,7 @@ from typing import Any
 import pytest
 
 from ecc import dsa
+from ecc.commit_nonce import commit_nonce_
 from ecc.curves import mult, secp256k1
 from ecc.exceptions import EccValueError
 from ecc.rfc6979_nonce import challenge_, rfc6979_nonce_
@@ -128,6 +128,30 @@ def test_one_message_reaches_the_challenge_and_the_nonce(
     monkeypatch.setattr("ecc.dsa.challenge_", changing)
     sig = dsa.anti_exfil_sign(msg_hash, _PRV_KEY, _RHO)
     assert dsa.anti_exfil_host_verify(_HANDSHAKE_MSG_HASH, _PUB_KEY, sig, _RHO, R)
+
+
+def test_the_largest_low_s_is_accepted_and_the_next_is_refused() -> None:
+    """The largest low s, n // 2, passes step 5, and its twin does not.
+
+    Both pass `verify_`, so only the low-s bound tells them apart. The
+    draft's `ecdsa-reject-s-half-plus-one` has the next s on a tuple that
+    `verify_` refuses already. This builds the twins from a nonce of its
+    own, tweaked by rho as step 4 tweaks it, and the message hash that
+    makes s the bound.
+    """
+    n = secp256k1.n
+    # the tag `dsa` tweaks its sign-to-contract nonce with
+    nonce, R = commit_nonce_(_RHO, 11, b"s2c/ecdsa/point")
+    r = mult(nonce)[0] % n
+    q = int.from_bytes(_PRV_KEY, "big")
+    msg_hash = ((n // 2 * nonce - r * q) % n).to_bytes(32, "big")
+    low = dsa.Sig(r, n // 2)
+    high = dsa.Sig(r, n // 2 + 1)
+    assert high.s == n - low.s
+    assert dsa.verify_(msg_hash, _PUB_KEY, low)
+    assert dsa.verify_(msg_hash, _PUB_KEY, high)
+    assert dsa.anti_exfil_host_verify(msg_hash, _PUB_KEY, low, _RHO, R)
+    assert not dsa.anti_exfil_host_verify(msg_hash, _PUB_KEY, high, _RHO, R)
 
 
 def test_the_signer_keeps_no_state() -> None:
