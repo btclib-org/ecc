@@ -867,7 +867,7 @@ repo    BlockstreamResearch/bip-frost-dkg
 path    vectors/COPYING
 commit  f1bebe732b3f074bb5664f4e4cdcf15acb6929d9  2026-07-30
 blob    9b8919dc0c3c4aeef21611a88dbaa4b7cdc3f349
-pulled  2026-11-17
+pulled  2026-11-18
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -881,7 +881,7 @@ path    vectors/coordinator_finalize_vectors.json
 commit  375ae3d832e449e9955115524ba428cb3dc6d4e4  2026-11-16
 blob    42aa4c9498e6372f3aea484d1acae1ec542f22f2
 ours    5053387ced15244297eda05c04eab1a41f14c314
-pulled  2026-11-17
+pulled  2026-11-18
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -896,7 +896,7 @@ path    vectors/coordinator_investigate_vectors.json
 commit  375ae3d832e449e9955115524ba428cb3dc6d4e4  2026-11-16
 blob    0b5af0bb6bddc56607108ebf8cf6b21c17e2ac58
 ours    ea9e1621f165222fd5c443b62ff46ae3bf9c5c9d
-pulled  2026-11-17
+pulled  2026-11-18
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -911,7 +911,7 @@ path    vectors/coordinator_step1_vectors.json
 commit  17ad390c074e4065ada46f6e98bb821d98432c86  2026-11-16
 blob    1e593d248d4e5c659bd0bf101e29681708c5aea4
 ours    488b518bc830d50e0021446ddd079c9659e240dd
-pulled  2026-11-17
+pulled  2026-11-18
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -926,7 +926,7 @@ path    vectors/hostpubkey_gen_vectors.json
 commit  e7c0449df5d7e9dc71ed0e8220fe4308144b59c4  2026-07-30
 blob    21e50417d4d1435e7247541c90debc4412e374ef
 ours    ab797317394603d838861499aecab194c9ad852e
-pulled  2026-11-17
+pulled  2026-11-18
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -941,7 +941,7 @@ path    vectors/params_hash_vectors.json
 commit  f913f9c7ffc3d67bfbb22dd7d294fb43f71562f3  2026-11-13
 blob    0090c3360af8d20b40ecbfeb77e11698b79c171b
 ours    edb4544eb099590b7659812e482d4f6f9186cfca
-pulled  2026-11-17
+pulled  2026-11-18
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -956,7 +956,7 @@ path    vectors/participant_finalize_vectors.json
 commit  7bcc4b3334e9c3d6faa4e304a9a951a34d5133d4  2026-11-16
 blob    771b3bcfeb5503551f139fe4480be71c657003df
 ours    37ab37a3e85438c37449c183587034bbce973015
-pulled  2026-11-17
+pulled  2026-11-18
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -971,7 +971,7 @@ path    vectors/participant_investigate_vectors.json
 commit  38a8bc80cba050e3e7ab94fd22a6b37176b64606  2026-11-16
 blob    45d2d693927809cd37d10cd1dfc54233741580ad
 ours    23aa8f0adcb2c0b8b34cab2d7775c8a1e7942f3a
-pulled  2026-11-17
+pulled  2026-11-18
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -986,7 +986,7 @@ path    vectors/participant_step1_vectors.json
 commit  375ae3d832e449e9955115524ba428cb3dc6d4e4  2026-11-16
 blob    b47ade3c0a00a74f7a012fb1755f9a985c4c3508
 ours    cb2e0c83f1a29a63005138fd4ba20f9aaac56bc0
-pulled  2026-11-17
+pulled  2026-11-18
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -1001,7 +1001,7 @@ path    vectors/participant_step2_vectors.json
 commit  375ae3d832e449e9955115524ba428cb3dc6d4e4  2026-11-16
 blob    663a004ec30d2e0e11f25df49d21018b880bd55a
 ours    c040142f4ccf1bd28c9453dca04e066f11ea2514
-pulled  2026-11-17
+pulled  2026-11-18
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -1016,7 +1016,7 @@ path    vectors/recover_vectors.json
 commit  dc691fb8fbd572d2102ac8bb435abce750e35df8  2026-11-16
 blob    4a262434a805e471dcf7d2356ea8f3aa804b86db
 ours    6b1edb9201d3a5b22cd6a7775b3d9efa5524cbca
-pulled  2026-11-17
+pulled  2026-11-18
 behind  0 revisions; that commit is the tip of the path
 ```
 
