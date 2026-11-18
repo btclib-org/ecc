@@ -263,7 +263,7 @@ _MAY_IMPORT: dict[str, frozenset[str]] = {
     _CURVES: frozenset({_LIBSECP256K1, _UTILS, _ALIAS, _EXCEPTIONS, _NUMBER_THEORY}),
     "ecc.bip340_nonce": _BELOW_SCHEMES,
     "ecc.borromean": _BELOW_SCHEMES,
-    "ecc.commit_nonce": _BELOW_SCHEMES,
+    "ecc.commit_nonce": _BELOW_SCHEMES | {"ecc.bip340_nonce"},
     "ecc.dahlias": _BELOW_SCHEMES | {"ecc.ssa"},
     "ecc.dh": _BELOW_SCHEMES,
     "ecc.dlc_oracle": _BELOW_SCHEMES | {"ecc.ssa"},

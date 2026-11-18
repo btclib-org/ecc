@@ -20,13 +20,13 @@ module-path = [
 ]
 
 # each module's own file; der_test.py is dsa.py's DER codec;
-# dsa_anti_exfil_test.py and commit_nonce_test.py are the anti-exfil and
-# sign-to-contract paths, the tests that call `ssa.sign_custom`; and
+# dsa_anti_exfil_test.py, anti_exfil_vectors_test.py and
+# commit_nonce_test.py are the anti-exfil and sign-to-contract paths; and
 # parse_contract_test.py is the parse and serialize boundary convention
 test-command = """python -m pytest -x -q -n0 -p no:randomly \
   tests/schemes/ssa_test.py tests/schemes/dsa_test.py tests/schemes/der_test.py \
-  tests/schemes/dsa_anti_exfil_test.py tests/schemes/commit_nonce_test.py \
-  tests/parse_contract_test.py"""
+  tests/schemes/dsa_anti_exfil_test.py tests/schemes/anti_exfil_vectors_test.py \
+  tests/schemes/commit_nonce_test.py tests/parse_contract_test.py"""
 
 # seconds of wall clock: a timeout is reported KILLED, so slack is the
 # safe direction

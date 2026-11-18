@@ -147,14 +147,14 @@ package is used to teach and to prototype as much as to build:
     This package passes none, and that is a decision, not an oversight.
     `commit_nonce.commit_nonce_` reads one straight into a Python `int`
     at `int.from_bytes(tweaked, byteorder="big", signed=False)`
-    (`src/ecc/commit_nonce.py:159`). A caller-owned buffer
+    (`src/ecc/commit_nonce.py:217`). A caller-owned buffer
     can be wiped once the call that filled it returns; the `int` it is
     read into cannot be, and outlives the call regardless, so taking the
     buffer there would cost a public signature and buy nothing, short of
     this package no longer holding a private key as a Python `int`, which
     is a change to that representation and not to a call site.
     `dsa.Signer.__init__` at `self._q.to_bytes(32, "big")`
-    (`src/ecc/dsa.py:1482`) crosses the same boundary the
+    (`src/ecc/dsa.py:1488`) crosses the same boundary the
     other way, once, at construction: the plain `int`
     `scalar_from_prv_key` already produced becomes a transient `bytes` on
     the way into the owned buffer `wipe` overwrites afterwards. That

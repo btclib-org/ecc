@@ -50,6 +50,7 @@ tests/schemes/_data/key_sort_vectors.json -text
 tests/schemes/_data/nonce_agg_vectors.json -text
 tests/schemes/_data/nonce_gen_vectors.json -text
 tests/schemes/_data/packet_encoding_test_vectors.csv -text
+tests/schemes/_data/schnorrsig_s2c_vectors.json -text
 tests/schemes/_data/secp256k1_recovery_vectors.json -text
 tests/schemes/_data/sig_agg_vectors.json -text
 tests/schemes/_data/sign_verify_vectors.json -text
@@ -64,4 +65,4 @@ tests/schemes/_data/xswiftec_inv_test_vectors.csv -text
 tests/schemes/_data/zkp_generator_vectors.json -text
 tests/schemes/_data/zkp_rangeproof_fixed_vectors.json -text
 tests/schemes/_data/zkp_schnorr_adaptor_vectors.json -text
-tests/schemes/dsa_anti_exfil_test.py -text
+tests/schemes/commit_nonce_test.py -text

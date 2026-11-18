@@ -52,9 +52,8 @@ ECDSA.
 ``sign_`` also takes a value to commit to inside the nonce,
 sign-to-contract style (see ecc.commit_nonce for the tweak), and
 the ``anti_exfil_*`` functions here are the protocol that construction
-exists to support: the handshake bitcoin-core/secp256k1#1140 proposes
-for BIP340, whose five steps and reasoning are in
-``anti_exfil_host_commit``.
+exists to support: the handshake the draft anti-exfil BIP specifies for
+BIP340, whose five steps and reasoning are in ``anti_exfil_host_commit``.
 """
 
 from __future__ import annotations
@@ -84,8 +83,9 @@ from ecc._utils import (
     is_octets,
 )
 from ecc.alias import BinaryData, HashF, Integer, JacPoint, Octets, Point, Public
-from ecc.bip340_nonce import _nonce_with_pub_key_, bip340_nonce_
+from ecc.bip340_nonce import _nonce_with_pub_key_, _unnegated_nonce_
 from ecc.commit_nonce import (
+    _anti_exfil_nonce_,
     commit_entropy_,
     commit_nonce_,
     commit_point_var_,
@@ -145,16 +145,24 @@ __all__ = [
 
 # bitcoin-core/secp256k1#1140 ("Schnorr sign-to-contract and anti-exfil")
 # spells these `s2c/schnorr/point` and `s2c/schnorr/data`, in
-# src/modules/schnorrsig/main_impl.h at its head 49c31379, and this tree
-# matches it byte for byte: if it lands, a commitment made here opens
-# there. bitcoin-core/secp256k1#1140 is open and unmerged, so it is a
-# reference and not an authority -- its spelling can still change, and
-# the pull request may never land at all. Named for the standard rather
-# than for this package's `ssa`, and not under BIP0340/, which would claim the
-# BIP defines this. Frozen all the same: a different string is a
-# different scheme, and every signature already made would stop opening
+# src/modules/schnorrsig/main_impl.h at the commit `tests/_data/README.md`
+# pins for `schnorrsig_s2c_vectors.json`, and this tree matches it byte
+# for byte: if it lands, a commitment made here opens there.
+# bitcoin-core/secp256k1#1140 is open and unmerged, so it is a reference
+# and not an authority -- its spelling can still change, and the pull
+# request may never land at all. Named for the standard rather than for
+# this package's `ssa`, and not under BIP0340/, which would claim the BIP
+# defines this. Frozen all the same: a different string is a different
+# scheme, and every signature already made would stop opening
 _S2C_POINT_TAG = b"s2c/schnorr/point"
 _S2C_DATA_TAG = b"s2c/schnorr/data"
+
+# The draft anti-exfil BIP derives the protocol's base nonce under the
+# second tag, with BIP340's aux tag for the key mask: `ecc.commit_nonce`
+# says why, and what the host's check makes of another derivation.
+# Frozen for the reason above
+_ANTI_EXFIL_AUX_TAG = b"BIP0340/aux"
+_ANTI_EXFIL_NONCE_TAG = b"s2c/schnorr/nonce"
 
 # BIP340 serializes a signature as thirty-two octets of r and thirty-two
 # of s, on secp256k1 and by that BIP alone: a Sig on another curve has no
@@ -603,9 +611,10 @@ def _sign_python_(
 
 
 def _sign_commit_(
-    msg: Octets,
-    prv_key: Integer,
-    nonce_aux: bytes,
+    msg: bytes,
+    k0: int,
+    q: int,
+    x_Q: int,
     commit_hash: Octets,
     ec: Curve,
     hf: HashF,
@@ -613,22 +622,18 @@ def _sign_commit_(
 ) -> tuple[Sig, Point]:
     """Return the sign-to-contract signature and its receipt.
 
-    ``nonce_aux`` is what reaches ``bip340_nonce_`` as auxiliary
-    randomness. ``sign_``'s own commitment path passes its mix of the
-    caller's aux and commit_hash; the anti-exfil protocol below passes
-    commit_hash alone, already hashed by ``anti_exfil_host_commit``, so
-    that the nonce a signature reaches depends on nothing a caller
-    supplied on the side.
+    k0 is the nonce before the tweak and before BIP340's even-y
+    negation, and q the key already negated to its even-y point x_Q.
+    ``sign_``'s own commitment path derives k0 as BIP340's nonce;
+    ``anti_exfil_sign`` derives it as the draft anti-exfil BIP's base
+    nonce.
     """
-    # k is the nonce: an integer in the range 1..n-1.
-    k, x_K, q, x_Q = bip340_nonce_(msg, prv_key, nonce_aux, ec, hf)
-
-    # the tweak moves the nonce's point, and BIP340 signs with the
-    # even-y one: k comes back from bip340_nonce_ already normalized,
-    # so it is the tweaked point whose parity is still to be settled --
-    # and x_K, which the challenge commits to, is the tweaked one.
-    # The receipt keeps the even-y point the tweak hashed
-    k, receipt = commit_nonce_(commit_hash, k, _S2C_POINT_TAG, ec, hf)
+    # k0's point, with its actual parity, is the receipt the tweak
+    # hashes, as bitcoin-core/secp256k1#1140 hashes it, and as step 2 of
+    # the draft anti-exfil BIP asks. The tweak moves the point, so the
+    # even-y negation BIP340 signs with applies to the tweaked nonce, and
+    # x_K, which the challenge commits to, is the tweaked point's
+    k, receipt = commit_nonce_(commit_hash, k0, _S2C_POINT_TAG, ec, hf)
     x_K, y_K = mult(k, ec=ec)
     # selected by index, not under an `if`: the parity of y_K is not published
     k = (k, ec.n - k)[y_K & 1]
@@ -716,7 +721,16 @@ def sign_(
     ecc.commit_nonce). Keyword-only, and the only argument that
     changes what is returned, so that neither is easy to pass by accident.
     A commitment does not displace aux: it joins it, both of them
-    reaching the nonce as BIP340's auxiliary randomness.
+    reaching the nonce as BIP340's auxiliary randomness, commit_hash
+    first and aux after it.
+
+    aux must never be a value supplied by a host that also runs the
+    anti-exfil protocol with this key. This package's anti-exfil nonce is
+    out of aux's reach (``anti_exfil_signer_commit``), but a device
+    sharing the key may derive its own as a BIP340 nonce with the host
+    commitment for aux, and the draft anti-exfil BIP's *Backward
+    compatibility* section asks that no ordinary signing interface take
+    that commitment as aux.
     """
     msg = bytes_from_octets(msg)
 
@@ -726,12 +740,20 @@ def sign_(
     # the committed value has to reach the nonce derivation, or two
     # commitments over one message hand out the private key -- see
     # commit_nonce. BIP340 has the slot for it and dsa does not: `a` is
-    # whatever the signer wants mixed in, so aux and the commitment are
+    # whatever the signer wants mixed in, so the commitment and aux are
     # hashed together into it and both still count. That is why ssa keeps
     # taking its aux where dsa refuses a nonce beside a commitment: an
-    # aux is an input to the derivation, a nonce is its answer
+    # aux is an input to the derivation, a nonce is its answer.
+    #
+    # The commitment comes first and aux after it, as
+    # bitcoin-core/secp256k1#1140 hashes s2c_data32 before ndata, which
+    # carries aux there: the two libraries then sign the same octets
+    # wherever the first digests of the nonce and of the tweak are both in
+    # 1..n-1. Outside that range the pull request reduces the nonce mod n
+    # or fails, and takes a zero tweak or fails, where this package hashes
+    # again
     if commit_hash is not None:
-        aux = commit_entropy_(aux + bytes_from_octets(commit_hash), _S2C_DATA_TAG, hf)
+        aux = commit_entropy_(bytes_from_octets(commit_hash) + aux, _S2C_DATA_TAG, hf)
 
     # the curve and the hash function decide this, and the size of the
     # message does not. `libsecp256k1_ssa.sign` accepts only a 32-byte
@@ -776,7 +798,8 @@ def sign_(
     if commit_hash is None:
         return _sign_python_(msg, prv_key, None, aux, ec, hf, verify)
 
-    return _sign_commit_(msg, prv_key, aux, commit_hash, ec, hf, verify)
+    k0, q, x_Q = _unnegated_nonce_(msg, prv_key, aux, ec, hf, None)
+    return _sign_commit_(msg, k0, q, x_Q, commit_hash, ec, hf, verify)
 
 
 @overload
@@ -837,6 +860,8 @@ def sign(
 
     commit is a value to commit to inside the nonce, and is reduced by hf
     as msg is: `sign_` is the spelling that takes the two hashes.
+
+    aux is `sign_`'s, and so is what it must never be.
     """
     msg_hash = reduce_to_hlen(msg, hf)
     if commit is None:
@@ -974,7 +999,7 @@ class Signer:
         the largest share of what it turns off: the keypair was built
         when this signer was, so the signature is the cheap part and the
         check is not. See `sign_` for the default and for why no pub_key
-        joins it.
+        joins it, and for the value aux must never be.
         """
         if self._wiped:
             raise EccValueError("the signer is wiped")
@@ -1028,7 +1053,10 @@ class Signer:
     def sign(
         self, msg: Octets, aux: Octets | None = None, *, verify: bool = True
     ) -> bytes:
-        """Return the signature of a message, reducing it with hf first."""
+        """Return the signature of a message, reducing it with hf first.
+
+        aux is `sign_`'s, and so is what it must never be.
+        """
         return self.sign_(reduce_to_hlen(msg, self._hf), aux, verify=verify)
 
 
@@ -1350,10 +1378,11 @@ def verify(
 def anti_exfil_host_commit(rho: Octets, hf: HashF = sha256) -> bytes:
     """Return the host's commitment to rho: step 1 of the anti-exfil protocol.
 
-    The protocol is proposed for `include/secp256k1_schnorrsig.h` of
-    bitcoin-core/secp256k1#1140, carrying over the ECDSA Anti-Exfil
-    Protocol BlockstreamResearch/secp256k1-zkp's `secp256k1_ecdsa_s2c.h`
-    specifies -- see `dsa.anti_exfil_host_commit` -- to BIP340.
+    The protocol is the BIP340 one of the draft anti-exfil BIP,
+    AvilaLabs/anti-exfil's `spec/bip-anti-exfil.md`. It carries over to
+    BIP340 the ECDSA Anti-Exfil Protocol BlockstreamResearch/secp256k1-zkp's
+    `secp256k1_ecdsa_s2c.h` specifies -- see `dsa.anti_exfil_host_commit`
+    -- with a base nonce of the draft's own (``anti_exfil_signer_commit``).
 
     A signing device that picks its own nonce can leak the private key
     through the nonces themselves, and the protocol takes that choice
@@ -1378,18 +1407,36 @@ def anti_exfil_host_commit(rho: Octets, hf: HashF = sha256) -> bytes:
     `dsa.anti_exfil_host_commit` for what a device that could dodge this
     check would buy itself.
 
-    The commitment is the committed value as it enters the nonce
-    derivation -- ``commit_entropy_`` under the sign-to-contract data
-    tag, and nothing else -- which is what lets step 2 and step 4 reach
-    one nonce: the device derives it from this hash, and recomputes the
-    same hash from rho when it signs. ``sign_``'s own commit_hash
-    argument reaches the nonce mixed with the caller's own aux instead,
-    which is the right shape for an ordinary sign-to-contract commitment
-    and the wrong one for this handshake: step 2 has nothing to mix in
-    but the commitment, so the four functions here derive the nonce
-    directly rather than going through ``sign_``.
+    The commitment is ``commit_entropy_`` of rho under the
+    sign-to-contract data tag. The device derives its nonce from it in
+    step 2, and recomputes the commitment from rho in step 4, which is
+    what lets the two steps reach one nonce. That derivation is the
+    draft's, as ``ecc.commit_nonce`` says.
     """
     return commit_entropy_(bytes_from_octets(rho, hf().digest_size), _S2C_DATA_TAG, hf)
+
+
+def _anti_exfil_base_nonce_(
+    msg: Octets, prv_key: Integer, host_commitment: bytes, ec: Curve, hf: HashF
+) -> tuple[int, int, int]:
+    """Return the draft's k0, with the key q negated to its even-y x_Q."""
+    msg = bytes_from_octets(msg)
+    q = scalar_from_prv_key(prv_key, ec)
+    x_Q, y_Q = mult(q, ec=ec)
+    # selected by index, not under an `if`: the parity of y_Q is not published
+    q = (q, ec.n - q)[y_Q & 1]
+    k0 = _anti_exfil_nonce_(
+        _ANTI_EXFIL_AUX_TAG,
+        _ANTI_EXFIL_NONCE_TAG,
+        q,
+        x_Q.to_bytes(ec.p_size, "big"),
+        msg,
+        host_commitment,
+        True,
+        ec,
+        hf,
+    )
+    return k0, q, x_Q
 
 
 def anti_exfil_signer_commit(
@@ -1406,14 +1453,17 @@ def anti_exfil_signer_commit(
     here, and that is the shape the protocol needs: R is a promise, and
     step 4 is what keeps it.
 
-    The commitment travels as BIP340's own auxiliary randomness, alone --
-    exactly what it becomes inside ``anti_exfil_sign``'s nonce derivation
-    -- so the two reach one nonce and the R below is the receipt that
-    signature will open with.
+    The nonce is the draft's base nonce k0, derived from the key, the
+    message and the commitment. ``ecc.commit_nonce`` says where the
+    derivation is the draft's, and there the draft's BIP340 protocol
+    reduces k0 mod n and refuses a zero. ``anti_exfil_sign`` derives the
+    same k0, so R is the receipt its signature will open with. R is k0's
+    point with whatever parity it has: step 4 negates the tweaked nonce
+    instead. A k0 the draft's step 2 refuses raises EccRuntimeError.
     """
-    aux = bytes_from_octets(host_commitment, hf().digest_size)
-    _, x_K, _, _ = bip340_nonce_(msg, prv_key, aux, ec, hf)
-    return x_K, _y_even_var(Public(x_K), ec)
+    hc = bytes_from_octets(host_commitment, hf().digest_size)
+    k0, _, _ = _anti_exfil_base_nonce_(msg, prv_key, hc, ec, hf)
+    return mult(k0, ec.G, ec)
 
 
 def anti_exfil_sign(
@@ -1425,14 +1475,14 @@ def anti_exfil_sign(
 ) -> Sig:
     """Sign committing to the host's rho: step 4 of the anti-exfil protocol.
 
-    Sign-to-contract with rho as the committed value and nothing else
-    reaching the nonce derivation -- ``sign_(msg, prv_key, commit_hash=rho)``
-    would mix in a fresh random aux instead, breaking the property this
-    function exists for. The receipt is dropped rather than passed on,
-    because the host has it already -- it is the R of step 2, and a host
-    taking the device's word for it here would be accepting a nonce point
-    chosen *after* rho was revealed, which is the one thing the ordering
-    exists to rule out.
+    Sign-to-contract with rho as the committed value, over the base nonce
+    of step 2: ``sign_(msg, prv_key, commit_hash=rho)`` derives BIP340's
+    nonce instead, and does not reach that R. A k0 the draft's step 2
+    refuses, or a tweaked nonce of zero, raises EccRuntimeError. The
+    receipt is dropped rather than passed on, because the host has it
+    already -- it is the R of step 2, and a host taking the device's word
+    for it here would be accepting a nonce point chosen *after* rho was
+    revealed, which is the one thing the ordering exists to rule out.
 
     **The device keeps no state between step 2 and step 4.** It does not
     check rho against the commitment it was given: it re-derives the
@@ -1443,8 +1493,10 @@ def anti_exfil_sign(
     device's key is never the thing at risk.
     """
     rho = bytes_from_octets(rho, hf().digest_size)
-    nonce_aux = commit_entropy_(rho, _S2C_DATA_TAG, hf)
-    sig, _receipt = _sign_commit_(msg, prv_key, nonce_aux, rho, ec, hf, True)
+    msg = bytes_from_octets(msg)
+    hc = commit_entropy_(rho, _S2C_DATA_TAG, hf)
+    k0, q, x_Q = _anti_exfil_base_nonce_(msg, prv_key, hc, ec, hf)
+    sig, _receipt = _sign_commit_(msg, k0, q, x_Q, rho, ec, hf, True)
     return sig
 
 

@@ -1,7 +1,8 @@
 # Vendored test vectors
 
-This file is about `tests/**/_data/`, and about the one test module that
-carries its vectors inline, `tests/schemes/dsa_anti_exfil_test.py`.
+This file is about `tests/**/_data/`, and about
+`tests/schemes/commit_nonce_test.py`, which carries vectors of
+secp256k1-zkp inline.
 
 Upstream prose that this package *paraphrases* has no entry here: a
 BIP's reasoning, a Core comment, a C library header's rationale are
@@ -1035,6 +1036,56 @@ with secret key zero, which is not a valid key. This package refuses a
 zero r or s where upstream parses it; the test asks `recover_pub_key_`
 for the refusal.
 
+### `tests/schemes/_data/schnorrsig_s2c_vectors.json`
+
+```text
+repo      benma/secp256k1
+path      src/modules/schnorrsig/main_impl.h
+ref       schnorr-s2c
+commit    b4d2b22e39832d4332ce889aac40812ff1c4cbad  2026-10-14
+blob      3c4e420c8fd9cbc30bf89a7d251b5796713e3d5c
+ours      92145497196b939b7d6206faeae40b9620a0892b
+program   the library at that commit, built by cmake with its defaults
+calls     for each index i, with h(tag) = sha256(f"pr1140/{tag}/{i}"):
+            seckey = int(h("sk"), big-endian) % (n - 1) + 1
+            msg32, aux32, data32 = h("msg"), h("aux"), h("data")
+            keypair = secp256k1_keypair_create(seckey)
+          anti_exfil, with rho = data32:
+            secp256k1_schnorrsig_anti_exfil_host_commit(rho)
+            secp256k1_schnorrsig_anti_exfil_signer_commit(msg32, keypair,
+                                                          host commitment)
+            secp256k1_schnorrsig_sign_custom(msg32, keypair), with
+              s2c_data32 = rho, s2c_opening an output and ndata = NULL
+            secp256k1_schnorrsig_anti_exfil_host_verify
+          sign_to_contract:
+            secp256k1_schnorrsig_sign_custom(msg32, keypair), with
+              s2c_data32 = data32, s2c_opening an output and ndata = aux32
+          each s2c_opening: secp256k1_schnorrsig_s2c_opening_serialize
+recorded  2026-11-17
+behind    0 revisions; that commit is the tip of the path
+```
+
+Verdict: **recorded**. There is no upstream vector file: the pull
+request's `tests_impl.h` draws its sign-to-contract data at random. Each
+row is one run of the library of bitcoin-core/secp256k1#1140, whose head
+is `commit`, on the branch of the fork `ref` names. `index` is the row's
+i. Each flow has one row for each combination of the parities of the
+key point P, of the receipt R0 and of the tweaked nonce point W: the
+lowest i that gives it. The signer commitment is R0, compressed by
+`secp256k1_ec_pubkey_serialize`, and an opening is the same octets with
+the first one's 0x04 bit set where W has odd y. The program that made
+the calls is not committed.
+
+`secp256k1_schnorrsig_anti_exfil_host_verify` accepted each anti-exfil
+row before the file was written.
+
+`commit` touches `main_impl.h`, the path the weekly check asks about,
+so a revision of the pull request that changes only another file goes
+unreported. The pull request is open and unmerged, so the file is a
+reference and not an authority. It is libsecp256k1's output, so
+`tests/py_arm_authority_test.py` does not name it.
+`tests/schemes/ssa_s2c_vectors_test.py` reads every row.
+
 ## AvilaLabs/anti-exfil
 
 ### The draft anti-exfil BIP: files under `tests/schemes/_data/`
@@ -1046,9 +1097,8 @@ to the commit that added them, the last to touch either path. Upstream's
 `vectors/bip-anti-exfil.README.md` offers `bip-anti-exfil.json` under
 CC0 or MIT, and the `license` field of both files reads MIT.
 
-`tests/schemes/anti_exfil_vectors_test.py` runs the host side of every
-`valid`, `reject` and `host_accept` case of both files, and its docstring
-says which cases it does not run and why.
+`tests/schemes/anti_exfil_vectors_test.py` runs every case of both
+files, and its docstring says how.
 
 ### `tests/schemes/_data/bip-anti-exfil.json`
 
@@ -1593,7 +1643,7 @@ block's comment, each hex field is the `0x` array of that name, and
 them. A block that only asks whether a key or an adaptor point parses
 carries the parse function's name, set to false. The pass that produced
 the file is not committed, and what re-derives it is reading those arrays
-again; the command in the entry of `tests/schemes/dsa_anti_exfil_test.py`
+again; the command in the entry of `tests/schemes/commit_nonce_test.py`
 finds each value in the pinned blob.
 
 The pin is the branch of the fork the pull request is opened from, which
@@ -1603,14 +1653,14 @@ no branch of secp256k1-zkp itself, so the file is a reference and not an
 authority: a revision of the pull request is what the weekly check
 reports. `tests/schemes/ssa_adaptor_test.py` runs every block.
 
-### `tests/schemes/dsa_anti_exfil_test.py`
+### `tests/schemes/commit_nonce_test.py`
 
 ```text
 repo    BlockstreamResearch/secp256k1-zkp
 path    src/modules/ecdsa_s2c/tests_impl.h
 commit  6a01f71674cd3550e42d725420ddfb9e8571e223  2026-10-17
 blob    701b5ae56795a717b2e6b22f7e2ee349cfd3131d
-ours    615abafd2d083477fa441ff48b3ec3586238e6b2
+ours    30457ade8610a9ac8ce7a8acda2c5e3deda97767
 pulled  2026-08-02, refreshed 2026-08-06, 2026-08-07, 2026-08-09,
         2026-08-13, 2026-08-14, 2026-09-10, 2026-09-26, 2026-10-20 and
         2026-11-06
@@ -1618,14 +1668,12 @@ behind  0 revisions; that commit is the tip of the path
 ```
 
 Verdict: **transcribed**, off `ecdsa_s2c_tests`, the array
-`test_ecdsa_s2c_fixed_vectors` and `test_ecdsa_anti_exfil_signer_commit`
-both walk: `_ZKP_VECTORS` is its rows, column for column -- `s2c_data`,
-`expected_s2c_opening` and `expected_s2c_exfil_opening` -- and
-`_PRV_KEY` and `_MSG_HASH` are the key and the message both functions
-run those rows against. There is no blob to compare, the values
-being `0x` arrays inside C source, so what is checked is that each of
-them is in the pinned blob when those arrays are read as octets rather
-than as text:
+`test_ecdsa_s2c_fixed_vectors` walks: `_ZKP_VECTORS` is its rows'
+`s2c_data` and `expected_s2c_opening` columns, and `_ZKP_PRV_KEY` and
+`_ZKP_MSG_HASH` are the key and the message that function runs those
+rows against. There is no blob to compare, the values being `0x` arrays
+inside C source, so what is checked is that each of them is in the
+pinned blob when those arrays are read as octets rather than as text:
 
 ```shell
 blob=<the blob this entry gives>
@@ -1641,11 +1689,10 @@ print(sys.argv[1].lower() in h.lower())" "${value:?}"
 ```
 
 Source rather than a data file, and pinned here for what the columns
-settle: a row's openings are one `anti_exfil_host_commit` apart, so the
-module holds the R the device promises and the R its signature carries
-to libsecp256k1-zkp's own octets rather than to this package run twice. A row
-upstream regenerates is one this tree would go on asserting, which is
-what the pin is read for. The module points here for the revision
+settle: the receipt of a sign-to-contract signature is held to
+libsecp256k1-zkp's own octets rather than to this package run twice. A
+row upstream regenerates is one this tree would go on asserting, which
+is what the pin is read for. The module points here for the revision
 and carries none of its own, which is what puts the pin where the weekly
 workflow reads it.
 
@@ -1985,8 +2032,9 @@ Not checked byte for byte against one:
   `bip32_public_derivation.json`, `rfc6979.json`,
   `zkp_rangeproof_fixed_vectors.json`, `zkp_generator_vectors.json`,
   `zkp_schnorr_adaptor_vectors.json`,
-  `dsa_anti_exfil_test.py`, `secp256k1_symbols.txt`,
+  `commit_nonce_test.py`, `secp256k1_symbols.txt`,
   `bitcoin_core_compact_vectors.json` and `secp256k1_recovery_vectors.json`.
-- recorded from a program pinned upstream: `chilldkg_vectors.json`.
+- recorded from a program pinned upstream: `chilldkg_vectors.json` and
+  `schnorrsig_s2c_vectors.json`.
 - not vendored: `zkp_rangeproof_vectors.json` and
   `der_length_vectors.json` (this suite's own).

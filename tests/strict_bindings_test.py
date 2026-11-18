@@ -97,6 +97,9 @@ _DECLINED: dict[str, Callable[[], Any]] = {
     "dsa.sign commit_hash": lambda: dsa.sign_(
         _MSG_HASH, _PRV_KEY, commit_hash=_COMMIT_HASH, grind=False
     ),
+    "dsa.anti_exfil_sign": lambda: dsa.anti_exfil_sign(
+        _MSG_HASH, _PRV_KEY, _COMMIT_HASH
+    ),
     "dsa.sign_recoverable nonce": lambda: dsa.sign_recoverable_(
         _MSG_HASH, _PRV_KEY, nonce=_NONCE
     ),

@@ -247,10 +247,14 @@ _AUTHORITY: dict[str, tuple[str, ...]] = {
     ),
     "curves.sec_point.bytes_from_prv_key_int": ("schemes/musig2_test.py",),
     "curves.sec_point.prv_key_tweak_add": ("schemes/dahlias_test.py",),
-    "commit_nonce.commit_nonce_": ("schemes/ssa_test.py",),
+    "commit_nonce.commit_nonce_": (
+        "schemes/anti_exfil_vectors_test.py",
+        "schemes/ssa_test.py",
+    ),
     "dh.diffie_hellman": ("schemes/wycheproof_test.py",),
     "dsa.Signer.__init__": (),
     "dsa.Signer.sign_": (),
+    "dsa.anti_exfil_sign": ("schemes/anti_exfil_vectors_test.py",),
     "dsa.assert_as_valid_": (
         "schemes/anti_exfil_vectors_test.py",
         "schemes/ecdsa_adaptor_test.py",

@@ -57,6 +57,21 @@ def _stretch(tag: bytes, m: bytes, size: int, hf: HashF) -> bytes:
     return digests[:size]
 
 
+def _stretched_scalar(tag: bytes, m: bytes, ec: Curve, hf: HashF) -> int:
+    """Return a scalar in 1..n-1 from `_stretch`'s digests of m under tag.
+
+    One digest shorter than n would leave every nonce below 2^hlen: a few
+    signatures then give the key away as a hidden number problem. So
+    whole digests are drawn in counter mode until they give at least
+    nlen + 64 bits, and reduced as FIPS 186-5 A.3.1 and A.4.1 reduce
+    them: the bias is below 2^-64 and the scalar is never zero.
+    """
+    hf_len = hf().digest_size
+    size = -(-(ec.nlen + 64) // (hf_len * 8)) * hf_len
+    digests = _stretch(tag, m, size, hf)
+    return int.from_bytes(digests, "big") % (ec.n - 1) + 1
+
+
 def _bip340_nonce_(msg: bytes, q: int, Q: int, aux: bytes, ec: Curve, hf: HashF) -> int:
     # assume the random oracle model for the hash function,
     # i.e. hash values can be considered uniformly random
@@ -91,17 +106,9 @@ def _bip340_nonce_(msg: bytes, q: int, Q: int, aux: bytes, ec: Curve, hf: HashF)
 
     nonce_tag = b"BIP0340/nonce"
     if stretched:
-        # One digest would leave every nonce below 2^hlen: a few
-        # signatures then give the key away as a hidden number problem.
-        # So whole digests are drawn in counter mode until they give at
-        # least nlen + 64 bits, and reduced as FIPS 186-5 A.3.1 and
-        # A.4.1 reduce them: the bias is below 2^-64 and the nonce is
-        # never zero.
         # Whether this branch is taken depends on ec and hf alone, so
         # one pair never mixes the two derivations.
-        size = -(-(ec.nlen + 64) // (hf_len * 8)) * hf_len
-        digests = _stretch(nonce_tag, t, size, hf)
-        return int.from_bytes(digests, "big") % (ec.n - 1) + 1
+        return _stretched_scalar(nonce_tag, t, ec, hf)
 
     for _ in range(_MAX_NONCE_ATTEMPTS):
         t = tagged_hash(nonce_tag, t, hf)
@@ -158,6 +165,28 @@ def _nonce_with_pub_key_(
     no key, which the default self-check refuses. Only `Signer` passes
     one, computed from its own scalar.
     """
+    k, q, x_Q = _unnegated_nonce_(msg, prv_key, aux, ec, hf, pub_key)
+    x_K, y_K = mult(k, ec=ec)
+    # selected by index, not under an `if`: the parity of y_K is not published
+    k = (k, ec.n - k)[y_K & 1]
+
+    return k, x_K, q, x_Q
+
+
+def _unnegated_nonce_(
+    msg: Octets,
+    prv_key: Integer,
+    aux: Octets | None,
+    ec: Curve,
+    hf: HashF,
+    pub_key: Point | None,
+) -> tuple[int, int, int]:
+    """Return the nonce before its even-y negation, with q and x_Q.
+
+    `ssa`'s sign-to-contract hashes this nonce's point with its actual
+    parity, and negates only the tweaked nonce. q is negated to match the
+    even-y key.
+    """
     hf_len = hf().digest_size
     msg = bytes_from_octets(msg)
 
@@ -169,9 +198,4 @@ def _nonce_with_pub_key_(
 
     aux = secrets.token_bytes(hf_len) if aux is None else bytes_from_octets(aux, hf_len)
 
-    k = _bip340_nonce_(msg, q, x_Q, aux, ec, hf)
-    x_K, y_K = mult(k, ec=ec)
-    # selected by index, not under an `if`: the parity of y_K is not published
-    k = (k, ec.n - k)[y_K & 1]
-
-    return k, x_K, q, x_Q
+    return _bip340_nonce_(msg, q, x_Q, aux, ec, hf), q, x_Q

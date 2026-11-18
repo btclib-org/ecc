@@ -50,8 +50,8 @@ def challenge_(
     hf's size, which is what the trailing underscore says.
     """
     # the challenge is the first thing `rfc6979_nonce_` and dsa's signing
-    # and anti-exfil entry points compute, so the curve they were handed
-    # is read here first
+    # entry points, `anti_exfil_sign` among them, compute, so the curve
+    # they were handed is read here first
     _assert_valid_ec(ec)
 
     # the message msg_hash: a hf_len array
@@ -174,6 +174,14 @@ def rfc6979_nonce_(
     low-R grinding of ``dsa.sign_`` puts its counter in, and what the
     bindings take as ``aux_rand32`` -- `ndata` being the name the C
     function underneath it gives the same 32 octets.
+
+    extra_entropy must never be a value supplied by a host that also runs
+    the anti-exfil protocol with this key. ``dsa``'s anti-exfil nonce is
+    out of its reach (``dsa.anti_exfil_signer_commit``), but a device
+    sharing the key may derive its own as this nonce with the host
+    commitment for extra_entropy, and the draft anti-exfil BIP's
+    *Backward compatibility* section asks that no ordinary signing
+    interface take that commitment as additional nonce data.
     """
     c = challenge_(msg_hash, ec, hf)
     q = scalar_from_prv_key(prv_key, ec)
