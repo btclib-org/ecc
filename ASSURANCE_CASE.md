@@ -242,7 +242,9 @@ to, and what counters each.
   `.github/workflows/vendored-vectors.yml` runs weekly: it hashes each
   vendored file against the blob recorded there, compares that blob with
   upstream's at the pinned commit, and reports a pin that is no longer
-  upstream's tip. `.github/workflows/zkp-oracle.yml`
+  upstream's tip, except one carrying a `pattern`, which it reports where
+  its file is not what that pattern derives at the tip.
+  `.github/workflows/zkp-oracle.yml`
   builds the flagged libsecp256k1-zkp extension and runs the tests
   marked `zkp` against it.
 - **Exposure of sensitive information (CWE-200).** `dsa.Signer.wipe`

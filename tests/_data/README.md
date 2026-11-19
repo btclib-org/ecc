@@ -100,9 +100,10 @@ repository does not carry: its earlier dates are read in that
 repository's log, against the file's path under `tests/`. That first
 commit is a `refreshed` date only where it changed the bytes.
 
-`behind` counts upstream revisions of that path since the pin. It is a
-staleness figure, not a defect: a vector file is a fixed set of cases and
-refreshing it is a decision, not a chore.
+`behind` counts upstream revisions of that path since the pin, except on
+an entry carrying a `pattern`, below. It is a staleness figure, not a
+defect: a vector file is a fixed set of cases and refreshing it is a
+decision, not a chore.
 
 `ref` names the branch a pin's path lives on, where that is not the
 repository's own default branch.
@@ -112,6 +113,28 @@ walks the default branch alone and finds no commit touching a path that
 only exists elsewhere, reported as a path the default branch never held
 regardless of whether the pin is current. Absent, the call walks the
 default branch.
+
+`pattern` marks a file derived from upstream rather than copied from it:
+the file is every match of that pattern in the regular files under
+`path` (`git grep` reads no symlink), one per line, sorted bytewise and
+deduplicated, as the entry's own `git grep` fence prints it. That fence
+passes `-a`, so that git reads every file as text and prints its
+matches: without it, git can take a file holding a NUL for binary and
+print a line saying the binary file matches instead.
+`.github/scripts/check_vendored_vectors.py` reads every file as text
+too, finds the matches as its `_line_matches` says, following git's loop
+and naming where it departs from it, and derives the file again at the
+tip of the path, weekly. It reports the entry where that is not the file
+here, where the file is not here at all, and, as it reports any entry,
+where no commit on the branch it walks touches the path. A commit
+upstream that leaves the derived lines as they are reports nothing, and
+the value of `commit` decides nothing. `behind` there counts the lines
+the derivation and the file do not share, not revisions.
+
+The script reads the pattern with Python's `re` and matches it against
+bytes, as `git grep -P` matches it with PCRE under `LC_ALL=C`, which the
+entry's fences set: under a Unicode locale git matches characters
+instead. A pattern is written in what both read alike.
 
 A vector this package fails is vendored anyway and marked `xfail`, never
 left out: an absent vector hides the defect it would have shown, and
@@ -1143,28 +1166,32 @@ this package's header.
 ### `tests/_data/secp256k1_symbols.txt`
 
 ```text
-repo    bitcoin-core/secp256k1
-path    src
-commit  a0e2e23a71bf2aaae910f81cb2bd8aa0ae49d544  2026-11-16
-ours    a8f306732166cf782473ecbd2b90030616953689
-pulled  2026-09-10, refreshed 2026-09-14, 2026-10-07, 2026-10-26 and 2026-10-28
-behind  0 revisions; that commit is the tip of the path
+repo     bitcoin-core/secp256k1
+path     src
+pattern  (?<![A-Za-z0-9_])secp256k1_[a-z0-9_]+
+commit   a0e2e23a71bf2aaae910f81cb2bd8aa0ae49d544  2026-11-16
+ours     a8f306732166cf782473ecbd2b90030616953689
+pulled   2026-09-10, refreshed 2026-09-14, 2026-10-07, 2026-10-26 and 2026-10-28
+behind   0 lines; the file is what the pattern derives at the tip of the path
 ```
 
 Verdict: **transcribed**, mechanically: every `secp256k1_*` name the
 pinned tree's own `src` spells, sorted and deduplicated. The pin stands
 for a directory rather than for one upstream file, which is why the
-block above carries no `blob` line and why what the weekly workflow
-reports on it is a commit touching `src` — what a name added there or
-taken away from it looks like from outside.
+block above carries no `blob` line. What the weekly workflow reports on
+it is a file that is not what the `pattern` line derives at the tip of
+`src`, as *Reading an entry* says.
+
+Set the pattern in single quotes, so that the shell leaves its
+parentheses alone.
 
 ```shell
 commit=<the pin this entry gives>
+pattern=<the pattern this entry gives>
 ```
 
 ```shell
-git grep -ohP '(?<![A-Za-z0-9_])secp256k1_[a-z0-9_]+' "${commit:?}" -- src \
-    | LC_ALL=C sort -u
+LC_ALL=C git grep -aohP "${pattern:?}" "${commit:?}" -- src | LC_ALL=C sort -u
 ```
 
 The names and not the headers holding them, because what reads the file
@@ -1211,12 +1238,13 @@ say so.
 
 ```shell
 submodule=<the sha the call above prints>
+pattern=<the pattern this entry gives>
 symbols=<the path to `tests/_data/secp256k1_symbols.txt`>
 ```
 
 ```shell
-git grep -ohP '(?<![A-Za-z0-9_])secp256k1_[a-z0-9_]+' "${submodule:?}" \
-    -- src | LC_ALL=C sort -u \
+LC_ALL=C git grep -aohP "${pattern:?}" "${submodule:?}" -- src \
+    | LC_ALL=C sort -u \
     | LC_ALL=C comm -3 - <(LC_ALL=C sort "${symbols:?}")
 ```
 
@@ -2231,7 +2259,9 @@ bitcoin/bips at `927b6de9915c9262615a6399de51b200f81e5aa4` and python-ecdsa
   documented drift for a flaky one.
   `.github/workflows/vendored-vectors.yml` asks upstream, weekly. A byte
   mismatch fails the run. A stale pin opens an issue rather than being
-  refreshed -- which vector to take next is a decision. The staleness
+  refreshed -- which vector to take next is a decision. A pin carrying a
+  `pattern` is stale where what that pattern derives at upstream's tip is
+  not its file, whatever its commit (*Reading an entry*). The staleness
   check skips an entry whose `behind` reads other than 0, a gap somebody
   has decided not to close being one it would report every week.
 
