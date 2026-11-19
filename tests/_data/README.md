@@ -1089,7 +1089,7 @@ with `ecc.chilldkg`, by the calls above, and compares every field but
 repo    BlockstreamResearch/bip-frost-dkg
 path    python/chilldkg_ref/__init__.py
 commit  5c68412544c014e1b49c4e3167a5a43769c6373e  2026-07-27
-pulled  2026-11-17
+pulled  2026-11-19
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -1097,7 +1097,7 @@ behind  0 revisions; that commit is the tip of the path
 repo    BlockstreamResearch/bip-frost-dkg
 path    python/chilldkg_ref/encpedpop.py
 commit  48239a96fe695e8a9a091bd4bd447834f45498cc  2026-11-12
-pulled  2026-11-17
+pulled  2026-11-19
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -1105,7 +1105,7 @@ behind  0 revisions; that commit is the tip of the path
 repo    BlockstreamResearch/bip-frost-dkg
 path    python/chilldkg_ref/simplpedpop.py
 commit  48239a96fe695e8a9a091bd4bd447834f45498cc  2026-11-12
-pulled  2026-11-17
+pulled  2026-11-19
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -1113,7 +1113,7 @@ behind  0 revisions; that commit is the tip of the path
 repo    BlockstreamResearch/bip-frost-dkg
 path    python/chilldkg_ref/vss.py
 commit  64fc4ef2f8ba1058001678ccfff9234d15ca7628  2026-07-30
-pulled  2026-11-17
+pulled  2026-11-19
 behind  0 revisions; that commit is the tip of the path
 ```
 
@@ -1121,7 +1121,7 @@ behind  0 revisions; that commit is the tip of the path
 repo    BlockstreamResearch/bip-frost-dkg
 path    python/chilldkg_ref/util.py
 commit  4d6ec8ea3168f5232e53ac8143b84cf8be1fe178  2026-07-30
-pulled  2026-11-17
+pulled  2026-11-19
 behind  0 revisions; that commit is the tip of the path
 ```
 

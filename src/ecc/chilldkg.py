@@ -821,7 +821,7 @@ def participant_step2(
 
     A `cmsg1` of the right size that does not check out raises the
     `ecc.exceptions` protocol error naming whom it accuses, unless this
-    participant's own share checks out and the message puts another
+    participant's own share checks out and the message puts a
     participant's public share at infinity: that raises `EccValueError`,
     which accuses nobody. `UnknownFaultyParticipantOrCoordinatorError`
     names nobody either: `participant_investigate` does, given the same
