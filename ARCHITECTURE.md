@@ -25,9 +25,10 @@ The schemes and the modules they share are the top layer, one module each.
 They may import every lower layer, and no lower layer imports one of them.
 Among them, `commit_nonce` builds on `bip340_nonce`, `dsa` on
 `commit_nonce` and `rfc6979_nonce`, `ssa` on `commit_nonce` and
-`bip340_nonce`, `ecdsa_adaptor` on `dsa`, and `dahlias`, `dlc_oracle`,
-`frost`, `musig2`, `ssa_adaptor` and `ssa_halfagg` on `ssa`. `rangeproof`
-builds on `borromean`, `pedersen` and `rfc6979_nonce`, and `dh` on `kdf`.
+`bip340_nonce`, `ecdsa_adaptor` on `dsa`, `dahlias`, `dlc_oracle`,
+`frost`, `musig2`, `ssa_adaptor` and `ssa_halfagg` on `ssa`, and
+`chilldkg` on `frost` and `ssa`. `rangeproof` builds on `borromean`,
+`pedersen` and `rfc6979_nonce`, and `dh` on `kdf`.
 
 `test_the_layers_import_only_downwards`, in `tests/imports_test.py`,
 holds each module to the imports that file's `_MAY_IMPORT` table names

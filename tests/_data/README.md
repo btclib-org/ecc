@@ -80,6 +80,9 @@ against says so in prose instead. The verdicts used:
   is a case written for this suite, naming the third implementation
   that answered it; *recorded* is one reply a program gave, kept
   verbatim, naming the program and the calls that ask it again.
+- **ported** -- no file is vendored: a module of this package is a port
+  of the pinned program, so nothing is compared byte for byte, and the
+  pins say which revision the port follows.
 
 A case of this package's own is written in the test module that reads
 the file, never inside the file, so refreshing a pin is a fetch and never
@@ -858,8 +861,9 @@ and false flat under `tests/schemes/_data/`. The `../COPYING` it names
 is upstream's root file, which is not vendored. Each file is pinned to
 the commit on the default branch, `master`, that last touched it.
 
-What `tests/schemes/frost_test.py` reads of them, and why it reads no
-more, its docstring says.
+`tests/schemes/chilldkg_test.py` runs every case of them against
+`ecc.chilldkg`, as its docstring says. What `tests/schemes/frost_test.py`
+reads of them, its docstring says.
 
 ### `tests/schemes/_data/chilldkg/COPYING`
 
@@ -1062,8 +1066,8 @@ says why it is kept beside the files above.
 
 `commit` is on the default branch and touches `chilldkg.py`, the path
 the weekly check asks about. So it reports a revision that changes
-`chilldkg.py`; one that changes only the rest of the program goes
-unreported.
+`chilldkg.py`; a revision that changes only the rest of the program is
+reported by the entry *ChillDKG's reference* below.
 
 Before writing its output, the program asserted that every participant
 finalized with the coordinator's threshold info and recovery data; that
@@ -1075,8 +1079,64 @@ that each secret share is below the group order and is the discrete log
 of its public share.
 
 `tests/schemes/frost_test.py` reads `t`, `n`, `secshares` and
-`threshold_info`. The host keys and the recovery data are kept, so that
-the session is the program's output unchanged.
+`threshold_info`. `tests/schemes/chilldkg_test.py` runs the session again
+with `ecc.chilldkg`, by the calls above, and compares every field but
+`t` and `n`, which it runs on, with what it answers.
+
+### Not vendored as a file: ChillDKG's reference
+
+```text
+repo    BlockstreamResearch/bip-frost-dkg
+path    python/chilldkg_ref/__init__.py
+commit  5c68412544c014e1b49c4e3167a5a43769c6373e  2026-07-27
+pulled  2026-11-19
+behind  0 revisions; that commit is the tip of the path
+```
+
+```text
+repo    BlockstreamResearch/bip-frost-dkg
+path    python/chilldkg_ref/encpedpop.py
+commit  48239a96fe695e8a9a091bd4bd447834f45498cc  2026-11-12
+pulled  2026-11-19
+behind  0 revisions; that commit is the tip of the path
+```
+
+```text
+repo    BlockstreamResearch/bip-frost-dkg
+path    python/chilldkg_ref/simplpedpop.py
+commit  48239a96fe695e8a9a091bd4bd447834f45498cc  2026-11-12
+pulled  2026-11-19
+behind  0 revisions; that commit is the tip of the path
+```
+
+```text
+repo    BlockstreamResearch/bip-frost-dkg
+path    python/chilldkg_ref/vss.py
+commit  64fc4ef2f8ba1058001678ccfff9234d15ca7628  2026-07-30
+pulled  2026-11-19
+behind  0 revisions; that commit is the tip of the path
+```
+
+```text
+repo    BlockstreamResearch/bip-frost-dkg
+path    python/chilldkg_ref/util.py
+commit  4d6ec8ea3168f5232e53ac8143b84cf8be1fe178  2026-07-30
+pulled  2026-11-19
+behind  0 revisions; that commit is the tip of the path
+```
+
+Verdict: **ported**. `src/ecc/chilldkg.py` is a port of
+`python/chilldkg_ref/` at f913f9c7ffc3d67bfbb22dd7d294fb43f71562f3,
+whose tree holds each path above as that path's own pin does.
+`python/chilldkg_ref/chilldkg.py` is pinned by the entry of
+`chilldkg_vectors.json` above, at that commit. The weekly check reports
+a revision that changes any of them, which may change what the port has
+to do; the vector files above report one that changes an answer.
+
+The program is MIT-licensed, under the notice of upstream's root
+`COPYING`, "Copyright (c) The ChillDKG authors". Its Python files state
+no licence of their own. `src/ecc/chilldkg.py` carries that notice below
+this package's header.
 
 ## bitcoin-core/secp256k1
 

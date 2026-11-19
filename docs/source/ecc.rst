@@ -33,6 +33,13 @@ ecc.borromean module
    :members:
    :show-inheritance:
 
+ecc.chilldkg module
+-------------------
+
+.. automodule:: ecc.chilldkg
+   :members:
+   :show-inheritance:
+
 ecc.commit\_nonce module
 ------------------------
 

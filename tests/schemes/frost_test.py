@@ -14,17 +14,15 @@ party misbehaved and how, or the message of a plain value error.
 A trusted dealer generated those vectors. BIP-FROST-DKG's own vectors,
 every JSON file of `BlockstreamResearch/bip-frost-dkg`'s `vectors/`,
 vendored under `tests/schemes/_data/chilldkg/`, come from ChillDKG's
-reference instead, and `tests/_data/README.md` pins them too. This
-package implements no ChillDKG function, so what is read of them is the
-key material their valid cases output, in
-`participant_finalize_vectors.json`, `coordinator_finalize_vectors.json`
-and `recover_vectors.json`, each case checked as
-`test_chilldkg_vector_key_material_is_valid` says. Each group of
-`participant_finalize_vectors.json` is also a session, as
+reference instead, and `tests/_data/README.md` pins them too.
+`tests/schemes/chilldkg_test.py` runs every case of them against
+`ecc.chilldkg`. What is read of them here is the key material their
+valid cases output, in `participant_finalize_vectors.json`,
+`coordinator_finalize_vectors.json` and `recover_vectors.json`, each case
+checked as `test_chilldkg_vector_key_material_is_valid` says. Each group
+of `participant_finalize_vectors.json` is also a session, as
 `_finalized_session` says, and the session tests run on each: it is
-validated, signs and verifies, and is refused once mutated. The other
-JSON files, and every error case, ask a ChillDKG function, and nothing
-here reads them.
+validated, signs and verifies, and is refused once mutated.
 
 `chilldkg_vectors.json` adds a session recorded from ChillDKG's
 reference, which the same session tests run on; the comment above its

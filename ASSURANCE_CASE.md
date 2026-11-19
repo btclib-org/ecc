@@ -73,8 +73,9 @@ EOF
 
 - A remote party supplying octets: a signature, a public key, an ECIES
   envelope or a proof received from anyone.
-- A counterparty in a protocol: a co-signer in MuSig2 or FROST, the other
-  side of a key agreement, the prover of a discrete logarithm equality.
+- A counterparty in a protocol: a co-signer in MuSig2 or FROST, a
+  participant or the coordinator of a ChillDKG session, the other side
+  of a key agreement, the prover of a discrete logarithm equality.
 - An observer of timing on the same machine, for the calls that cross
   into libsecp256k1.
 - A party tampering with a distribution between this tree and the user.
@@ -212,8 +213,8 @@ to, and what counters each.
 - **Uncaught exceptions on hostile input (CWE-248, CWE-755).**
   `tests/fuzz_test.py` asserts that every class decoder, and each
   module-level decoder it lists, fails the way the package says it fails,
-  whatever it is handed. The wire inputs of musig2, frost and dleq are
-  outside it. The targets under `fuzz/`
+  whatever it is handed. The wire inputs of musig2, frost, chilldkg and
+  dleq are outside it. The targets under `fuzz/`
   run under ClusterFuzzLite in `.github/workflows/fuzz.yml`, and
   `tests/fuzz_corpus_test.py` checks that every seed of their corpus
   still parses.
@@ -230,6 +231,9 @@ to, and what counters each.
   randomness of BIP327's, BIP445's and BIP374's nonce generation from
   `secrets`, and `tests/schemes/musig2_test.py`, `frost_test.py` and
   `dleq_test.py` check the derivation against those BIPs' vectors.
+  `chilldkg` draws the randomness of BIP-FROST-DKG's first step from
+  `secrets`, and `tests/schemes/chilldkg_test.py` checks the
+  derivation against that BIP's vectors.
   `borromean` and `ecies` draw scalars from `secrets` directly.
 - **Improper verification of a signature (CWE-347).** A scheme whose
   specification publishes vectors is checked against them, and against

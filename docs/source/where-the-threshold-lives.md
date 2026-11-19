@@ -107,10 +107,10 @@ different set and the funds stay where they are.
 Script multisig has no phase in which anybody holds everything. FROST
 has one wherever a trusted dealer distributes the shares: that dealer
 transiently knows the whole key. Avoiding it takes a distributed key
-generation, and {py:mod}`ecc.frost` takes key material already split
-rather than splitting any;
-btclib's [ISS 2200](https://github.com/btclib-org/btclib/issues/2200)
-tracks key generation.
+generation: {py:mod}`ecc.frost` takes key material already split
+rather than splitting any, and {py:mod}`ecc.chilldkg` is a distributed
+key generation that produces it, with no party holding the whole key
+where the threshold is above 1.
 
 ## *t* = *n* FROST is not MuSig2
 
