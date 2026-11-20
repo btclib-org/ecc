@@ -10,13 +10,14 @@
   }
 -->
 
-A release's section is written when the release is cut, in the release's
-own pull request, from the squash subjects since the previous tag. A
-pull request adds no entry; between two releases, the history is
-`git log` of `main`. That is sections 9 and 12 of [the organization
-standard][std]. [RELEASE_NOTES.md](./RELEASE_NOTES.md) has the release
-notes, which say what a user has to act on; this file is the record
-behind them.
+The release's own pull request assembles its section from the entries
+under `changelog/next/`, which each pull request that changes what a
+user gets adds as a file of its own, into this file and
+[RELEASE_NOTES.md](./RELEASE_NOTES.md) alike. The GitHub release shows
+RELEASE_NOTES.md's section. That is sections 9 and 12 of [the
+organization standard][std]. Sections released before that were written
+for each file apart: there RELEASE_NOTES.md says what a user has to act
+on, and this file what changed.
 
 [std]: https://github.com/btclib-org/.github
 
