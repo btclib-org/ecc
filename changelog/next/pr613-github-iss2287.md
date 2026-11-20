@@ -1,5 +1,5 @@
 ### The attestations name a new commit of reusable-build.yml
 
-They name commit `a96ab77e0b59880c6412f62da26d3f62dfc31e0c`, tag
+They name commit `a96ab77e0b59880c6412f62da26d3f62dfc31e0c`, its tag
 v2026.11.20, so a `--signer-workflow` pinned to an earlier commit fails.
 `SECURITY.md`'s command names no ref (issue btclib-org/.github#2287).
